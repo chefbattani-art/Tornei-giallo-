@@ -207,7 +207,7 @@ elif db["stato"] == "gironi":
         for idx, m in enumerate(partite):
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
-            is_avviata = st.session_session_state.partite_avviate.get(match_id, False) if "partite_avviate" in st.session_state else False
+            is_avviata = st.session_state.partite_avviate.get(match_id, False)
 
             with st.container():
                 st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
