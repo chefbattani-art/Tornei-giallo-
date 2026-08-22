@@ -4,7 +4,6 @@ import json
 import os
 import re
 import random
-import time
 
 st.set_page_config(page_title="Torneo Biliardino Giallo Live", layout="wide")
 
@@ -42,9 +41,9 @@ def salva_dati(data):
 if "db" not in st.session_state:
     st.session_state.db = carica_dati()
 
-# Inizializza lo stato dei timer in memoria per ogni partita se non esiste
-if "timers" not in st.session_state:
-    st.session_state.timers = {}
+# Stato per tracciare le partite avviate senza timer
+if "partite_avviate" not in st.session_state:
+    st.session_state.partite_avviate = {}
 
 db = st.session_state.db
 
@@ -101,6 +100,7 @@ if is_admin:
         if os.path.exists(DB_FILE):
             os.remove(DB_FILE)
         st.session_state.db = carica_dati()
+        st.session_state.partite_avviate = {}
         st.rerun()
 
 # --- INTERFACCIA PRINCIPALE ---
@@ -113,6 +113,7 @@ if is_admin and db["stato"] != "setup":
             if os.path.exists(DB_FILE):
                 os.remove(DB_FILE)
             st.session_state.db = carica_dati()
+            st.session_state.partite_avviate = {}
             st.rerun()
 
 # 1. SETUP
@@ -187,9 +188,9 @@ elif db["stato"] == "gironi":
     st.subheader("📊 Calendario e Risultati in Diretta")
     
     if is_admin:
-        st.info("💡 **Modalità Admin attiva:** Gestisci i tavoli, fai partire il timer da 60s o inserisci i risultati.")
+        st.info("💡 **Modalità Admin attiva:** Avvia le partite o inserisci i risultati quando si concludono.")
     else:
-        st.info("👀 **Modalità Spettatore:** Stai visualizzando i turni, i tavoli e i timer in tempo reale.")
+        st.info("👀 **Modalità Spettatore:** Stai visualizzando i turni e i tavoli in tempo reale.")
 
     num_tavoli = db.get("num_tavoli", 2)
 
@@ -204,77 +205,50 @@ elif db["stato"] == "gironi":
         partite = turno_obj["partite"]
         
         for idx, m in enumerate(partite):
-            # Assegna un numero di tavolo ciclico (es. Tavolo 1, Tavolo 2, ecc.)
             tavolo_num = (idx % num_tavoli) + 1
-            
-            # Individua la coppia successiva sullo stesso tavolo (se esiste)
-            prossima_partita_test = "Nessuna (Ultima del turno)"
-            next_idx = idx + num_tavoli
-            if next_idx < len(partite):
-                nm = partite[next_idx]
-                prossima_partita_test = f"🥅 {nm['p1']} / ⚽ {nm['a1']}  VS  🥅 {nm['p2']} / ⚽ {nm['a2']}"
+            match_id = m['id']
+            is_avviata = st.session_session_state.partite_avviate.get(match_id, False) if "partite_avviate" in st.session_state else False
 
             with st.container():
                 st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
-                col_s1, col_mid, col_s2 = st.columns([4, 3, 4])
+                
+                col_s1, col_mid, col_s2 = st.columns([4, 3, 4], gap="small")
                 
                 with col_s1:
                     st.markdown(f"📖 **{m['p1']}**<br>⚽ **{m['a1']}**", unsafe_allow_html=True)
                 
                 with col_mid:
-                    if not m["giocata"]:
-                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
+                    if m["giocata"]:
+                        # Partita conclusa: evidenziata in rosso
+                        st.markdown(f"""
+                        <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid red; font-size: 13px;">
+                            🛑 Partita Conclusa<br>Risultato: {m['gol1']} - {m['gol2']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    elif is_avviata:
+                        # Partita in corso: evidenziata in giallo/arancione
+                        st.markdown(f"""
+                        <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; font-size: 13px;">
+                            🔥 Partita in Corso!
+                        </div>
+                        """, unsafe_allow_html=True)
                     else:
-                        st.markdown(f"<div style='text-align: center; background-color: #e2e3e5; padding: 4px; border-radius: 5px; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</div>", unsafe_allow_html=True)
+                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
+                        if st.button("▶️ Avvia Partita", key=f"btn_avvia_{match_id}"):
+                            st.session_state.partite_avviate[match_id] = True
+                            st.rerun()
                     
-                    # Gestione Timer 60 secondi
-                    match_id = m['id']
-                    if match_id not in st.session_state.timers:
-                        st.session_state.timers[match_id] = {"running": False, "start_time": 0}
-                    
-                    t_state = st.session_state.timers[match_id]
-                    
-                    if not m["giocata"]:
-                        if not t_state["running"]:
-                            if st.button("▶️ Avvia Partita (60s)", key=f"btn_start_{match_id}"):
-                                st.session_state.timers[match_id] = {"running": True, "start_time": time.time()}
-                                st.rerun()
-                        else:
-                            elapsed = int(time.time() - t_state["start_time"])
-                            remaining = 60 - elapsed
-                            
-                            if remaining > 0:
-                                st.markdown(f"<div style='text-align: center; color: #d9534f; font-weight: bold;'>⏳ Mancano {remaining}s</div>", unsafe_allow_html=True)
-                                time.sleep(1)
-                                st.rerun()
-                            else:
-                                # Tempo scaduto! Notifica visiva + Audio (bip HTML5)
-                                st.markdown(f"""
-                                <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 2px solid red;">
-                                    🚨 TEMPO SCADUTO (60s)!<br>
-                                    Pronti al <b>Tavolo {tavolo_num}</b>:<br>
-                                    {prossima_partita_test}
-                                </div>
-                                <audio autoplay>
-                                  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-                                </audio>
-                                """, unsafe_allow_html=True)
-                                
-                                if st.button("⏹️ Resetta Avviso", key=f"reset_{match_id}"):
-                                    st.session_state.timers[match_id]["running"] = False
-                                    st.rerun()
-
+                    # Pannello risultato sempre accessibile per l'admin
                     if is_admin:
-                        with st.expander("⚙️ Modifica Risultato"):
+                        with st.expander("⚙️ Inserisci / Modifica Risultato"):
                             with st.form(f"form_{match_id}"):
                                 rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"rg1_{match_id}")
                                 rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"rg2_{match_id}")
-                                if st.form_submit_button("Salva"):
+                                if st.form_submit_button("Salva Risultato"):
                                     m['gol1'] = rg1
                                     m['gol2'] = rg2
                                     m['giocata'] = True
-                                    # Spegni il timer se la partita viene segnata come giocata
-                                    st.session_state.timers[match_id]["running"] = False
+                                    st.session_state.partite_avviate[match_id] = False
                                     ricalcola_classifiche()
                                     salva_dati(db)
                                     st.success("Salvato!")
