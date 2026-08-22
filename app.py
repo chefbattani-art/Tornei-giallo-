@@ -4,6 +4,10 @@ import json
 import os
 import re
 import random
+from streamlit_autorefresh import st_autorefresh
+
+# Imposta il refresh automatico ogni 10 secondi (10000 millisecondi)
+st_autorefresh(interval=10000, key="auto_refresh_torneo")
 
 st.set_page_config(page_title="Torneo Biliardino Giallo Live", layout="wide")
 
@@ -92,7 +96,7 @@ if modalita_admin:
         st.sidebar.error("PIN errato. Vista solo lettura (Pubblica).")
 
 st.sidebar.markdown("---")
-st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo. Tutti vedranno la live in tempo reale!")
+st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo. La pagina si aggiornerà automaticamente ogni 10 secondi per tutti!")
 
 if is_admin:
     st.sidebar.markdown("---")
@@ -191,14 +195,14 @@ elif db["stato"] == "gironi":
     if is_admin:
         st.info("💡 **Modalità Admin attiva:** Avvia le partite o inserisci i risultati quando si concludono.")
     else:
-        st.info("👀 **Modalità Spettatore:** Stai visualizzando i turni e i tavoli in tempo reale.")
+        st.info("👀 **Modalità Spettatore:** La pagina si aggiorna automaticamente ogni 10 secondi.")
 
     num_tavoli = db.get("num_tavoli", 2)
 
     for turno_obj in db["turni_partite"]:
         n_turno = turno_obj["turno"]
         st.markdown(f"""
-        <div style="background-color: #1e7e34; padding: 10px; border-radius: 5px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 15px;">
+        <div style="background-color: #1e7e34; padding: 8px 12px; border-radius: 5px; color: white; font-weight: bold; font-size: 16px; margin-bottom: 10px; margin-top: 15px;">
             🚩 Turno {n_turno}
         </div>
         """, unsafe_allow_html=True)
@@ -210,76 +214,87 @@ elif db["stato"] == "gironi":
             match_id = m['id']
             is_avviata = st.session_state.partite_avviate.get(match_id, False)
 
-            with st.container():
-                st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
-                
-                col_s1, col_mid, col_s2 = st.columns([4, 3, 4], gap="small")
-                
-                with col_s1:
-                    st.markdown(f"📖 **{m['p1']}**<br>⚽ **{m['a1']}**", unsafe_allow_html=True)
-                
-                with col_mid:
-                    if m["giocata"]:
-                        st.markdown(f"""
-                        <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid red; font-size: 13px;">
-                            🛑 Partita Conclusa<br>Risultato: {m['gol1']} - {m['gol2']}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    elif is_avviata:
-                        st.markdown(f"""
-                        <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; font-size: 13px;">
-                            🔥 Partita in Corso!
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
-                        if st.button("▶️ Avvia Partita", key=f"btn_avvia_{match_id}"):
+            # --- APERTURA RIQUADRO PARTITA ---
+            st.markdown(f"""
+            <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Tavolo {tavolo_num}</div>
+            """, unsafe_allow_html=True)
+            
+            col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
+            
+            with col_s1:
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
+                    🥅 <b>{m['p1']}</b><br>⚽ <b>{m['a1']}</b>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_mid:
+                if m["giocata"]:
+                    st.markdown(f"""
+                    <div style="background-color: #fee2e2; color: #991b1b; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #f87171; font-size: 12px;">
+                        🛑 {m['gol1']} - {m['gol2']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif is_avviata:
+                    st.markdown(f"""
+                    <div style="background-color: #fef3c7; color: #92400e; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #fcd34d; font-size: 12px;">
+                        🔥 In Corso
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 12px; padding-top: 6px;'>VS</div>", unsafe_allow_html=True)
+                    if is_admin:
+                        if st.button("▶️ Avvia", key=f"btn_avvia_{match_id}", use_container_width=True):
                             st.session_state.partite_avviate[match_id] = True
                             st.rerun()
-                    
-                    if is_admin:
-                        with st.expander("⚙️ Inserisci / Modifica Risultato"):
-                            with st.form(f"form_{match_id}"):
-                                rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"rg1_{match_id}")
-                                rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"rg2_{match_id}")
-                                if st.form_submit_button("Salva Risultato"):
-                                    m['gol1'] = rg1
-                                    m['gol2'] = rg2
-                                    m['giocata'] = True
-                                    st.session_state.partite_avviate[match_id] = False
-                                    ricalcola_classifiche()
-                                    salva_dati(db)
-                                    st.success("Salvato!")
-                                    st.rerun()
 
-                with col_s2:
-                    st.markdown(f"📖 **{m['p2']}**<br>⚽ **{m['a2']}**", unsafe_allow_html=True)
-                
-                st.markdown("---")
+            with col_s2:
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
+                    🥅 <b>{m['p2']}</b><br>⚽ <b>{m['a2']}</b>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            if is_admin:
+                with st.expander("⚙️ Gestisci Risultato"):
+                    rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"rg1_{match_id}")
+                    rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"rg2_{match_id}")
+                    if st.button("💾 Salva", key=f"save_{match_id}", use_container_width=True):
+                        m['gol1'] = rg1
+                        m['gol2'] = rg2
+                        m['giocata'] = True
+                        st.session_state.partite_avviate[match_id] = False
+                        ricalcola_classifiche()
+                        salva_dati(db)
+                        st.success("Salvato!")
+                        st.rerun()
+            
+            # --- CHIUSURA RIQUADRO PARTITA ---
+            st.markdown("</div>", unsafe_allow_html=True)
 
     ricalcola_classifiche()
 
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
     with col_c1:
-        st.markdown("#### 🥅 Classifica Portieri")
+        st.markdown("#### 🥅 Portieri")
         df_p = pd.DataFrame(list(db["punti_portieri"].items()), columns=["Portiere", "Punti"]).sort_values(by="Punti", ascending=False)
         st.dataframe(df_p, use_container_width=True, hide_index=True)
     with col_c2:
-        st.markdown("#### ⚽ Classifica Attaccanti")
+        st.markdown("#### ⚽ Attaccanti")
         df_a = pd.DataFrame(list(db["punti_attaccanti"].items()), columns=["Attaccante", "Punti"]).sort_values(by="Punti", ascending=False)
         st.dataframe(df_a, use_container_width=True, hide_index=True)
 
     if is_admin:
         st.markdown("---")
-        if st.button("🏆 Genera Fasi Finali (8 Portieri & 8 Attaccanti)"):
+        if st.button("🏆 Genera Fasi Finali (8 Portieri & 8 Attaccanti)", use_container_width=True):
             df_p_sorted = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
             df_a_sorted = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
             
             top_p = [p[0] for p in df_p_sorted[:8]]
             top_a = [a[0] for a in df_a_sorted[:8]]
             
-            # Primo turno: 1° vs 8°, 2° vs 7°, 3° vs 6°, 4° vs 5°
             turno1_partite = [
                 {
                     "id": "ef_t1_m1",
@@ -323,7 +338,7 @@ elif db["stato"] == "eliminatorie":
         t_nome = f_turno["nome"]
         
         st.markdown(f"""
-        <div style="background-color: #900C3F; padding: 10px; border-radius: 5px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 15px;">
+        <div style="background-color: #900C3F; padding: 8px 12px; border-radius: 5px; color: white; font-weight: bold; font-size: 16px; margin-bottom: 10px; margin-top: 15px;">
             🔥 {t_nome} (Turno {t_num})
         </div>
         """, unsafe_allow_html=True)
@@ -339,60 +354,69 @@ elif db["stato"] == "eliminatorie":
             if not m["giocata"]:
                 turno_completato = False
 
-            with st.container():
-                st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
-                col_s1, col_mid, col_s2 = st.columns([4, 3, 4], gap="small")
-                
-                with col_s1:
-                    st.markdown(f"📖 **{m['p1']}**<br>⚽ **{m['a1']}**", unsafe_allow_html=True)
-                
-                with col_mid:
-                    if m["giocata"]:
-                        st.markdown(f"""
-                        <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid red; font-size: 13px;">
-                            🛑 Partita Conclusa<br>Risultato: {m['gol1']} - {m['gol2']}
-                        </div>
-                        """, unsafe_allow_html=True)
-                    elif is_avviata:
-                        st.markdown(f"""
-                        <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; font-size: 13px;">
-                            🔥 Partita in Corso!
-                        </div>
-                        """, unsafe_allow_html=True)
-                    else:
-                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
-                        if st.button("▶️ Avvia Partita", key=f"ef_btn_{match_id}"):
+            # --- APERTURA RIQUADRO PARTITA ELIMINATORIE ---
+            st.markdown(f"""
+            <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Tavolo {tavolo_num}</div>
+            """, unsafe_allow_html=True)
+            
+            col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
+            
+            with col_s1:
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
+                    🥅 <b>{m['p1']}</b><br>⚽ <b>{m['a1']}</b>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col_mid:
+                if m["giocata"]:
+                    st.markdown(f"""
+                    <div style="background-color: #fee2e2; color: #991b1b; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #f87171; font-size: 12px;">
+                        🛑 {m['gol1']} - {m['gol2']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                elif is_avviata:
+                    st.markdown(f"""
+                    <div style="background-color: #fef3c7; color: #92400e; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #fcd34d; font-size: 12px;">
+                        🔥 In Corso
+                    </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown("<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 12px; padding-top: 6px;'>VS</div>", unsafe_allow_html=True)
+                    if is_admin:
+                        if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
                             st.session_state.partite_avviate[match_id] = True
                             st.rerun()
-                    
-                    if is_admin:
-                        with st.expander("⚙️ Inserisci / Modifica Risultato"):
-                            with st.form(f"ef_form_{match_id}"):
-                                rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"ef_rg1_{match_id}")
-                                rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"ef_rg2_{match_id}")
-                                if st.form_submit_button("Salva Risultato"):
-                                    m['gol1'] = rg1
-                                    m['gol2'] = rg2
-                                    m['giocata'] = True
-                                    st.session_state.partite_avviate[match_id] = False
-                                    salva_dati(db)
-                                    st.success("Salvato!")
-                                    st.rerun()
-
-                with col_s2:
-                    st.markdown(f"📖 **{m['p2']}**<br>⚽ **{m['a2']}**", unsafe_allow_html=True)
                 
-                st.markdown("---")
+                if is_admin:
+                    with st.expander("⚙️ Gestisci Risultato"):
+                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
+                        if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
+                            m['gol1'] = rg1
+                            m['gol2'] = rg2
+                            m['giocata'] = True
+                            st.session_state.partite_avviate[match_id] = False
+                            salva_dati(db)
+                            st.success("Salvato!")
+                            st.rerun()
+
+            with col_s2:
+                st.markdown(f"""
+                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
+                    🥅 <b>{m['p2']}</b><br>⚽ <b>{m['a2']}</b>
+                </div>
+                """, unsafe_allow_html=True)
+            
+            # --- CHIUSURA RIQUADRO PARTITA ELIMINATORIE ---
+            st.markdown("</div>", unsafe_allow_html=True)
         
-        # Pulsante per generare il turno successivo se tutte le partite del turno corrente sono giocate
         if turno_completato and is_admin:
             già_presente_successivo = any(f["turno"] == t_num + 1 for f in db["fasi_finali"])
             if not già_presente_successivo:
                 vincitori_p = []
                 vincitori_a = []
-                
-                # Raccogliamo i giocatori vincenti
-                vincenti_turno_1_portieri_1 = [] # per la regola del 1° classificato
                 
                 for m in partite:
                     if m["gol1"] > m["gol2"]:
@@ -405,15 +429,8 @@ elif db["stato"] == "eliminatorie":
                 if len(vincitori_p) > 1:
                     nuovo_nome = "Semifinale" if len(vincitori_p) == 4 else ("Finale" if len(vincitori_p) == 2 else f"Turno {t_num+1}")
                     
-                    # Sorteggio Giallo per il turno successivo (se non siamo alla finale secca)
-                    if len(vincitori_p) == 4:
-                        # Regola speciale: chi è arrivato 1° assoluto nei gironi non deve incontrarsi col compagno prima della finale
-                        # Smistiamo casualmente ma tenendo separati i primi due portieri/attaccanti top se necessario
-                        random.shuffle(vincitori_p)
-                        random.shuffle(vincitori_a)
-                    else:
-                        random.shuffle(vincitori_p)
-                        random.shuffle(vincitori_a)
+                    random.shuffle(vincitori_p)
+                    random.shuffle(vincitori_a)
                         
                     nuove_partite = []
                     for i in range(0, len(vincitori_p), 2):
