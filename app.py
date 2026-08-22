@@ -216,74 +216,38 @@ elif db["stato"] == "gironi":
 
     ricalcola_classifiche()
 
-    # --- CLASSIFICHE IN CIMA ---
+    # --- CLASSIFICHE IN CIMA (Con Tabelle native Streamlit) ---
     st.markdown("### 🏆 Classifiche in Tempo Reale")
 
     col_c1, col_c2 = st.columns(2)
 
     with col_c1:
-        st.markdown("<h4 style='text-align: center;'>🥅 Classifica Portieri</h4>", unsafe_allow_html=True)
+        st.markdown("#### 🥅 Classifica Portieri")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
-        
-        html_p = """
-        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-            <tr style="background-color: #1e7e34; color: white;">
-                <th style="padding: 6px; border: 1px solid #ddd;">Pos.</th>
-                <th style="padding: 6px; border: 1px solid #ddd; text-align: left;">Portiere</th>
-                <th style="padding: 6px; border: 1px solid #ddd;">Punti</th>
-                <th style="padding: 6px; border: 1px solid #ddd;">Giocate</th>
-            </tr>
-        """
+        data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
-            pos = idx + 1
             giocate, totali = calcola_partite_giocate("portiere", p)
-            if pos <= 8:
-                bg_color = "#e8f5e9" # Verde chiaro per i primi 8
-            else:
-                bg_color = "#ffebee" # Rosso chiaro dal 9° in poi
-                
-            html_p += f"""
-            <tr style="background-color: {bg_color};">
-                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pos}°</td>
-                <td style="padding: 6px; border: 1px solid #ddd; text-align: left;">🥅 {p}</td>
-                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pt}</td>
-                <td style="padding: 6px; border: 1px solid #ddd;">{giocate}/{totali}</td>
-            </tr>
-            """
-        html_p += "</table>"
-        st.markdown(html_p, unsafe_allow_html=True)
+            data_p.append({
+                "Pos": f"{idx+1}°",
+                "Portiere": f"🥅 {p}",
+                "Punti": pt,
+                "Giocate": f"{giocate}/{totali}"
+            })
+        st.dataframe(pd.DataFrame(data_p), hide_index=True, use_container_width=True)
 
     with col_c2:
-        st.markdown("<h4 style='text-align: center;'>⚽ Classifica Attaccanti</h4>", unsafe_allow_html=True)
+        st.markdown("#### ⚽ Classifica Attaccanti")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
-        
-        html_a = """
-        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: center;">
-            <tr style="background-color: #d35400; color: white;">
-                <th style="padding: 6px; border: 1px solid #ddd;">Pos.</th>
-                <th style="padding: 6px; border: 1px solid #ddd; text-align: left;">Attaccante</th>
-                <th style="padding: 6px; border: 1px solid #ddd;">Punti</th>
-                <th style="padding: 6px; border: 1px solid #ddd;">Giocate</th>
-            </tr>
-        """
+        data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
-            pos = idx + 1
             giocate, totali = calcola_partite_giocate("attaccante", a)
-            if pos <= 8:
-                bg_color = "#fff3e0" # Arancione chiaro per i primi 8
-            else:
-                bg_color = "#ffebee" # Rosso chiaro dal 9° in poi
-                
-            html_a += f"""
-            <tr style="background-color: {bg_color};">
-                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pos}°</td>
-                <td style="padding: 6px; border: 1px solid #ddd; text-align: left;">⚽ {a}</td>
-                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pt}</td>
-                <td style="padding: 6px; border: 1px solid #ddd;">{giocate}/{totali}</td>
-            </tr>
-            """
-        html_a += "</table>"
-        st.markdown(html_a, unsafe_allow_html=True)
+            data_a.append({
+                "Pos": f"{idx+1}°",
+                "Attaccante": f"⚽ {a}",
+                "Punti": pt,
+                "Giocate": f"{giocate}/{totali}"
+            })
+        st.dataframe(pd.DataFrame(data_a), hide_index=True, use_container_width=True)
 
     st.markdown("---")
     st.markdown("### 📅 Calendario Partite")
@@ -292,11 +256,7 @@ elif db["stato"] == "gironi":
 
     for turno_obj in db["turni_partite"]:
         n_turno = turno_obj["turno"]
-        st.markdown(f"""
-        <div style="background-color: #1e7e34; padding: 8px 12px; border-radius: 5px; color: white; font-weight: bold; font-size: 16px; margin-bottom: 10px; margin-top: 15px;">
-            🚩 Turno {n_turno}
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"### 🚩 Turno {n_turno}")
         
         partite = turno_obj["partite"]
         
@@ -305,46 +265,26 @@ elif db["stato"] == "gironi":
             match_id = m['id']
             is_avviata = st.session_state.partite_avviate.get(match_id, False)
 
-            st.markdown(f"""
-            <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Biliardino {tavolo_num}</div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"**📍 Biliardino {tavolo_num}**")
             col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
             
             with col_s1:
-                st.markdown(f"""
-                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
-                    🥅 <b>{m['p1']}</b><br>⚽ <b>{m['a1']}</b>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"🥅 **{m['p1']}**\n\n⚽ **{m['a1']}**")
             
             with col_mid:
                 if m["giocata"]:
-                    st.markdown(f"""
-                    <div style="background-color: #fee2e2; color: #991b1b; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #f87171; font-size: 12px;">
-                        🛑 {m['gol1']} - {m['gol2']}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.error(f"🛑 **{m['gol1']} - {m['gol2']}**")
                 elif is_avviata:
-                    st.markdown(f"""
-                    <div style="background-color: #fef3c7; color: #92400e; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #fcd34d; font-size: 12px;">
-                        🔥 In Corso
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.warning("🔥 **In Corso**")
                 else:
-                    st.markdown("<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 12px; padding-top: 6px;'>VS</div>", unsafe_allow_html=True)
+                    st.write("**VS**")
                     if is_admin:
                         if st.button("▶️ Avvia", key=f"btn_avvia_{match_id}", use_container_width=True):
                             st.session_state.partite_avviate[match_id] = True
                             st.rerun()
 
             with col_s2:
-                st.markdown(f"""
-                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
-                    🥅 <b>{m['p2']}</b><br>⚽ <b>{m['a2']}</b>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"🥅 **{m['p2']}**\n\n⚽ **{m['a2']}**")
             
             if is_admin:
                 with st.expander("⚙️ Gestisci Risultato"):
@@ -360,10 +300,9 @@ elif db["stato"] == "gironi":
                         st.success("Salvato!")
                         st.rerun()
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("---")
 
     if is_admin:
-        st.markdown("---")
         if st.button("🏆 Genera Fasi Finali (8 Portieri & 8 Attaccanti)", use_container_width=True):
             df_p_sorted = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
             df_a_sorted = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
@@ -372,30 +311,10 @@ elif db["stato"] == "gironi":
             top_a = [a[0] for a in df_a_sorted[:8]]
             
             turno1_partite = [
-                {
-                    "id": "ef_t1_m1",
-                    "p1": top_p[0], "a1": top_a[0],
-                    "p2": top_p[7], "a2": top_a[7],
-                    "giocata": False, "gol1": 0, "gol2": 0
-                },
-                {
-                    "id": "ef_t1_m2",
-                    "p1": top_p[1], "a1": top_a[1],
-                    "p2": top_p[6], "a2": top_a[6],
-                    "giocata": False, "gol1": 0, "gol2": 0
-                },
-                {
-                    "id": "ef_t1_m3",
-                    "p1": top_p[2], "a1": top_a[2],
-                    "p2": top_p[5], "a2": top_a[5],
-                    "giocata": False, "gol1": 0, "gol2": 0
-                },
-                {
-                    "id": "ef_t1_m4",
-                    "p1": top_p[3], "a1": top_a[3],
-                    "p2": top_p[4], "a2": top_a[4],
-                    "giocata": False, "gol1": 0, "gol2": 0
-                }
+                {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "gol1": 0, "gol2": 0},
+                {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "gol1": 0, "gol2": 0},
+                {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "gol1": 0, "gol2": 0},
+                {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "gol1": 0, "gol2": 0}
             ]
             
             db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": turno1_partite}]
@@ -413,11 +332,7 @@ elif db["stato"] == "eliminatorie":
         t_num = f_turno["turno"]
         t_nome = f_turno["nome"]
         
-        st.markdown(f"""
-        <div style="background-color: #900C3F; padding: 8px 12px; border-radius: 5px; color: white; font-weight: bold; font-size: 16px; margin-bottom: 10px; margin-top: 15px;">
-            🔥 {t_nome} (Turno {t_num})
-        </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"### 🔥 {t_nome} (Turno {t_num})")
         
         partite = f_turno["partite"]
         turno_completato = True
@@ -430,35 +345,19 @@ elif db["stato"] == "eliminatorie":
             if not m["giocata"]:
                 turno_completato = False
 
-            st.markdown(f"""
-            <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Biliardino {tavolo_num}</div>
-            """, unsafe_allow_html=True)
-            
+            st.markdown(f"**📍 Biliardino {tavolo_num}**")
             col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
             
             with col_s1:
-                st.markdown(f"""
-                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
-                    🥅 <b>{m['p1']}</b><br>⚽ <b>{m['a1']}</b>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"🥅 **{m['p1']}**\n\n⚽ **{m['a1']}**")
             
             with col_mid:
                 if m["giocata"]:
-                    st.markdown(f"""
-                    <div style="background-color: #fee2e2; color: #991b1b; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #f87171; font-size: 12px;">
-                        🛑 {m['gol1']} - {m['gol2']}
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.error(f"🛑 **{m['gol1']} - {m['gol2']}**")
                 elif is_avviata:
-                    st.markdown(f"""
-                    <div style="background-color: #fef3c7; color: #92400e; padding: 6px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #fcd34d; font-size: 12px;">
-                        🔥 In Corso
-                    </div>
-                    """, unsafe_allow_html=True)
+                    st.warning("🔥 **In Corso**")
                 else:
-                    st.markdown("<div style='text-align: center; color: #94a3b8; font-weight: bold; font-size: 12px; padding-top: 6px;'>VS</div>", unsafe_allow_html=True)
+                    st.write("**VS**")
                     if is_admin:
                         if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
                             st.session_state.partite_avviate[match_id] = True
@@ -478,13 +377,9 @@ elif db["stato"] == "eliminatorie":
                             st.rerun()
 
             with col_s2:
-                st.markdown(f"""
-                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 13px;">
-                    🥅 <b>{m['p2']}</b><br>⚽ <b>{m['a2']}</b>
-                </div>
-                """, unsafe_allow_html=True)
+                st.info(f"🥅 **{m['p2']}**\n\n⚽ **{m['a2']}**")
             
-            st.markdown("</div>", unsafe_allow_html=True)
+            st.markdown("---")
         
         if turno_completato and is_admin:
             già_presente_successivo = any(f["turno"] == t_num + 1 for f in db["fasi_finali"])
