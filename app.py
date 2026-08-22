@@ -4,6 +4,7 @@ import json
 import os
 import re
 import random
+import time
 
 st.set_page_config(page_title="Torneo Biliardino Giallo Live", layout="wide")
 
@@ -41,12 +42,42 @@ def salva_dati(data):
 if "db" not in st.session_state:
     st.session_state.db = carica_dati()
 
+# Inizializza lo stato dei timer in memoria per ogni partita se non esiste
+if "timers" not in st.session_state:
+    st.session_state.timers = {}
+
 db = st.session_state.db
 
 def pulisci_nome(testo):
     testo = testo.replace("🥅", "").replace("🚪", "").replace("⚽", "")
     testo = re.sub(r'^\d+[\.\-\)]?\s*', '', testo)
     return testo.strip()
+
+def ricalcola_classifiche():
+    p_punti = {p: 0 for p in db["portieri"]}
+    p_att = {a: 0 for a in db["attaccanti"]}
+    
+    for turno_obj in db["turni_partite"]:
+        for m in turno_obj["partite"]:
+            if m.get("giocata", False):
+                g1 = m["gol1"]
+                g2 = m["gol2"]
+                diff = abs(g1 - g2)
+                
+                if g1 > g2:
+                    pt_s1, pt_s2 = (3, 0) if diff >= 2 else (2, 1)
+                elif g2 > g1:
+                    pt_s1, pt_s2 = (0, 3) if diff >= 2 else (1, 2)
+                else:
+                    pt_s1, pt_s2 = 2, 2
+                
+                p_punti[m['p1']] = p_punti.get(m['p1'], 0) + pt_s1
+                p_att[m['a1']] = p_att.get(m['a1'], 0) + pt_s1
+                p_punti[m['p2']] = p_punti.get(m['p2'], 0) + pt_s2
+                p_att[m['a2']] = p_att.get(m['a2'], 0) + pt_s2
+                
+    db["punti_portieri"] = p_punti
+    db["punti_attaccanti"] = p_att
 
 # --- BARRA LATERALE ADMIN ---
 st.sidebar.header("⚙️ Pannello di Controllo")
@@ -75,7 +106,6 @@ if is_admin:
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
 
-# Tasto rapido per resettare il torneo se si è in modalità admin
 if is_admin and db["stato"] != "setup":
     col_reset1, col_reset2 = st.columns([3, 1])
     with col_reset2:
@@ -126,7 +156,6 @@ if db["stato"] == "setup":
                 db["punti_attaccanti"] = {a: 0 for a in attaccanti}
                 db["stato"] = "gironi"
                 
-                # Generazione Calendario a Turni stile "Giallo"
                 db["turni_partite"] = []
                 num_turni = db["partite_per_giocatore"]
                 for t in range(1, num_turni + 1):
@@ -143,7 +172,7 @@ if db["stato"] == "setup":
                             "id": match_id,
                             "p1": p_shuff[i], "a1": a_shuff[i],
                             "p2": p_shuff[i+1], "a2": a_shuff[i+1],
-                            "risultato": "Da Giocare",
+                            "giocata": False,
                             "gol1": 0, "gol2": 0
                         })
                         i += 2
@@ -158,63 +187,105 @@ elif db["stato"] == "gironi":
     st.subheader("📊 Calendario e Risultati in Diretta")
     
     if is_admin:
-        st.info("💡 **Modalità Admin attiva:** Puoi modificare i risultati espandendo il menu sotto ogni partita.")
+        st.info("💡 **Modalità Admin attiva:** Gestisci i tavoli, fai partire il timer da 60s o inserisci i risultati.")
     else:
-        st.info("👀 **Modalità Spettatore:** Stai visualizzando i turni e i risultati in tempo reale.")
+        st.info("👀 **Modalità Spettatore:** Stai visualizzando i turni, i tavoli e i timer in tempo reale.")
 
-    # Visualizzazione stile Turni con barre verdi
+    num_tavoli = db.get("num_tavoli", 2)
+
     for turno_obj in db["turni_partite"]:
         n_turno = turno_obj["turno"]
         st.markdown(f"""
-        <div style="background-color: #1e7e34; padding: 10px; border-radius: 5px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 10px;">
+        <div style="background-color: #1e7e34; padding: 10px; border-radius: 5px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 15px;">
             🚩 Turno {n_turno}
         </div>
         """, unsafe_allow_html=True)
         
-        for idx, m in enumerate(turno_obj["partite"]):
+        partite = turno_obj["partite"]
+        
+        for idx, m in enumerate(partite):
+            # Assegna un numero di tavolo ciclico (es. Tavolo 1, Tavolo 2, ecc.)
+            tavolo_num = (idx % num_tavoli) + 1
+            
+            # Individua la coppia successiva sullo stesso tavolo (se esiste)
+            prossima_partita_test = "Nessuna (Ultima del turno)"
+            next_idx = idx + num_tavoli
+            if next_idx < len(partite):
+                nm = partite[next_idx]
+                prossima_partita_test = f"🥅 {nm['p1']} / ⚽ {nm['a1']}  VS  🥅 {nm['p2']} / ⚽ {nm['a2']}"
+
             with st.container():
+                st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
                 col_s1, col_mid, col_s2 = st.columns([4, 3, 4])
                 
                 with col_s1:
                     st.markdown(f"📖 **{m['p1']}**<br>⚽ **{m['a1']}**", unsafe_allow_html=True)
                 
                 with col_mid:
-                    st.markdown(f"<div style='text-align: center; font-weight: bold; margin-top: 5px;'>VS</div>", unsafe_allow_html=True)
+                    if not m["giocata"]:
+                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
+                    else:
+                        st.markdown(f"<div style='text-align: center; background-color: #e2e3e5; padding: 4px; border-radius: 5px; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</div>", unsafe_allow_html=True)
                     
+                    # Gestione Timer 60 secondi
+                    match_id = m['id']
+                    if match_id not in st.session_state.timers:
+                        st.session_state.timers[match_id] = {"running": False, "start_time": 0}
+                    
+                    t_state = st.session_state.timers[match_id]
+                    
+                    if not m["giocata"]:
+                        if not t_state["running"]:
+                            if st.button("▶️ Avvia Partita (60s)", key=f"btn_start_{match_id}"):
+                                st.session_state.timers[match_id] = {"running": True, "start_time": time.time()}
+                                st.rerun()
+                        else:
+                            elapsed = int(time.time() - t_state["start_time"])
+                            remaining = 60 - elapsed
+                            
+                            if remaining > 0:
+                                st.markdown(f"<div style='text-align: center; color: #d9534f; font-weight: bold;'>⏳ Mancano {remaining}s</div>", unsafe_allow_html=True)
+                                time.sleep(1)
+                                st.rerun()
+                            else:
+                                # Tempo scaduto! Notifica visiva + Audio (bip HTML5)
+                                st.markdown(f"""
+                                <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; font-size: 14px; border: 2px solid red;">
+                                    🚨 TEMPO SCADUTO (60s)!<br>
+                                    Pronti al <b>Tavolo {tavolo_num}</b>:<br>
+                                    {prossima_partita_test}
+                                </div>
+                                <audio autoplay>
+                                  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+                                </audio>
+                                """, unsafe_allow_html=True)
+                                
+                                if st.button("⏹️ Resetta Avviso", key=f"reset_{match_id}"):
+                                    st.session_state.timers[match_id]["running"] = False
+                                    st.rerun()
+
                     if is_admin:
-                        scelta = st.selectbox(
-                            f"Stato {m['id']}", 
-                            ["Da Giocare", "Modifica Risultato"], 
-                            index=0 if m['risultato']=="Da Giocare" else 1, 
-                            key=f"sel_{m['id']}",
-                            label_visibility="collapsed"
-                        )
-                        
-                        if scelta == "Modifica Risultato":
-                            with st.form(f"form_{m['id']}"):
-                                rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"rg1_{m['id']}")
-                                rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"rg2_{m['id']}")
-                                if st.form_submit_button("Salva Risultato"):
+                        with st.expander("⚙️ Modifica Risultato"):
+                            with st.form(f"form_{match_id}"):
+                                rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"rg1_{match_id}")
+                                rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"rg2_{match_id}")
+                                if st.form_submit_button("Salva"):
                                     m['gol1'] = rg1
                                     m['gol2'] = rg2
-                                    m['risultato'] = f"{rg1} - {rg2}"
-                                    
-                                    # Aggiorna punteggi totali
-                                    db["punti_portieri"][m['p1']] = db["punti_portieri"].get(m['p1'], 0) + rg1
-                                    db["punti_attaccanti"][m['a1']] = db["punti_attaccanti"].get(m['a1'], 0) + rg1
-                                    db["punti_portieri"][m['p2']] = db["punti_portieri"].get(m['p2'], 0) + rg2
-                                    db["punti_attaccanti"][m['a2']] = db["punti_attaccanti"].get(m['a2'], 0) + rg2
-                                    
+                                    m['giocata'] = True
+                                    # Spegni il timer se la partita viene segnata come giocata
+                                    st.session_state.timers[match_id]["running"] = False
+                                    ricalcola_classifiche()
                                     salva_dati(db)
                                     st.success("Salvato!")
                                     st.rerun()
-                    else:
-                        st.markdown(f"<div style='text-align: center; background-color: #f1f3f5; padding: 5px; border-radius: 5px; border: 1px solid #ced4da;'><b>{m['risultato']}</b></div>", unsafe_allow_html=True)
 
                 with col_s2:
                     st.markdown(f"📖 **{m['p2']}**<br>⚽ **{m['a2']}**", unsafe_allow_html=True)
                 
                 st.markdown("---")
+
+    ricalcola_classifiche()
 
     # Classifiche
     st.markdown("### 🏆 Classifiche in Tempo Reale")
