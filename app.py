@@ -114,6 +114,7 @@ st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal brow
 
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
+st.info("🔄 Questa pagina si aggiorna automaticamente ogni 5 secondi per mostrare risultati e partite in tempo reale!")
 
 # 1. SETUP
 if db["stato"] == "setup":
@@ -297,7 +298,7 @@ elif db["stato"] == "eliminatorie":
                 if is_admin:
                     with st.expander("⚙️ Gestisci Risultato"):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.test if 'gol2' in m else 0), horizontal=True, key=f"ef_rg2_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
                         if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
