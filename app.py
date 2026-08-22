@@ -82,6 +82,23 @@ def ricalcola_classifiche():
     db["punti_portieri"] = p_punti
     db["punti_attaccanti"] = p_att
 
+def calcola_partite_giocate(ruolo, nome):
+    giocate = 0
+    totali = 0
+    for turno_obj in db["turni_partite"]:
+        for m in turno_obj["partite"]:
+            is_presente = False
+            if ruolo == "portiere" and (m['p1'] == nome or m['p2'] == nome):
+                is_presente = True
+            elif ruolo == "attaccante" and (m['a1'] == nome or m['a2'] == nome):
+                is_presente = True
+            
+            if is_presente:
+                totali += 1
+                if m.get("giocata", False):
+                    giocate += 1
+    return giocate, totali
+
 # --- BARRA LATERALE ADMIN ---
 st.sidebar.header("⚙️ Pannello di Controllo")
 modalita_admin = st.sidebar.checkbox("Modalità Amministratore (Inserisci PIN)")
@@ -134,7 +151,7 @@ if db["stato"] == "setup":
         
         col1, col2 = st.columns(2)
         with col1:
-            db["num_tavoli"] = st.number_input("Numero di tavoli disponibili", min_value=1, max_value=10, value=db["num_tavoli"])
+            db["num_tavoli"] = st.number_input("Numero di biliardini disponibili", min_value=1, max_value=10, value=db["num_tavoli"])
         with col2:
             db["partite_per_giocatore"] = st.number_input("Turni / Partite garantite", min_value=1, max_value=10, value=db["partite_per_giocatore"])
             
@@ -190,12 +207,86 @@ if db["stato"] == "setup":
 
 # 2. GIRONI
 elif db["stato"] == "gironi":
-    st.subheader("📊 Calendario e Risultati in Diretta (Gironi)")
+    st.subheader("📊 Classifiche e Calendario in Diretta (Gironi)")
     
     if is_admin:
         st.info("💡 **Modalità Admin attiva:** Avvia le partite o inserisci i risultati quando si concludono.")
     else:
         st.info("👀 **Modalità Spettatore:** La pagina si aggiorna automaticamente ogni 10 secondi.")
+
+    ricalcola_classifiche()
+
+    # --- CLASSIFICHE IN CIMA ---
+    st.markdown("### 🏆 Classifiche in Tempo Reale")
+
+    col_c1, col_c2 = st.columns(2)
+
+    with col_c1:
+        st.markdown("<h4 style='text-align: center;'>🥅 Classifica Portieri</h4>", unsafe_allow_html=True)
+        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
+        
+        html_p = """
+        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+            <tr style="background-color: #1e7e34; color: white;">
+                <th style="padding: 6px; border: 1px solid #ddd;">Pos.</th>
+                <th style="padding: 6px; border: 1px solid #ddd; text-align: left;">Portiere</th>
+                <th style="padding: 6px; border: 1px solid #ddd;">Punti</th>
+                <th style="padding: 6px; border: 1px solid #ddd;">Giocate</th>
+            </tr>
+        """
+        for idx, (p, pt) in enumerate(sorted_p):
+            pos = idx + 1
+            giocate, totali = calcola_partite_giocate("portiere", p)
+            if pos <= 8:
+                bg_color = "#e8f5e9" # Verde chiaro per i primi 8
+            else:
+                bg_color = "#ffebee" # Rosso chiaro dal 9° in poi
+                
+            html_p += f"""
+            <tr style="background-color: {bg_color};">
+                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pos}°</td>
+                <td style="padding: 6px; border: 1px solid #ddd; text-align: left;">🥅 {p}</td>
+                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pt}</td>
+                <td style="padding: 6px; border: 1px solid #ddd;">{giocate}/{totali}</td>
+            </tr>
+            """
+        html_p += "</table>"
+        st.markdown(html_p, unsafe_allow_html=True)
+
+    with col_c2:
+        st.markdown("<h4 style='text-align: center;'>⚽ Classifica Attaccanti</h4>", unsafe_allow_html=True)
+        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
+        
+        html_a = """
+        <table style="width:100%; border-collapse: collapse; font-size: 13px; text-align: center;">
+            <tr style="background-color: #d35400; color: white;">
+                <th style="padding: 6px; border: 1px solid #ddd;">Pos.</th>
+                <th style="padding: 6px; border: 1px solid #ddd; text-align: left;">Attaccante</th>
+                <th style="padding: 6px; border: 1px solid #ddd;">Punti</th>
+                <th style="padding: 6px; border: 1px solid #ddd;">Giocate</th>
+            </tr>
+        """
+        for idx, (a, pt) in enumerate(sorted_a):
+            pos = idx + 1
+            giocate, totali = calcola_partite_giocate("attaccante", a)
+            if pos <= 8:
+                bg_color = "#fff3e0" # Arancione chiaro per i primi 8
+            else:
+                bg_color = "#ffebee" # Rosso chiaro dal 9° in poi
+                
+            html_a += f"""
+            <tr style="background-color: {bg_color};">
+                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pos}°</td>
+                <td style="padding: 6px; border: 1px solid #ddd; text-align: left;">⚽ {a}</td>
+                <td style="padding: 6px; border: 1px solid #ddd; font-weight: bold;">{pt}</td>
+                <td style="padding: 6px; border: 1px solid #ddd;">{giocate}/{totali}</td>
+            </tr>
+            """
+        html_a += "</table>"
+        st.markdown(html_a, unsafe_allow_html=True)
+
+    st.markdown("---")
+    st.markdown("### 📅 Calendario Partite")
 
     num_tavoli = db.get("num_tavoli", 2)
 
@@ -214,10 +305,9 @@ elif db["stato"] == "gironi":
             match_id = m['id']
             is_avviata = st.session_state.partite_avviate.get(match_id, False)
 
-            # --- APERTURA RIQUADRO PARTITA ---
             st.markdown(f"""
             <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Tavolo {tavolo_num}</div>
+                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Biliardino {tavolo_num}</div>
             """, unsafe_allow_html=True)
             
             col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
@@ -270,21 +360,7 @@ elif db["stato"] == "gironi":
                         st.success("Salvato!")
                         st.rerun()
             
-            # --- CHIUSURA RIQUADRO PARTITA ---
             st.markdown("</div>", unsafe_allow_html=True)
-
-    ricalcola_classifiche()
-
-    st.markdown("### 🏆 Classifiche in Tempo Reale")
-    col_c1, col_c2 = st.columns(2)
-    with col_c1:
-        st.markdown("#### 🥅 Portieri")
-        df_p = pd.DataFrame(list(db["punti_portieri"].items()), columns=["Portiere", "Punti"]).sort_values(by="Punti", ascending=False)
-        st.dataframe(df_p, use_container_width=True, hide_index=True)
-    with col_c2:
-        st.markdown("#### ⚽ Attaccanti")
-        df_a = pd.DataFrame(list(db["punti_attaccanti"].items()), columns=["Attaccante", "Punti"]).sort_values(by="Punti", ascending=False)
-        st.dataframe(df_a, use_container_width=True, hide_index=True)
 
     if is_admin:
         st.markdown("---")
@@ -354,10 +430,9 @@ elif db["stato"] == "eliminatorie":
             if not m["giocata"]:
                 turno_completato = False
 
-            # --- APERTURA RIQUADRO PARTITA ELIMINATORIE ---
             st.markdown(f"""
             <div style="background-color: #ffffff; border: 2px solid #cbd5e1; border-radius: 10px; padding: 12px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Tavolo {tavolo_num}</div>
+                <div style="font-weight: bold; color: #475569; margin-bottom: 8px; font-size: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 4px;">📍 Biliardino {tavolo_num}</div>
             """, unsafe_allow_html=True)
             
             col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
@@ -409,7 +484,6 @@ elif db["stato"] == "eliminatorie":
                 </div>
                 """, unsafe_allow_html=True)
             
-            # --- CHIUSURA RIQUADRO PARTITA ELIMINATORIE ---
             st.markdown("</div>", unsafe_allow_html=True)
         
         if turno_completato and is_admin:
