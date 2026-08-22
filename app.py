@@ -20,7 +20,8 @@ def carica_dati():
         "turni_partite": [], 
         "storico_partite": [],
         "punti_portieri": {},
-        "punti_attaccanti": {}
+        "punti_attaccanti": {},
+        "fasi_finali": []
     }
     if os.path.exists(DB_FILE):
         try:
@@ -41,7 +42,6 @@ def salva_dati(data):
 if "db" not in st.session_state:
     st.session_state.db = carica_dati()
 
-# Stato per tracciare le partite avviate senza timer
 if "partite_avviate" not in st.session_state:
     st.session_state.partite_avviate = {}
 
@@ -148,14 +148,15 @@ if db["stato"] == "setup":
                     nome = pulisci_nome(line)
                     if nome: attaccanti.append(nome)
             
-            if len(portieri) < 2 or len(attaccanti) < 2:
-                st.error("Assicurati di inserire almeno 2 portieri (con 🥅) e 2 attaccanti (con ⚽).")
+            if len(portieri) < 8 or len(attaccanti) < 8:
+                st.error("Per fare le fasi finali con 8 portieri e 8 attaccanti, devi inserire almeno 8 portieri (con 🥅) e 8 attaccanti (con ⚽).")
             else:
                 db["portieri"] = portieri
                 db["attaccanti"] = attaccanti
                 db["punti_portieri"] = {p: 0 for p in portieri}
                 db["punti_attaccanti"] = {a: 0 for a in attaccanti}
                 db["stato"] = "gironi"
+                db["fasi_finali"] = []
                 
                 db["turni_partite"] = []
                 num_turni = db["partite_per_giocatore"]
@@ -183,9 +184,9 @@ if db["stato"] == "setup":
                 st.success("Calendario generato con successo!")
                 st.rerun()
 
-# 2. GIRONI E CALENDARIO A TURNI
+# 2. GIRONI
 elif db["stato"] == "gironi":
-    st.subheader("📊 Calendario e Risultati in Diretta")
+    st.subheader("📊 Calendario e Risultati in Diretta (Gironi)")
     
     if is_admin:
         st.info("💡 **Modalità Admin attiva:** Avvia le partite o inserisci i risultati quando si concludono.")
@@ -219,14 +220,12 @@ elif db["stato"] == "gironi":
                 
                 with col_mid:
                     if m["giocata"]:
-                        # Partita conclusa: evidenziata in rosso
                         st.markdown(f"""
                         <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid red; font-size: 13px;">
                             🛑 Partita Conclusa<br>Risultato: {m['gol1']} - {m['gol2']}
                         </div>
                         """, unsafe_allow_html=True)
                     elif is_avviata:
-                        # Partita in corso: evidenziata in giallo/arancione
                         st.markdown(f"""
                         <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; font-size: 13px;">
                             🔥 Partita in Corso!
@@ -238,7 +237,6 @@ elif db["stato"] == "gironi":
                             st.session_state.partite_avviate[match_id] = True
                             st.rerun()
                     
-                    # Pannello risultato sempre accessibile per l'admin
                     if is_admin:
                         with st.expander("⚙️ Inserisci / Modifica Risultato"):
                             with st.form(f"form_{match_id}"):
@@ -261,7 +259,6 @@ elif db["stato"] == "gironi":
 
     ricalcola_classifiche()
 
-    # Classifiche
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
     with col_c1:
@@ -275,7 +272,42 @@ elif db["stato"] == "gironi":
 
     if is_admin:
         st.markdown("---")
-        if st.button("🏆 Passa alle Fasi Finali (Eliminazione Diretta)"):
+        if st.button("🏆 Genera Fasi Finali (8 Portieri & 8 Attaccanti)"):
+            df_p_sorted = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
+            df_a_sorted = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
+            
+            top_p = [p[0] for p in df_p_sorted[:8]]
+            top_a = [a[0] for a in df_a_sorted[:8]]
+            
+            # Primo turno: 1° vs 8°, 2° vs 7°, 3° vs 6°, 4° vs 5°
+            turno1_partite = [
+                {
+                    "id": "ef_t1_m1",
+                    "p1": top_p[0], "a1": top_a[0],
+                    "p2": top_p[7], "a2": top_a[7],
+                    "giocata": False, "gol1": 0, "gol2": 0
+                },
+                {
+                    "id": "ef_t1_m2",
+                    "p1": top_p[1], "a1": top_a[1],
+                    "p2": top_p[6], "a2": top_a[6],
+                    "giocata": False, "gol1": 0, "gol2": 0
+                },
+                {
+                    "id": "ef_t1_m3",
+                    "p1": top_p[2], "a1": top_a[2],
+                    "p2": top_p[5], "a2": top_a[5],
+                    "giocata": False, "gol1": 0, "gol2": 0
+                },
+                {
+                    "id": "ef_t1_m4",
+                    "p1": top_p[3], "a1": top_a[3],
+                    "p2": top_p[4], "a2": top_a[4],
+                    "giocata": False, "gol1": 0, "gol2": 0
+                }
+            ]
+            
+            db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": turno1_partite}]
             db["stato"] = "eliminatorie"
             salva_dati(db)
             st.rerun()
@@ -283,4 +315,124 @@ elif db["stato"] == "gironi":
 # 3. ELIMINATORIE
 elif db["stato"] == "eliminatorie":
     st.subheader("🏆 Fasi Finali a Eliminazione Diretta")
-    st.write("Tabellone in fase di configurazione...")
+    
+    num_tavoli = db.get("num_tavoli", 2)
+    
+    for f_turno in db["fasi_finali"]:
+        t_num = f_turno["turno"]
+        t_nome = f_turno["nome"]
+        
+        st.markdown(f"""
+        <div style="background-color: #900C3F; padding: 10px; border-radius: 5px; color: white; font-weight: bold; font-size: 18px; margin-bottom: 15px;">
+            🔥 {t_nome} (Turno {t_num})
+        </div>
+        """, unsafe_allow_html=True)
+        
+        partite = f_turno["partite"]
+        turno_completato = True
+        
+        for idx, m in enumerate(partite):
+            tavolo_num = (idx % num_tavoli) + 1
+            match_id = m['id']
+            is_avviata = st.session_state.partite_avviate.get(match_id, False)
+            
+            if not m["giocata"]:
+                turno_completato = False
+
+            with st.container():
+                st.markdown(f"📍 **Tavolo {tavolo_num}**", unsafe_allow_html=True)
+                col_s1, col_mid, col_s2 = st.columns([4, 3, 4], gap="small")
+                
+                with col_s1:
+                    st.markdown(f"📖 **{m['p1']}**<br>⚽ **{m['a1']}**", unsafe_allow_html=True)
+                
+                with col_mid:
+                    if m["giocata"]:
+                        st.markdown(f"""
+                        <div style="background-color: #ffcccc; color: #990000; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid red; font-size: 13px;">
+                            🛑 Partita Conclusa<br>Risultato: {m['gol1']} - {m['gol2']}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    elif is_avviata:
+                        st.markdown(f"""
+                        <div style="background-color: #fff3cd; color: #856404; padding: 8px; border-radius: 5px; text-align: center; font-weight: bold; border: 1px solid #ffeeba; font-size: 13px;">
+                            🔥 Partita in Corso!
+                        </div>
+                        """, unsafe_allow_html=True)
+                    else:
+                        st.markdown("<div style='text-align: center; color: gray; font-weight: bold;'>VS<br>(Da Giocare)</div>", unsafe_allow_html=True)
+                        if st.button("▶️ Avvia Partita", key=f"ef_btn_{match_id}"):
+                            st.session_state.partite_avviate[match_id] = True
+                            st.rerun()
+                    
+                    if is_admin:
+                        with st.expander("⚙️ Inserisci / Modifica Risultato"):
+                            with st.form(f"ef_form_{match_id}"):
+                                rg1 = st.number_input("Gol S1", min_value=0, value=m.get('gol1', 0), key=f"ef_rg1_{match_id}")
+                                rg2 = st.number_input("Gol S2", min_value=0, value=m.get('gol2', 0), key=f"ef_rg2_{match_id}")
+                                if st.form_submit_button("Salva Risultato"):
+                                    m['gol1'] = rg1
+                                    m['gol2'] = rg2
+                                    m['giocata'] = True
+                                    st.session_state.partite_avviate[match_id] = False
+                                    salva_dati(db)
+                                    st.success("Salvato!")
+                                    st.rerun()
+
+                with col_s2:
+                    st.markdown(f"📖 **{m['p2']}**<br>⚽ **{m['a2']}**", unsafe_allow_html=True)
+                
+                st.markdown("---")
+        
+        # Pulsante per generare il turno successivo se tutte le partite del turno corrente sono giocate
+        if turno_completato and is_admin:
+            già_presente_successivo = any(f["turno"] == t_num + 1 for f in db["fasi_finali"])
+            if not già_presente_successivo:
+                vincitori_p = []
+                vincitori_a = []
+                
+                # Raccogliamo i giocatori vincenti
+                vincenti_turno_1_portieri_1 = [] # per la regola del 1° classificato
+                
+                for m in partite:
+                    if m["gol1"] > m["gol2"]:
+                        p_vincente, a_vincente = m["p1"], m["a1"]
+                    else:
+                        p_vincente, a_vincente = m["p2"], m["a2"]
+                    vincitori_p.append(p_vincente)
+                    vincitori_a.append(a_vincente)
+                
+                if len(vincitori_p) > 1:
+                    nuovo_nome = "Semifinale" if len(vincitori_p) == 4 else ("Finale" if len(vincitori_p) == 2 else f"Turno {t_num+1}")
+                    
+                    # Sorteggio Giallo per il turno successivo (se non siamo alla finale secca)
+                    if len(vincitori_p) == 4:
+                        # Regola speciale: chi è arrivato 1° assoluto nei gironi non deve incontrarsi col compagno prima della finale
+                        # Smistiamo casualmente ma tenendo separati i primi due portieri/attaccanti top se necessario
+                        random.shuffle(vincitori_p)
+                        random.shuffle(vincitori_a)
+                    else:
+                        random.shuffle(vincitori_p)
+                        random.shuffle(vincitori_a)
+                        
+                    nuove_partite = []
+                    for i in range(0, len(vincitori_p), 2):
+                        if i + 1 < len(vincitori_p):
+                            nuove_partite.append({
+                                "id": f"ef_t{t_num+1}_m{i//2}",
+                                "p1": vincitori_p[i], "a1": vincitori_a[i],
+                                "p2": vincitori_p[i+1], "a2": vincitori_a[i+1],
+                                "giocata": False, "gol1": 0, "gol2": 0
+                            })
+                    
+                    if nuove_partite:
+                        db["fasi_finali"].append({
+                            "turno": t_num + 1,
+                            "nome": nuovo_nome,
+                            "partite": nuove_partite
+                        })
+                        salva_dati(db)
+                        st.success(f"Generato il turno successivo: {nuovo_nome}!")
+                        st.rerun()
+                elif len(vincitori_p) == 1:
+                    st.success(f"🏆 Torneo Conclusi! Coppia Campione: 🥅 {vincitori_p[0]} e ⚽ {vincitori_a[0]}")
