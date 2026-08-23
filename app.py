@@ -68,7 +68,6 @@ st.markdown("""
             margin-bottom: 10px;
         }
         
-        /* Cornice unita e completa per la partita e l'inserimento gol */
         .match-card-box {
             border: 3px solid #ffa726;
             border-radius: 10px;
@@ -86,7 +85,6 @@ st.markdown("""
             margin-bottom: 6px;
         }
 
-        /* --- ANIMAZIONI PODIO --- */
         @keyframes riseUp {
             0% { transform: translateY(50px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
@@ -443,10 +441,9 @@ if db["stato"] == "gironi":
 
     tutte_attive = []
     for turno_obj in db["turni_partite"]:
-        for idx, m in enumerate(turno_obj["partite"]):
-            tavolo_num = (idx % num_tavoli) + 1
+        for m in turno_obj["partite"]:
             if not m["giocata"]:
-                tutte_attive.append({"turno": turno_obj["turno"], "tavolo": tavolo_num, "m": m})
+                tutte_attive.append({"turno": turno_obj["turno"], "m": m})
 
     partite_in_corso = [item for item in tutte_attive if item["m"].get("in_corso", False)]
     rimanenti = [item for item in tutte_attive if not item["m"].get("in_corso", False)]
@@ -458,18 +455,23 @@ if db["stato"] == "gironi":
     num_da_mostrare = len(partite_in_corso)
     partite_in_coda = rimanenti[:num_da_mostrare]
 
-    # --- ORDINA I BILIARDINI DAL 1 IN POI IN ORDINE CRESCENTE ---
-    partite_in_corso = sorted(partite_in_corso, key=lambda x: x["tavolo"])
+    # --- ASSEGNAZIONE PROGRESSIVA DEI BILIARDINI DA 1 A num_tavoli ---
+    partite_in_corso_con_tavolo = []
+    for idx, item in enumerate(partite_in_corso):
+        tavolo_num = (idx % num_tavoli) + 1
+        partite_in_corso_con_tavolo.append({"tavolo": tavolo_num, "turno": item["turno"], "m": item["m"]})
 
-    if partite_in_corso:
+    # Ordina per numero di biliardino in modo crescente (1, 2, 3...)
+    partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
+
+    if partite_in_corso_con_tavolo:
         st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
-        for item in partite_in_corso:
+        for item in partite_in_corso_con_tavolo:
             m = item["m"]
             match_id = m['id']
             squadra1_nome = f"{m['p1']} & {m['a1']}"
             squadra2_nome = f"{m['p2']} & {m['a2']}"
             
-            # Apertura cornice unita totale (partita + inserimento gol + pulsante)
             st.html(f"""
                 <div class="match-card-box">
                     <div style="font-weight: bold; color: #b71c1c; margin-bottom: 6px; font-size: 1.05rem;">
@@ -480,7 +482,6 @@ if db["stato"] == "gironi":
                     </div>
             """)
             
-            # Se siamo admin, inseriamo i campi dei gol da 0 a 7 all'interno della stessa cornice con i nomi larghi e centrati
             if is_admin:
                 st.html(f"""
                     <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
@@ -507,7 +508,6 @@ if db["stato"] == "gironi":
                     st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
                     st.rerun()
             
-            # Chiusura della cornice della singola partita
             st.html('</div>')
         st.html('</div>')
 
@@ -774,7 +774,7 @@ if db["stato"] == "eliminatorie":
                 if m.get("giocata", False):
                     if m["gol1"] >= m["gol2"]:
                         vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
-                        perdenti_turno.append({"p": m["p2"], "a": m["p2"]})
+                        perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
                     else:
                         vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
                         perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
