@@ -246,6 +246,38 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
+    # 1. CLASSIFICHE IN ALTO
+    st.markdown("### 🏆 Classifiche in Tempo Reale")
+    col_c1, col_c2 = st.columns(2)
+
+    with col_c1:
+        st.markdown("#### 🥅 Classifica Portieri (Top 8)")
+        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
+        data_p = []
+        for idx, (p, pt) in enumerate(sorted_p):
+            gioc, tot = calcola_partite_giocate('portiere', p)
+            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+        
+        df_p = pd.DataFrame(data_p)
+        def colora_top8(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True)
+
+    with col_c2:
+        st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
+        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
+        data_a = []
+        for idx, (a, pt) in enumerate(sorted_a):
+            gioc, tot = calcola_partite_giocate('attaccante', a)
+            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+            
+        df_a = pd.DataFrame(data_a)
+        def colora_top8_a(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True)
+
+    st.markdown("---")
+
     # Raccogliamo partite in corso e in coda
     partite_in_corso = []
     partite_in_coda = []
@@ -318,34 +350,36 @@ if db["stato"] == "gironi":
                         st.rerun()
 
     st.markdown("---")
-    st.markdown("### 🏆 Classifiche in Tempo Reale")
-    col_c1, col_c2 = st.columns(2)
+    st.markdown("### 📅 Lista Completa Turni e Partite (Gironi)")
 
-    with col_c1:
-        st.markdown("#### 🥅 Classifica Portieri (Top 8)")
-        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
-        data_p = []
-        for idx, (p, pt) in enumerate(sorted_p):
-            gioc, tot = calcola_partite_giocate('portiere', p)
-            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
-        
-        df_p = pd.DataFrame(data_p)
-        def colora_top8(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
-        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True)
-
-    with col_c2:
-        st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
-        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
-        data_a = []
-        for idx, (a, pt) in enumerate(sorted_a):
-            gioc, tot = calcola_partite_giocate('attaccante', a)
-            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+    for turno_obj in db["turni_partite"]:
+        st.markdown(f"#### 🚩 Turno {turno_obj['turno']}")
+        for idx, m in enumerate(turno_obj["partite"]):
+            tavolo_num = (idx % num_tavoli) + 1
+            match_id = m['id']
             
-        df_a = pd.DataFrame(data_a)
-        def colora_top8_a(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
-        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True)
+            # Box colorato per ogni singola partita
+            colore_bg = "#f9f9f9" if m["giocata"] else "#ffffff"
+            st.markdown(f"""
+                <div style="padding: 10px; background-color: {colore_bg}; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
+                    <b>📍 Tavolo {tavolo_num}</b> — 🥅 {m['p1']} & ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} & ⚽ {m['a2']}
+                    <br>Risultato: <b>{m['gol1']} - {m['gol2']}</b> {'(Giocata ✅)' if m['giocata'] else '(Da giocare ⏳)'}
+                </div>
+            """, unsafe_allow_html=True)
+
+            if is_admin:
+                with st.expander(f"⚙️ Modifica Risultato Tavolo {tavolo_num} (Turno {turno_obj['turno']})", key=f"exp_{match_id}"):
+                    rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
+                    rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
+                    if st.button("💾 Salva Modifica", key=f"list_save_{match_id}", use_container_width=True):
+                        m['gol1'] = rg1
+                        m['gol2'] = rg2
+                        m['giocata'] = True
+                        m['in_corso'] = False
+                        ricalcola_classifiche()
+                        salva_dati(db)
+                        st.success("Aggiornato!")
+                        st.rerun()
 
     if is_admin:
         st.markdown("---")
