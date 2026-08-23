@@ -68,11 +68,11 @@ st.markdown("""
             margin-bottom: 10px;
         }
         .sub-card-green {
-            padding: 8px;
-            background-color: #d4edda;
-            border: 1px solid #c8e6c9;
-            border-radius: 6px;
-            margin-bottom: 6px;
+            padding: 10px;
+            background-color: #ffffff;
+            border: 2px solid #ffcc80;
+            border-radius: 8px;
+            margin-bottom: 10px;
         }
         .sub-card-lightgreen {
             padding: 8px;
@@ -454,28 +454,37 @@ if db["stato"] == "gironi":
     num_da_mostrare = len(partite_in_corso)
     partite_in_coda = rimanenti[:num_da_mostrare]
 
+    # --- ORDINA I BILIARDINI DAL 1 IN POI IN ORDINE CRESCENTE ---
+    partite_in_corso = sorted(partite_in_corso, key=lambda x: x["tavolo"])
+
     if partite_in_corso:
-        st.html('<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
+        st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso:
             m = item["m"]
             match_id = m['id']
+            squadra1_nome = f"{m['p1']} & {m['a1']}"
+            squadra2_nome = f"{m['p2']} & {m['a2']}"
+            
             st.html(f"""
                 <div class="sub-card-green">
-                    <b>📍 Biliardino {item['tavolo']} (Turno {item['turno']})</b><br>
-                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
-                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
+                    <div style="font-weight: bold; color: #b71c1c; margin-bottom: 4px;">
+                        🏟️ Biliardino {item['tavolo']} (Turno {item['turno']})
+                    </div>
+                    <div style="font-size: 0.95rem; color: #333; margin-bottom: 8px;">
+                        <b>{squadra1_nome}</b> vs <b>{squadra2_nome}</b>
+                    </div>
                 </div>
             """)
             
-            # Se siamo admin, inseriamo direttamente i comandi per inserire i gol e salvare
+            # Se siamo admin, inseriamo i blocchi separati stile immagine richiesta
             if is_admin:
-                col_g1, col_g2 = st.columns(2)
-                with col_g1:
-                    g1_input = st.number_input(f"Gol S1 ({m['p1']} / {m['a1']})", min_value=0, max_value=20, value=int(m.get('gol1', 0)), key=f"live_g1_{match_id}")
-                with col_g2:
-                    g2_input = st.number_input(f"Gol S2 ({m['p2']} / {m['a2']})", min_value=0, max_value=20, value=int(m.get('gol2', 0)), key=f"live_g2_{match_id}")
+                st.markdown(f"⚽ **Gol: Squadra 1 ({squadra1_nome})**")
+                g1_input = st.radio("Seleziona Gol Squadra 1", list(range(11)), index=int(m.get('gol1', 0)), horizontal=True, key=f"live_g1_{match_id}")
                 
-                if st.button(f"💾 Salva Risultato Biliardino {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
+                st.markdown(f"⚽ **Gol: Squadra 2 ({squadra2_nome})**")
+                g2_input = st.radio("Seleziona Gol Squadra 2", list(range(11)), index=int(m.get('gol2', 0)), horizontal=True, key=f"live_g2_{match_id}")
+                
+                if st.button(f"💾 Registra e Libera Tavolo {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
                     m['gol1'] = g1_input
                     m['gol2'] = g2_input
                     m['giocata'] = True
@@ -484,7 +493,7 @@ if db["stato"] == "gironi":
                     salva_dati(db)
                     st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
                     st.rerun()
-            st.markdown("<hr style='margin: 4px 0;'>", unsafe_allow_html=True)
+            st.markdown("<hr style='margin: 6px 0;'>", unsafe_allow_html=True)
         st.html('</div>')
 
     if partite_in_coda:
