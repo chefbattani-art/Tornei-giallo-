@@ -31,6 +31,7 @@ st.markdown("""
 
 DB_FILE = "torneo_data.json"
 LOGO_FILE = "logo_uisp.png"
+REGOLAMENTO_FILE = "regolamento_uisp.pdf"
 
 def carica_dati():
     dati_default = {
@@ -170,6 +171,14 @@ if modalita_admin:
 
 if is_admin:
     st.sidebar.markdown("---")
+    st.sidebar.subheader("📄 Aggiorna Regolamento")
+    file_regolamento_caricato = st.sidebar.file_uploader("Carica nuovo PDF Regolamento", type=["pdf"])
+    if file_regolamento_caricato is not None:
+        with open(REGOLAMENTO_FILE, "wb") as f:
+            f.write(file_regolamento_caricato.getbuffer())
+        st.sidebar.success("Regolamento aggiornato con successo!")
+
+    st.sidebar.markdown("---")
     st.sidebar.subheader("🗑️ Reset Totale")
     if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
         if os.path.exists(DB_FILE):
@@ -207,34 +216,32 @@ st.sidebar.markdown("---")
 st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
 
 # --- INTERFACCIA PRINCIPALE ---
-# Caricamento dinamico del logo in base64 se presente nella cartella
+logo_html = ""
 if os.path.exists(LOGO_FILE):
     with open(LOGO_FILE, "rb") as f:
         logo_b64 = b64encode(f.read()).decode("utf-8")
-    st.markdown(
-        f"""
-        <div style="text-align: center; margin-bottom: 15px;">
-            <img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" />
-            <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
-                <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-                <p style="margin: 5px 0 0 0; font-size: 1.1rem; color: #0d47a1; font-weight: bold;">📜 Regolamento Ufficiale: 3 Tocchi UISP</p>
-            </div>
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" /><br>'
+
+# Se il file del regolamento esiste, crea il link per aprirlo. 
+# Altrimenti, se vuoi inserirlo direttamente via codice senza caricarlo ogni volta, puoi lasciarlo puntare a un viewer.
+regolamento_link_html = '📜 Regolamento Ufficiale UISP 2026-2027 (Non caricato)'
+if os.path.exists(REGOLAMENTO_FILE):
+    with open(REGOLAMENTO_FILE, "rb") as f:
+        reg_b64 = b64encode(f.read()).decode("utf-8")
+    regolamento_link_html = f'<a href="data:application/pdf;base64,{reg_b64}" target="_blank" style="color: #0d47a1; text-decoration: underline;">📜 Regolamento Tecnico Nazionale UISP 2026-2027 (Clicca per leggere)</a>'
+
+st.markdown(
+    f"""
+    <div style="text-align: center; margin-bottom: 15px;">
+        {logo_html}
+        <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
+            <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+            <p style="margin: 5px 0 0 0; font-size: 1.1rem; font-weight: bold;">{regolamento_link_html}</p>
         </div>
-        """,
-        unsafe_allow_html=True
-    )
-else:
-    st.markdown(
-        """
-        <div style="text-align: center; margin-bottom: 15px;">
-            <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
-                <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-                <p style="margin: 5px 0 0 0; font-size: 1.1rem; color: #0d47a1; font-weight: bold;">📜 Regolamento Ufficiale: 3 Tocchi UISP</p>
-            </div>
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 st.markdown(
     """
