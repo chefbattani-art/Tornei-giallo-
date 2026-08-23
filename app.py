@@ -166,6 +166,17 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
+if is_admin:
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🗑️ Reset Totale")
+    if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
+        if os.path.exists(DB_FILE):
+            os.remove(DB_FILE)
+        for key in list(st.session_state.keys()):
+            del st.session_state[key]
+        st.sidebar.success("Torneo azzerato con successo!")
+        st.rerun()
+
 if is_admin and db["stato"] != "setup":
     st.sidebar.markdown("---")
     st.sidebar.subheader("🛠️ Correzione Parametri")
@@ -288,6 +299,9 @@ if db["stato"] == "gironi":
                 else:
                     partite_in_coda.append(info_m)
 
+    # Limitiamo le partite in corso esattamente al numero di tavoli disponibili
+    partite_in_corso = partite_in_corso[:num_tavoli]
+
     # 1. SEZIONE PARTITE IN CORSO (SFONDO GIALLO)
     if partite_in_corso:
         st.markdown(
@@ -393,7 +407,7 @@ if db["stato"] == "gironi":
     st.markdown("---")
 
     # 4. LISTA COMPLETA TURNI E PARTITE
-    st.markdown("### 📅 Lista Completa Turni (Gironi)")
+    st.markdown("### 📅 Lista Completa Turni")
 
     for turno_obj in db["turni_partite"]:
         with st.expander(f"🚩 Turno {turno_obj['turno']} (Clicca per aprire/chiudere)"):
@@ -552,7 +566,7 @@ if db["stato"] == "eliminatorie":
                     st.rerun()
 
     if is_admin:
-        if st.button("⬅️ Torna ai Gironi", use_container_width=True):
+        if st.button("⬅️ Indietro", use_container_width=True):
             db["stato"] = "gironi"
             salva_dati(db)
             st.rerun()
