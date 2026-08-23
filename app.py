@@ -228,6 +228,7 @@ if os.path.exists(REGOLAMENTO_FILE):
         reg_b64 = b64encode(f.read()).decode("utf-8")
     regolamento_link_html = f'<a href="data:application/pdf;base64,{reg_b64}" target="_blank" style="color: #0d47a1; text-decoration: underline;">📜 Regolamento Tecnico Nazionale UISP 2026-2027 (Clicca per leggere)</a>'
 
+# CORRETTO: Aggiunto unsafe_allow_html=True qui sotto
 st.markdown(
     f"""
     <div style="text-align: center; margin-bottom: 15px;">
