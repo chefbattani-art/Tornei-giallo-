@@ -129,13 +129,6 @@ st.markdown("""
             background-color: #ffe082;
             margin-bottom: 10px;
         }
-        .container-green {
-            border: 1px solid #81c784;
-            border-radius: 8px;
-            padding: 10px;
-            background-color: #e8f5e9;
-            margin-bottom: 10px;
-        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -437,13 +430,21 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
+    # LOGICA AUTOMATICA PER CHIUDERE O APRIRE I TURNI:
+    # - Se TUTTE le partite sono giocate -> CHIUSO
+    # - Se NESSUNA partita è in corso o giocata (tutte da iniziare) -> CHIUSO
+    # - Se ALMENO UNA partita è in corso -> APERTO (In corso)
     for turno_obj in db["turni_partite"]:
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
+        almeno_una_iniziata = any(m.get("in_corso", False) for m in turno_obj["partite"])
+        
         if tutte_giocate:
             turno_obj["chiuso"] = True
         elif almeno_una_iniziata:
             turno_obj["chiuso"] = False
+        else:
+            # Se nessuna è in corso e non sono tutte giocate (quindi non iniziate), forziamo la chiusura
+            turno_obj["chiuso"] = True
 
     salva_dati(db)
 
@@ -521,15 +522,14 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (GRAFICA ORIZZONTALE RICHIESTA) ---
+    # --- LISTA COMPLETA TURNI ---
     st.markdown("### 📅 Partite dei Turni")
 
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
-        is_chiuso = turno_obj.get("chiuso", True)
         
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
+        almeno_una_iniziata = any(m.get("in_corso", False) for m in turno_obj["partite"])
 
         if tutte_giocate:
             header_bg = "#b0bec5"
@@ -539,16 +539,9 @@ if db["stato"] == "gironi":
             header_text = f"Turno {turno_num} (In corso 🔥)"
         else:
             header_bg = "#e0f7fa"
-            header_text = f"Turno {turno_num} (Da iniziare ⏳)"
+            header_text = f"Turno {turno_num} (Chiuso ⏳)"
 
         st.markdown(f"#### {header_text}")
-
-        if is_chiuso and is_admin:
-            if st.button(f"🔓 Riapri Turno {turno_num}", key=f"riapri_t_{turno_num}", use_container_width=True):
-                turno_obj["chiuso"] = False
-                salva_dati(db)
-                st.success(f"Turno {turno_num} riaperto!")
-                st.rerun()
 
         # Mostra le partite con la grafica orizzontale pulita
         for idx, m in enumerate(turno_obj["partite"]):
@@ -568,7 +561,6 @@ if db["stato"] == "gironi":
             team1_str = f"🥅 {m['p1']} &amp; ⚽ {m['a1']}"
             team2_str = f"🥅 {m['p2']} &amp; ⚽ {m['a2']}"
 
-            # Render grafica stile immagine
             st.html(f"""
                 <div class="{row_class}">
                     <div class="team-left">{team1_str}</div>
@@ -602,8 +594,6 @@ if db["stato"] == "gironi":
                             m['gol2'] = rg2
                             m['giocata'] = True
                             m['in_corso'] = False
-                            if all(pt.get("giocata", False) for pt in turno_obj["partite"]):
-                                turno_obj["chiuso"] = True
                             ricalcola_classifiche()
                             salva_dati(db)
                             st.success("Salvato!")
