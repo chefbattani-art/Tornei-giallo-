@@ -115,9 +115,17 @@ st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal brow
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
 
-# Pulsante per aggiornare manualmente senza conflitti
-if st.button("🔄 Clicca per aggiornare i risultati", use_container_width=True):
-    st.rerun()
+# Scritta testuale con link HTML per ricaricare la pagina all'istante senza bloccare nulla
+st.markdown(
+    """
+    <div style="padding: 10px; background-color: #f0f2f6; border-radius: 8px; text-align: center; margin-bottom: 20px;">
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 16px;">
+            Ricarica la pagina per aggiornare l’andamento della gara
+        </a>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
 # 1. SETUP
 if db["stato"] == "setup":
