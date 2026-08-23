@@ -81,6 +81,61 @@ st.markdown("""
             border-radius: 6px;
             margin-bottom: 6px;
         }
+
+        /* --- ANIMAZIONI PODIO --- */
+        @keyframes riseUp {
+            0% { transform: translateY(50px); opacity: 0; }
+            100% { transform: translateY(0); opacity: 1; }
+        }
+        @keyframes floatTrophy {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-8px); }
+            100% { transform: translateY(0px); }
+        }
+        .podium-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            gap: 12px;
+            margin: 20px 0;
+            animation: riseUp 0.8s ease-out;
+        }
+        .podium-step {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+            padding: 10px;
+            font-weight: bold;
+            box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+        }
+        .podium-1 {
+            background: linear-gradient(135deg, #ffd700, #ffaa00);
+            color: #3e2723;
+            width: 35%;
+            height: 170px;
+            border: 2px solid #ff8f00;
+        }
+        .podium-2 {
+            background: linear-gradient(135deg, #e0e0e0, #b0bec5);
+            color: #263238;
+            width: 30%;
+            height: 135px;
+            border: 2px solid #90a4ae;
+        }
+        .podium-3 {
+            background: linear-gradient(135deg, #ffccbc, #d7ccc8);
+            color: #4e342e;
+            width: 30%;
+            height: 110px;
+            border: 2px solid #bcaaa4;
+        }
+        .trophy-icon {
+            font-size: 2.2rem;
+            animation: floatTrophy 2s ease-in-out infinite;
+            margin-bottom: 4px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -558,111 +613,187 @@ if db["stato"] == "gironi":
 
 # 3. ELIMINATORIE
 if db["stato"] == "eliminatorie":
-    st.subheader("🏆 Fase a Eliminazione Diretta")
     num_tavoli = db.get("num_tavoli", 3)
     fasi = db["fasi_finali"]
     
-    for f_idx, f_turno in enumerate(fasi):
-        st.markdown(f"### 🔥 {f_turno['nome']}")
-        
-        tutti_giocati = True
-        vincitori_turno = []
-        perdenti_turno = []
-        
-        for idx, m in enumerate(f_turno["partite"]):
-            tavolo_num = (idx % num_tavoli) + 1
-            match_id = m['id']
-            
-            edit_flag_key = f"ef_edit_mode_{match_id}"
-            if edit_flag_key not in st.session_state:
-                st.session_state[edit_flag_key] = False
-
-            if m.get("giocata", False):
-                if m["gol1"] >= m["gol2"]:
-                    vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
-                    perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
+    # Controlliamo se siamo arrivati alle finali e se sono concluse
+    finito_tutto = False
+    p1_1, a1_1, p2_1, a2_1, p3_1, a3_1 = "", "", "", "", "", ""
+    
+    for f_turno in fasi:
+        if f_turno['nome'] == "Finali (1°-2° e 3°-4° Posto)":
+            fin_partite = f_turno["partite"]
+            if len(fin_partite) >= 2 and fin_partite[0].get("giocata", False) and fin_partite[1].get("giocata", False):
+                finito_tutto = True
+                m1, m2 = fin_partite[0], fin_partite[1]
+                # 1°-2° posto
+                if m1["gol1"] >= m1["gol2"]:
+                    p1_1, a1_1 = m1["p1"], m1["a1"]
+                    p2_1, a2_1 = m1["p2"], m1["a2"]
                 else:
-                    vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
-                    perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
-            else:
-                tutti_giocati = False
+                    p1_1, a1_1 = m1["p2"], m1["a2"]
+                    p2_1, a2_1 = m1["p1"], m1["a1"]
+                # 3°-4° posto
+                if m2["gol1"] >= m2["gol2"]:
+                    p3_1, a3_1 = m2["p1"], m2["a1"]
+                else:
+                    p3_1, a3_1 = m2["p2"], m2["a2"]
 
-            if m["giocata"]:
-                bg_color = "#ffebee"
-                stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
-            elif m.get("in_corso", False):
-                bg_color = "#d4edda"
-                stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
-            else:
-                bg_color = "#f1f8e9"
-                stato_testo = "⏳ <b>Da giocare</b>"
+    # SE IL TORNEO È CONCLUSO, MOSTRAR LA SCHERMATA FINALE DEDICATA
+    if finito_tutto:
+        st.html("""
+            <div style="text-align: center; margin-top: 10px; margin-bottom: 15px;">
+                <h1 style="color: #d32f2f; font-size: 2rem;">🏆 TORNEO CONCLUSO! 🏆</h1>
+                <p style="font-size: 1.1rem; color: #424242; margin-top: 5px;">Ecco i vincitori ufficiali della competizione</p>
+            </div>
+        """)
 
-            st.html(f"""
-                <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
-                    <b>📍 Biliardino {tavolo_num}</b><br>
-                    🥅 <b>{m['p1']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a1']}</b><br>
-                    🥅 <b>{m['p2']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a2']}</b><br>
-                    <div style="text-align: center; margin-top: 2px; font-size: 12px;">
-                        {stato_testo}
-                    </div>
-                </div>
-            """)
-
+        podio_html = f"""
+        <div class="podium-container">
+            <!-- 2° POSTO -->
+            <div class="podium-step podium-2">
+                <div style="font-size: 1.2rem;">🥈 2° Posto</div>
+                <div style="font-size: 0.9rem; margin-top: 8px;">🥅 {p2_1}<br>⚽ {a2_1}</div>
+            </div>
+            <!-- 1° POSTO -->
+            <div class="podium-step podium-1">
+                <div class="trophy-icon">🏆</div>
+                <div style="font-size: 1.4rem; font-weight: bold;">1° Posto</div>
+                <div style="font-size: 1.0rem; margin-top: 4px;">🥅 {p1_1}<br>⚽ {a1_1}</div>
+            </div>
+            <!-- 3° POSTO -->
+            <div class="podium-step podium-3">
+                <div style="font-size: 1.2rem;">🥉 3° Posto</div>
+                <div style="font-size: 0.9rem; margin-top: 8px;">🥅 {p3_1}<br>⚽ {a3_1}</div>
+            </div>
+        </div>
+        """
+        st.html(podio_html)
+        
+        st.markdown("---")
+        
+        col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+        with col_f2:
+            pdf_data = genera_pdf_calendario()
+            st.download_button(
+                label="📥 Scarica Riepilogo Finale in PDF",
+                data=pdf_data,
+                file_name="riepilogo_finale_torneo.pdf",
+                mime="application/pdf",
+                use_container_width=True
+            )
             if is_admin:
-                col_a1, col_a2 = st.columns(2)
-                with col_a1:
-                    if not m.get("in_corso", False) and not m["giocata"]:
-                        if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
-                            m["in_corso"] = True
-                            salva_dati(db)
-                            st.rerun()
-                with col_a2:
-                    if m.get("in_corso", False):
-                        if st.button("⏹️ Ferma", key=f"ef_stop_{match_id}", use_container_width=True):
-                            m["in_corso"] = False
-                            salva_dati(db)
-                            st.rerun()
+                if st.button("⬅️ Torna alla gestione eliminatorie", use_container_width=True):
+                    # Trucco per sbloccare temporaneamente la visualizzazione se l'admin vuole correggere
+                    fin_partite[0]["giocata"] = False
+                    salva_dati(db)
+                    st.rerun()
+                    
+    else:
+        # VISUALIZZAZIONE NORMALE DURANTE LE ELIMINATORIE
+        st.subheader("🏆 Fase a Eliminazione Diretta")
+        
+        for f_idx, f_turno in enumerate(fasi):
+            st.markdown(f"### 🔥 {f_turno['nome']}")
+            
+            tutti_giocati = True
+            vincitori_turno = []
+            perdenti_turno = []
+            
+            for idx, m in enumerate(f_turno["partite"]):
+                tavolo_num = (idx % num_tavoli) + 1
+                match_id = m['id']
                 
-                with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
-                    rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
-                    rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
-                    if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
-                        m['gol1'] = rg1
-                        m['gol2'] = rg2
-                        m['giocata'] = True
-                        m['in_corso'] = False
+                edit_flag_key = f"ef_edit_mode_{match_id}"
+                if edit_flag_key not in st.session_state:
+                    st.session_state[edit_flag_key] = False
+
+                if m.get("giocata", False):
+                    if m["gol1"] >= m["gol2"]:
+                        vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
+                        perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
+                    else:
+                        vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
+                        perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
+                else:
+                    tutti_giocati = False
+
+                if m["giocata"]:
+                    bg_color = "#ffebee"
+                    stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
+                elif m.get("in_corso", False):
+                    bg_color = "#d4edda"
+                    stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
+                else:
+                    bg_color = "#f1f8e9"
+                    stato_testo = "⏳ <b>Da giocare</b>"
+
+                st.html(f"""
+                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
+                        <b>📍 Biliardino {tavolo_num}</b><br>
+                        🥅 <b>{m['p1']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a1']}</b><br>
+                        🥅 <b>{m['p2']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a2']}</b><br>
+                        <div style="text-align: center; margin-top: 2px; font-size: 12px;">
+                            {stato_testo}
+                        </div>
+                    </div>
+                """)
+
+                if is_admin:
+                    col_a1, col_a2 = st.columns(2)
+                    with col_a1:
+                        if not m.get("in_corso", False) and not m["giocata"]:
+                            if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
+                                m["in_corso"] = True
+                                salva_dati(db)
+                                st.rerun()
+                    with col_a2:
+                        if m.get("in_corso", False):
+                            if st.button("⏹️ Ferma", key=f"ef_stop_{match_id}", use_container_width=True):
+                                m["in_corso"] = False
+                                salva_dati(db)
+                                st.rerun()
+                    
+                    with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
+                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
+                        if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
+                            m['gol1'] = rg1
+                            m['gol2'] = rg2
+                            m['giocata'] = True
+                            m['in_corso'] = False
+                            salva_dati(db)
+                            st.session_state[edit_flag_key] = False
+                            st.rerun()
+
+                st.markdown("---")
+
+            if tutti_giocati and is_admin:
+                if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
+                    if st.button("🚀 Genera Semifinali", use_container_width=True):
+                        q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
+                        semifinale_partite = [
+                            {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                            {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                        ]
+                        db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
                         salva_dati(db)
-                        st.session_state[edit_flag_key] = False
                         st.rerun()
 
-            st.markdown("---")
+                elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
+                    if st.button("🏁 Genera Finali", use_container_width=True):
+                        sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
+                        sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
+                        finali_partite = [
+                            {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                        ]
+                        db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
+                        salva_dati(db)
+                        st.rerun()
 
-        if tutti_giocati and is_admin:
-            if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
-                if st.button("🚀 Genera Semifinali", use_container_width=True):
-                    q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
-                    semifinale_partite = [
-                        {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                        {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                    ]
-                    db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                    salva_dati(db)
-                    st.rerun()
-
-            elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
-                if st.button("🏁 Genera Finali", use_container_width=True):
-                    sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
-                    sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
-                    finali_partite = [
-                        {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                        {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                    ]
-                    db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
-                    salva_dati(db)
-                    st.rerun()
-
-    if is_admin:
-        if st.button("⬅️ Indietro", use_container_width=True):
-            db["stato"] = "gironi"
-            salva_dati(db)
-            st.rerun()
+        if is_admin:
+            if st.button("⬅️ Indietro ai Gironi", use_container_width=True):
+                db["stato"] = "gironi"
+                salva_dati(db)
+                st.rerun()
