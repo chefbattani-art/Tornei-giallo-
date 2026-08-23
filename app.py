@@ -6,7 +6,7 @@ import re
 import random
 from streamlit_autorefresh import st_autorefresh
 
-# Aggiornamento automatico ogni 5 secondi per tutti
+# Aggiornamento automatico ogni 5 secondi
 st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 
 st.set_page_config(page_title="Torneo Biliardino Giallo Live", layout="wide")
@@ -97,16 +97,7 @@ def calcola_partite_giocate(ruolo, nome):
     return giocate, totali
 
 # --- BARRA LATERALE ---
-st.sidebar.header("⚙️ Pannello e Notifiche")
-
-# Sezione Gestione Notifiche Personali
-st.sidebar.subheader("🔔 Avvisi Audio Personali")
-tutti_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
-giocatore_selezionato = st.sidebar.selectbox("Seleziona il tuo nome:", ["-- Scegli --"] + tutti_giocatori)
-
-attiva_audio = st.sidebar.checkbox("Attiva allarme sonoro per le mie partite", value=False)
-
-st.sidebar.markdown("---")
+st.sidebar.header("⚙️ Pannello di Controllo")
 modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
 
 is_admin = False
@@ -124,7 +115,7 @@ st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal brow
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
 
-# Pulsante interattivo per aggiornare manualmente all'istante
+# Pulsante per aggiornare manualmente senza conflitti
 if st.button("🔄 Clicca per aggiornare i risultati", use_container_width=True):
     st.rerun()
 
@@ -197,33 +188,6 @@ elif db["stato"] == "gironi":
     ricalcola_classifiche()
 
     num_tavoli = db.get("num_tavoli", 2)
-
-    # --- CONTROLLO NOTIFICA AUDIO PER IL GIOCATORE SELEZIONATO ---
-    deve_suonare = False
-    
-    if giocatore_selezionato != "-- Scegli --" and attiva_audio:
-        # Cerca se il giocatore è nei prossimi in coda o in corso
-        for turno_obj in db["turni_partite"]:
-            for m in turno_obj["partite"]:
-                is_coinvolto = (m['p1'] == giocatore_selezionato or m['a1'] == giocatore_selezionato or 
-                                m['p2'] == giocatore_selezionato or m['a2'] == giocatore_selezionato)
-                if is_coinvolto and not m.get("giocata", False):
-                    deve_suonare = True
-                    break
-            if deve_suonare:
-                break
-
-    if deve_suonare:
-        # Codice JavaScript per emettere un beep sonoro nel browser
-        st.markdown(
-            """
-            <audio autoplay>
-              <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-            </audio>
-            """,
-            unsafe_allow_html=True
-        )
-        st.sidebar.warning(f"🚨 **È il tuo turno, {giocatore_selezionato}! Preparati ad andare al biliardino!**")
 
     # --- 1. SEZIONE PARTITE IN CORSO ---
     partite_in_corso = []
