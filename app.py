@@ -15,24 +15,24 @@ st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 0.5rem;
-            padding-bottom: 0.5rem;
-            padding-left: 1rem;
-            padding-right: 1rem;
+            padding-top: 0.2rem !important;
+            padding-bottom: 0.2rem !important;
+            padding-left: 0.5rem !important;
+            padding-right: 0.5rem !important;
         }
-        h1 { margin-bottom: 0px; font-size: 1.6rem; }
-        h3 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.2rem; }
-        h4 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.0rem; }
+        h1 { margin-bottom: 0px; font-size: 1.4rem; }
+        h3 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.1rem; }
+        h4 { margin-top: 0rem; margin-bottom: 0rem; font-size: 0.95rem; }
         .stMarkdown { margin-bottom: 0px !important; }
-        hr { margin: 0.4rem 0px !important; }
+        hr { margin: 0.2rem 0px !important; }
         
         .ranking-box {
-            border: 2px solid #90caf9;
-            border-radius: 8px;
-            padding: 6px;
+            border: 1px solid #90caf9;
+            border-radius: 6px;
+            padding: 4px;
             background-color: #ffffff;
-            margin-bottom: 4px;
-            margin-top: 2px;
+            margin-bottom: 2px;
+            margin-top: 1px;
         }
         
         .ranking-box table {
@@ -44,8 +44,8 @@ st.markdown("""
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding: 3px 2px !important;
-            font-size: 0.85rem;
+            padding: 2px 1px !important;
+            font-size: 0.78rem;
         }
         .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) { width: 10% !important; text-align: center !important; }
         .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) { width: 42% !important; text-align: left !important; }
@@ -54,52 +54,53 @@ st.markdown("""
         .ranking-box th:nth-child(5), .ranking-box td:nth-child(5) { width: 16% !important; text-align: center !important; }
 
         .container-yellow {
-            border: 3px solid #f57f17;
-            border-radius: 8px;
-            padding: 10px;
+            border: 2px solid #f57f17;
+            border-radius: 6px;
+            padding: 6px;
             background-color: #ffe082;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         .container-green {
-            border: 2px solid #81c784;
-            border-radius: 8px;
-            padding: 10px;
+            border: 1px solid #81c784;
+            border-radius: 6px;
+            padding: 6px;
             background-color: #e8f5e9;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
         }
         
         .match-card-box {
-            border: 3px solid #ffa726;
-            border-radius: 10px;
-            padding: 12px;
+            border: 2px solid #ffa726;
+            border-radius: 6px;
+            padding: 6px;
             background-color: #fffdf5;
-            margin-bottom: 15px;
-            box-shadow: 0px 3px 6px rgba(0,0,0,0.08);
+            margin-bottom: 6px;
+            box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
         }
 
         .sub-card-lightgreen {
-            padding: 8px;
+            padding: 4px;
             background-color: #f1f8e9;
             border: 1px solid #c8e6c9;
-            border-radius: 6px;
-            margin-bottom: 6px;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 0.85rem;
         }
 
         @keyframes riseUp {
-            0% { transform: translateY(50px); opacity: 0; }
+            0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
         }
         @keyframes floatTrophy {
             0% { transform: translateY(0px); }
-            50% { transform: translateY(-8px); }
+            50% { transform: translateY(-5px); }
             100% { transform: translateY(0px); }
         }
         .podium-container {
             display: flex;
             justify-content: center;
             align-items: flex-end;
-            gap: 12px;
-            margin: 20px 0;
+            gap: 8px;
+            margin: 10px 0;
             animation: riseUp 0.8s ease-out;
         }
         .podium-step {
@@ -107,36 +108,36 @@ st.markdown("""
             flex-direction: column;
             align-items: center;
             text-align: center;
-            border-radius: 8px 8px 0 0;
-            padding: 10px;
+            border-radius: 6px 6px 0 0;
+            padding: 6px;
             font-weight: bold;
-            box-shadow: 0px 4px 10px rgba(0,0,0,0.15);
+            box-shadow: 0px 2px 6px rgba(0,0,0,0.15);
         }
         .podium-1 {
             background: linear-gradient(135deg, #ffd700, #ffaa00);
             color: #3e2723;
             width: 35%;
-            height: 170px;
+            height: 140px;
             border: 2px solid #ff8f00;
         }
         .podium-2 {
             background: linear-gradient(135deg, #e0e0e0, #b0bec5);
             color: #263238;
             width: 30%;
-            height: 135px;
+            height: 110px;
             border: 2px solid #90a4ae;
         }
         .podium-3 {
             background: linear-gradient(135deg, #ffccbc, #d7ccc8);
             color: #4e342e;
             width: 30%;
-            height: 110px;
+            height: 90px;
             border: 2px solid #bcaaa4;
         }
         .trophy-icon {
-            font-size: 2.2rem;
+            font-size: 1.8rem;
             animation: floatTrophy 2s ease-in-out infinite;
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -331,30 +332,28 @@ if db["stato"] != "setup":
 # --- LINK SPETTATORE & QR CODE IN SIDEBAR ---
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 Condividi Torneo")
-link_torneo = st.sidebar.text_input("Link Spettatore (Copia qui):", value="https://2quznathuywvfxcskgfjhk.streamlit.app")
+link_torneo = st.sidebar.text_input("Link Spettatore:", value="https://2quznathuywvfxcskgfjhk.streamlit.app")
 
 if link_torneo and link_torneo != "https://":
     import urllib.parse
     encoded_url = urllib.parse.quote(link_torneo, safe='')
-    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={encoded_url}"
-    st.sidebar.image(qr_api_url, caption="Inquadra per aprire il torneo", use_container_width=True)
-
-st.sidebar.info("💡 **Suggerimento:** Copia il link sopra per condividerlo o fallo scansionare ai giocatori.")
+    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
+    st.sidebar.image(qr_api_url, caption="Inquadra per aprire", use_container_width=True)
 
 # --- INTERFACCIA PRINCIPALE ---
 logo_html = ""
 if os.path.exists(LOGO_FILE):
     with open(LOGO_FILE, "rb") as f:
         logo_b64 = b64encode(f.read()).decode("utf-8")
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 220px; width: 100%; height: auto; margin-bottom: 5px;" /><br>'
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 140px; width: 100%; height: auto; margin-bottom: 2px;" /><br>'
 
 st.html(
     f"""
-    <div style="text-align: center; margin-bottom: 5px;">
+    <div style="text-align: center; margin-bottom: 2px;">
         {logo_html}
-        <div style="padding: 6px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
-            <h2 style="margin: 0; color: #1565c0; font-size: 1.3rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-            <p style="margin: 2px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 12px;">Regolamento Uisp 3 tocchi</p>
+        <div style="padding: 4px; background-color: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px;">
+            <h2 style="margin: 0; color: #1565c0; font-size: 1.1rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+            <p style="margin: 1px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 10px;">Regolamento Uisp 3 tocchi</p>
         </div>
     </div>
     """
@@ -373,8 +372,8 @@ else:
 
 st.html(
     """
-    <div style="padding: 3px; background-color: #f0f2f6; border-radius: 6px; text-align: center; margin-bottom: 5px;">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 11px;">
+    <div style="padding: 2px; background-color: #f0f2f6; border-radius: 4px; text-align: center; margin-bottom: 4px;">
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 10px;">
             Ricarica la pagina del browser per aggiornare l'andamento in tempo reale
         </a>
     </div>
@@ -486,7 +485,7 @@ if db["stato"] == "gironi":
 
     partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
 
-    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME (E NON È ADMIN), MOSTRA IL BOX DEDICATO PER LUI
+    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME (E NON È ADMIN)
     if not is_admin and giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = [
             item for item in partite_in_corso_con_tavolo 
@@ -495,41 +494,31 @@ if db["stato"] == "gironi":
         ]
 
         if partite_filtrate:
-            st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 INSERISCI IL RISULTATO DELLA TUA PARTITA:</h4>')
+            st.html('<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 LA TUA PARTITA:</h4>')
             for item in partite_filtrate:
                 m = item["m"]
                 match_id = m['id']
-                
                 squadra1_nome = f"{m['p1']} & {m['a1']}"
                 squadra2_nome = f"{m['p2']} & {m['a2']}"
                 
                 st.html(f"""
                     <div class="match-card-box">
-                        <div style="font-weight: bold; color: #b71c1c; margin-bottom: 6px; font-size: 1.05rem;">
+                        <div style="font-weight: bold; color: #b71c1c; margin-bottom: 4px; font-size: 0.95rem;">
                             🏟️ Biliardino {item['tavolo']} (Turno {item['turno']})
                         </div>
-                        <div style="text-align: center; font-size: 1.15rem; color: #1a237e; background-color: #e8eaf6; padding: 8px; border-radius: 6px; width: 100%; margin-bottom: 10px;">
-                            {squadra1_nome} <span style="color: #d32f2f; font-size: 0.95rem; font-weight: normal;">vs</span> {squadra2_nome}
+                        <div style="text-align: center; font-size: 1.0rem; color: #1a237e; background-color: #e8eaf6; padding: 4px; border-radius: 4px; margin-bottom: 6px;">
+                            {squadra1_nome} <span style="color: #d32f2f; font-size: 0.85rem;">vs</span> {squadra2_nome}
                         </div>
                 """)
                 
                 if not m.get("giocata", False):
-                    st.html(f"""
-                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
-                            ⚽ Gol S1 ({squadra1_nome})
-                        </div>
-                    """)
+                    st.html(f'<div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 2px;">Gol S1 ({squadra1_nome})</div>')
                     g1_input = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}", label_visibility="collapsed")
                     
-                    st.html(f"""
-                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 12px; margin-bottom: 4px;">
-                            ⚽ Gol S2 ({squadra2_nome})
-                        </div>
-                    """)
+                    st.html(f'<div style="font-size: 0.85rem; font-weight: bold; margin-top: 4px; margin-bottom: 2px;">Gol S2 ({squadra2_nome})</div>')
                     g2_input = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}", label_visibility="collapsed")
                     
-                    st.html("<div style='margin-top: 10px;'></div>")
-                    if st.button(f"💾 Registra e Libera Tavolo {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
+                    if st.button(f"💾 Salva e Libera Tavolo {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
                         m['gol1'] = g1_input
                         m['gol2'] = g2_input
                         m['giocata'] = True
@@ -542,21 +531,21 @@ if db["stato"] == "gironi":
 
                         ricalcola_classifiche()
                         salva_dati(db)
-                        st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
+                        st.success(f"Salvato! Tavolo {item['tavolo']} libero.")
                         st.rerun()
                 else:
-                    st.info("✅ Partita già conclusa e salvata. Risultato blindato.")
+                    st.info("✅ Partita conclusa.")
 
                 st.html('</div>')
             st.html('</div>')
         else:
-            st.info(f"ℹ️ Al momento non ci sono partite in corso per {giocatore_selezionato.upper()}. Controlla la lista dei turni sotto per vedere quando giochi!")
+            st.info(f"ℹ️ Nessuna partita in corso per {giocatore_selezionato}.")
         
         st.markdown("---")
 
     # VISTA DELLE PARTITE IN CORSO
     if partite_in_corso_con_tavolo:
-        st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
+        st.html('<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso_con_tavolo:
             m = item["m"]
             match_id = m['id']
@@ -564,33 +553,24 @@ if db["stato"] == "gironi":
             squadra2_nome = f"{m['p2']} & {m['a2']}"
             
             st.html(f"""
-                <div style="padding: 10px; background-color: #fffdf5; border: 2px solid #ffa726; border-radius: 8px; margin-bottom: 10px;">
+                <div style="padding: 6px; background-color: #fffdf5; border: 1px solid #ffa726; border-radius: 6px; margin-bottom: 6px;">
                     🏟️ <b>Biliardino {item['tavolo']}</b> (Turno {item['turno']})<br>
-                    <div style="text-align: center; font-size: 1.1rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 6px; border-radius: 5px; margin-top: 4px; margin-bottom: 6px;">
+                    <div style="text-align: center; font-size: 0.95rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 4px; border-radius: 4px; margin-top: 2px; margin-bottom: 4px;">
                         {squadra1_nome} vs {squadra2_nome}
                     </div>
                 </div>
             """)
 
-            # SE SEI ADMIN, PUOI INSERIRE IL RISULTATO DIRETTAMENTE QUI DALLE PARTITE IN CORSO!
+            # SE SEI ADMIN, PUOI INSERIRE IL RISULTATO DIRETTAMENTE QUI
             if is_admin:
-                with st.expander(f"⚙️ Inserisci/Modifica Risultato Biliardino {item['tavolo']} (Admin)", expanded=False):
-                    st.html(f"""
-                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
-                            ⚽ Gol: {squadra1_nome}
-                        </div>
-                    """)
+                with st.expander(f"⚙️ Inserisci/Modifica Biliardino {item['tavolo']} (Admin)", expanded=False):
+                    st.html(f'<div style="font-size: 0.8rem; font-weight: bold;">Gol: {squadra1_nome}</div>')
                     adm_g1 = st.radio("Gol S1 Admin", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"adm_live_g1_{match_id}", label_visibility="collapsed")
                     
-                    st.html(f"""
-                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
-                            ⚽ Gol: {squadra2_nome}
-                        </div>
-                    """)
+                    st.html(f'<div style="font-size: 0.8rem; font-weight: bold; margin-top: 2px;">Gol: {squadra2_nome}</div>')
                     adm_g2 = st.radio("Gol S2 Admin", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"adm_live_g2_{match_id}", label_visibility="collapsed")
                     
-                    st.html("<div style='margin-top: 8px;'></div>")
-                    if st.button(f"💾 Salva Risultato Biliardino {item['tavolo']} (Admin)", key=f"adm_live_save_{match_id}", use_container_width=True):
+                    if st.button(f"💾 Salva Biliardino {item['tavolo']} (Admin)", key=f"adm_live_save_{match_id}", use_container_width=True):
                         m['gol1'] = adm_g1
                         m['gol2'] = adm_g2
                         m['giocata'] = True
@@ -603,20 +583,18 @@ if db["stato"] == "gironi":
 
                         ricalcola_classifiche()
                         salva_dati(db)
-                        st.success(f"Risultato salvato dal pannello Admin per il tavolo {item['tavolo']}!")
+                        st.success(f"Salvato tavolo {item['tavolo']}!")
                         st.rerun()
 
         st.html('</div>')
 
     if partite_in_coda:
-        html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
+        html_coda = '<div class="container-green"><h4 style="margin: 0 0 2px 0; color: #2e7d32;">📢 PROSSIMI IN CODA:</h4>'
         for item in partite_in_coda:
             m = item["m"]
             html_coda += f"""
                 <div class="sub-card-lightgreen">
-                    <b>👉 In Coda (Turno {item['turno']})</b><br>
-                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
-                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
+                    <b>Turno {item['turno']}</b> | 🥅 {m['p1']} & ⚽ {m['a1']} vs 🥅 {m['p2']} & ⚽ {m['a2']}
                 </div>
             """
         html_coda += '</div>'
@@ -624,7 +602,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    st.html("<h3 style='text-align: center; margin: 0 0 4px 0;'>🏆 Classifiche in Tempo Reale</h3>")
+    st.html("<h3 style='text-align: center; margin: 0 0 2px 0;'>🏆 Classifiche in Tempo Reale</h3>")
     col_c1, col_c2 = st.columns(2)
 
     def colora_posizioni(row):
@@ -634,7 +612,7 @@ if db["stato"] == "gironi":
             return ['background-color: #fde8e8' for _ in row]
 
     with col_c1:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
+        st.html("<h4 style='text-align: center; margin: 0 0 1px 0;'>🥅 Portieri</h4>")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
@@ -645,14 +623,10 @@ if db["stato"] == "gironi":
         df_p = pd.DataFrame(data_p)
         
         html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f"""
-            <div class="ranking-box">
-                {html_table_p}
-            </div>
-        """)
+        st.html(f'<div class="ranking-box">{html_table_p}</div>')
 
     with col_c2:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
+        st.html("<h4 style='text-align: center; margin: 0 0 1px 0;'>⚽ Attaccanti</h4>")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
@@ -663,11 +637,7 @@ if db["stato"] == "gironi":
         df_a = pd.DataFrame(data_a)
         
         html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f"""
-            <div class="ranking-box">
-                {html_table_a}
-            </div>
-        """)
+        st.html(f'<div class="ranking-box">{html_table_a}</div>')
 
     st.markdown("---")
 
@@ -695,14 +665,14 @@ if db["stato"] == "gironi":
 
         st.html(
             f"""
-            <div style="padding: 5px; background-color: {header_bg}; border: 2px solid {header_border}; border-radius: 6px; text-align: center; margin-top: 6px; margin-bottom: 6px;">
-                <h3 style="margin: 0; color: #3e2723; font-size: 1.1rem;">{header_text}</h3>
+            <div style="padding: 3px; background-color: {header_bg}; border: 1px solid {header_border}; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                <h3 style="margin: 0; color: #3e2723; font-size: 0.95rem;">{header_text}</h3>
             </div>
             """
         )
 
         if is_chiuso and is_admin:
-            if st.button(f"🔓 Riapri Turno {turno_num} per modifiche", key=f"riapri_t_{turno_num}", use_container_width=True):
+            if st.button(f"🔓 Riapri Turno {turno_num}", key=f"riapri_t_{turno_num}", use_container_width=True):
                 turno_obj["chiuso"] = False
                 salva_dati(db)
                 st.success(f"Turno {turno_num} riaperto!")
@@ -724,19 +694,15 @@ if db["stato"] == "gironi":
                     stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
                 elif m.get("in_corso", False):
                     bg_color = "#d4edda"
-                    stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
+                    stato_testo = "🔥 <b>IN CORSO</b>"
                 else:
                     bg_color = "#f1f8e9"
                     stato_testo = "⏳ <b>Da giocare</b>"
 
                 st.html(f"""
-                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
-                        <b>📍 Tavolo {tavolo_num}</b><br>
-                        🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
-                        🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
-                        <div style="text-align: center; margin-top: 2px; font-size: 12px;">
-                            {stato_testo}
-                        </div>
+                    <div style="padding: 4px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 4px; margin-bottom: 4px; font-size: 0.85rem;">
+                        <b>📍 Tavolo {tavolo_num}</b> | 🥅 {m['p1']} & ⚽ {m['a1']} <b>vs</b> 🥅 {m['p2']} & ⚽ {m['a2']} 
+                        <span style="float: right;">{stato_testo}</span>
                     </div>
                 """)
 
@@ -756,23 +722,14 @@ if db["stato"] == "gironi":
                                 st.rerun()
                 with col_l2:
                     if is_admin:
-                        with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
-                            st.html(f"""
-                                <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
-                                    ⚽ Gol: {squadra1_nome}
-                                </div>
-                            """)
+                        with st.expander("⚙️ Risultato", expanded=st.session_state[edit_flag_key]):
+                            st.html(f'<div style="font-size: 0.8rem; font-weight: bold;">Gol: {squadra1_nome}</div>')
                             rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"list_rg1_{match_id}", label_visibility="collapsed")
                             
-                            st.html(f"""
-                                <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
-                                    ⚽ Gol: {squadra2_nome}
-                                </div>
-                            """)
+                            st.html(f'<div style="font-size: 0.8rem; font-weight: bold; margin-top: 2px;">Gol: {squadra2_nome}</div>')
                             rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}", label_visibility="collapsed")
                             
-                            st.html("<div style='margin-top: 8px;'></div>")
-                            if st.button("💾 Salva Risultato (Admin)", key=f"list_save_{match_id}", use_container_width=True):
+                            if st.button("💾 Salva", key=f"list_save_{match_id}", use_container_width=True):
                                 m['gol1'] = rg1
                                 m['gol2'] = rg2
                                 m['giocata'] = True
@@ -834,29 +791,25 @@ if db["stato"] == "eliminatorie":
 
     if finito_tutto:
         st.html("""
-            <div style="text-align: center; margin-top: 10px; margin-bottom: 15px;">
-                <h1 style="color: #d32f2f; font-size: 2rem;">🏆 TORNEO CONCLUSO! 🏆</h1>
-                <p style="font-size: 1.1rem; color: #424242; margin-top: 5px;">Ecco i vincitori ufficiali della competizione</p>
+            <div style="text-align: center; margin-top: 5px; margin-bottom: 10px;">
+                <h1 style="color: #d32f2f; font-size: 1.6rem;">🏆 TORNEO CONCLUSO! 🏆</h1>
             </div>
         """)
 
         podio_html = f"""
         <div class="podium-container">
-            <!-- 2° POSTO -->
             <div class="podium-step podium-2">
-                <div style="font-size: 1.2rem;">🥈 2° Posto</div>
-                <div style="font-size: 0.9rem; margin-top: 8px;">🥅 {p2_1}<br>⚽ {a2_1}</div>
+                <div style="font-size: 1.0rem;">🥈 2° Posto</div>
+                <div style="font-size: 0.8rem; margin-top: 4px;">🥅 {p2_1}<br>⚽ {a2_1}</div>
             </div>
-            <!-- 1° POSTO -->
             <div class="podium-step podium-1">
                 <div class="trophy-icon">🏆</div>
-                <div style="font-size: 1.4rem; font-weight: bold;">1° Posto</div>
-                <div style="font-size: 1.0rem; margin-top: 4px;">🥅 {p1_1}<br>⚽ {a1_1}</div>
+                <div style="font-size: 1.2rem; font-weight: bold;">1° Posto</div>
+                <div style="font-size: 0.85rem; margin-top: 2px;">🥅 {p1_1}<br>⚽ {a1_1}</div>
             </div>
-            <!-- 3° POSTO -->
             <div class="podium-step podium-3">
-                <div style="font-size: 1.2rem;">🥉 3° Posto</div>
-                <div style="font-size: 0.9rem; margin-top: 8px;">🥅 {p3_1}<br>⚽ {a3_1}</div>
+                <div style="font-size: 1.0rem;">🥉 3° Posto</div>
+                <div style="font-size: 0.8rem; margin-top: 4px;">🥅 {p3_1}<br>⚽ {a3_1}</div>
             </div>
         </div>
         """
@@ -868,14 +821,14 @@ if db["stato"] == "eliminatorie":
         with col_f2:
             pdf_data = genera_pdf_calendario()
             st.download_button(
-                label="📥 Scarica Riepilogo Finale in PDF",
+                label="📥 Scarica Riepilogo PDF",
                 data=pdf_data,
                 file_name="riepilogo_finale_torneo.pdf",
                 mime="application/pdf",
                 use_container_width=True
             )
             if is_admin:
-                if st.button("⬅️ Torna alla gestione eliminatorie", use_container_width=True):
+                if st.button("⬅️ Torna alla gestione", use_container_width=True):
                     fin_partite[0]["giocata"] = False
                     salva_dati(db)
                     st.rerun()
@@ -912,22 +865,18 @@ if db["stato"] == "eliminatorie":
 
                 if m["giocata"]:
                     bg_color = "#ffebee"
-                    stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
+                    stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b>"
                 elif m.get("in_corso", False):
                     bg_color = "#d4edda"
-                    stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
+                    stato_testo = "🔥 <b>IN CORSO</b>"
                 else:
                     bg_color = "#f1f8e9"
                     stato_testo = "⏳ <b>Da giocare</b>"
 
                 st.html(f"""
-                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
-                        <b>📍 Biliardino {tavolo_num}</b><br>
-                        🥅 <b>{m['p1']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a1']}</b><br>
-                        🥅 <b>{m['p2']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a2']}</b><br>
-                        <div style="text-align: center; margin-top: 2px; font-size: 12px;">
-                            {stato_testo}
-                        </div>
+                    <div style="padding: 4px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 4px; margin-bottom: 4px; font-size: 0.85rem;">
+                        <b>📍 Tavolo {tavolo_num}</b> | 🥅 {m['p1']} & ⚽ {m['a1']} vs 🥅 {m['p2']} & ⚽ {m['a2']}
+                        <span style="float: right;">{stato_testo}</span>
                     </div>
                 """)
 
@@ -946,23 +895,14 @@ if db["stato"] == "eliminatorie":
                             st.rerun()
                 
                 if is_admin:
-                    with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
-                        st.html(f"""
-                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
-                                ⚽ Gol: {squadra1_nome}
-                            </div>
-                        """)
+                    with st.expander("⚙️ Risultato", expanded=st.session_state[edit_flag_key]):
+                        st.html(f'<div style="font-size: 0.8rem; font-weight: bold;">Gol: {squadra1_nome}</div>')
                         rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}", label_visibility="collapsed")
                         
-                        st.html(f"""
-                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
-                                ⚽ Gol: {squadra2_nome}
-                            </div>
-                        """)
+                        st.html(f'<div style="font-size: 0.8rem; font-weight: bold; margin-top: 2px;">Gol: {squadra2_nome}</div>')
                         rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}", label_visibility="collapsed")
                         
-                        st.html("<div style='margin-top: 8px;'></div>")
-                        if st.button("💾 Salva Risultato (Admin)", key=f"ef_save_{match_id}", use_container_width=True):
+                        if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
