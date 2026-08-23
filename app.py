@@ -419,7 +419,7 @@ if db["stato"] == "setup":
                             "gol1": 0, "gol2": 0
                         })
                         i += 2
-                    db["turni_partite"].append({"turno": t, "chiuso": True, "partite": partite_turno})
+                    db["turni_partite"].append({"turno": t, "partite": partite_turno})
 
                 salva_dati(db)
                 st.success("Calendario generato!")
@@ -429,24 +429,6 @@ if db["stato"] == "setup":
 if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
-
-    # LOGICA AUTOMATICA PER CHIUDERE O APRIRE I TURNI:
-    # - Se TUTTE le partite sono giocate -> CHIUSO
-    # - Se NESSUNA partita è in corso o giocata (tutte da iniziare) -> CHIUSO
-    # - Se ALMENO UNA partita è in corso -> APERTO (In corso)
-    for turno_obj in db["turni_partite"]:
-        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        almeno_una_iniziata = any(m.get("in_corso", False) for m in turno_obj["partite"])
-        
-        if tutte_giocate:
-            turno_obj["chiuso"] = True
-        elif almeno_una_iniziata:
-            turno_obj["chiuso"] = False
-        else:
-            # Se nessuna è in corso e non sono tutte giocate (quindi non iniziate), forziamo la chiusura
-            turno_obj["chiuso"] = True
-
-    salva_dati(db)
 
     # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME
     if not is_admin and giocatore_selezionato != "-- Seleziona il tuo nome --":
@@ -522,7 +504,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI ---
+    # --- LISTA COMPLETA TURNI DENTRO FINESTRE ESPANDIBILI ---
     st.markdown("### 📅 Partite dei Turni")
 
     for turno_obj in db["turni_partite"]:
@@ -531,75 +513,72 @@ if db["stato"] == "gironi":
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         almeno_una_iniziata = any(m.get("in_corso", False) for m in turno_obj["partite"])
 
+        # Determina l'etichetta e lo stato di apertura della finestra (expander)
         if tutte_giocate:
-            header_bg = "#b0bec5"
             header_text = f"Turno {turno_num} (Completato ✅)"
+            espanso_default = False  # Chiuso quando completato
         elif almeno_una_iniziata:
-            header_bg = "#ffd700"
             header_text = f"Turno {turno_num} (In corso 🔥)"
+            espanso_default = True   # Aperto automaticamente quando in corso
         else:
-            header_bg = "#e0f7fa"
             header_text = f"Turno {turno_num} (Chiuso ⏳)"
+            espanso_default = False  # Chiuso se deve ancora iniziare
 
-        st.markdown(f"#### {header_text}")
+        # Finestra a tendina (expander) per il turno
+        with st.expander(header_text, expanded=espanso_default):
+            for idx, m in enumerate(turno_obj["partite"]):
+                tavolo_num = (idx % num_tavoli) + 1
+                match_id = m['id']
+                
+                if m["giocata"]:
+                    row_class = "match-row-green"
+                    center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
+                elif m.get("in_corso", False):
+                    row_class = "match-row-yellow"
+                    center_content = f"🔥 In corso (Biliardino {tavolo_num})"
+                else:
+                    row_class = "match-row-white"
+                    center_content = "VS"
 
-        # Mostra le partite con la grafica orizzontale pulita
-        for idx, m in enumerate(turno_obj["partite"]):
-            tavolo_num = (idx % num_tavoli) + 1
-            match_id = m['id']
-            
-            if m["giocata"]:
-                row_class = "match-row-green"
-                center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
-            elif m.get("in_corso", False):
-                row_class = "match-row-yellow"
-                center_content = f"🔥 In corso (Biliardino {tavolo_num})"
-            else:
-                row_class = "match-row-white"
-                center_content = "VS"
+                team1_str = f"🥅 {m['p1']} &amp; ⚽ {m['a1']}"
+                team2_str = f"🥅 {m['p2']} &amp; ⚽ {m['a2']}"
 
-            team1_str = f"🥅 {m['p1']} &amp; ⚽ {m['a1']}"
-            team2_str = f"🥅 {m['p2']} &amp; ⚽ {m['a2']}"
+                st.html(f"""
+                    <div class="{row_class}">
+                        <div class="team-left">{team1_str}</div>
+                        <div class="match-center">{center_content}</div>
+                        <div class="team-right">{team2_str}</div>
+                    </div>
+                """)
 
-            st.html(f"""
-                <div class="{row_class}">
-                    <div class="team-left">{team1_str}</div>
-                    <div class="match-center">{center_content}</div>
-                    <div class="team-right">{team2_str}</div>
-                </div>
-            """)
-
-            # Sezione Admin per avviare/fermare o modificare il risultato
-            if is_admin:
-                col_adm1, col_adm2 = st.columns(2)
-                with col_adm1:
-                    if not m["giocata"]:
-                        if m.get("in_corso", False):
-                            if st.button(f"⏹️ Ferma Biliardino {tavolo_num}", key=f"stop_{match_id}", use_container_width=True):
-                                m["in_corso"] = False
+                # Sezione Admin per avviare/fermare o modificare il risultato
+                if is_admin:
+                    col_adm1, col_adm2 = st.columns(2)
+                    with col_adm1:
+                        if not m["giocata"]:
+                            if m.get("in_corso", False):
+                                if st.button(f"⏹️ Ferma Biliardino {tavolo_num}", key=f"stop_{match_id}", use_container_width=True):
+                                    m["in_corso"] = False
+                                    salva_dati(db)
+                                    st.rerun()
+                            else:
+                                if st.button(f"▶️ Avvia Biliardino {tavolo_num}", key=f"start_{match_id}", use_container_width=True):
+                                    m["in_corso"] = True
+                                    salva_dati(db)
+                                    st.rerun()
+                    with col_adm2:
+                        with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num}", expanded=False):
+                            rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
+                            rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
+                            if st.button(f"💾 Salva Risultato", key=f"save_{match_id}", use_container_width=True):
+                                m['gol1'] = rg1
+                                m['gol2'] = rg2
+                                m['giocata'] = True
+                                m['in_corso'] = False
+                                ricalcola_classifiche()
                                 salva_dati(db)
+                                st.success("Salvato!")
                                 st.rerun()
-                        else:
-                            if st.button(f"▶️ Avvia Biliardino {tavolo_num}", key=f"start_{match_id}", use_container_width=True):
-                                m["in_corso"] = True
-                                turno_obj["chiuso"] = False
-                                salva_dati(db)
-                                st.rerun()
-                with col_adm2:
-                    with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num}", expanded=False):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
-                        if st.button(f"💾 Salva Risultato", key=f"save_{match_id}", use_container_width=True):
-                            m['gol1'] = rg1
-                            m['gol2'] = rg2
-                            m['giocata'] = True
-                            m['in_corso'] = False
-                            ricalcola_classifiche()
-                            salva_dati(db)
-                            st.success("Salvato!")
-                            st.rerun()
-
-        st.markdown("")
 
     if is_admin:
         st.markdown("---")
@@ -692,15 +671,11 @@ if db["stato"] == "eliminatorie":
         st.subheader("🏆 Fase a Eliminazione Diretta")
         
         for f_turno in fasi:
-            st.markdown(f"### 🔥 {f_turno['nome']}")
             tutti_giocati = True
             vincitori_turno = []
             perdenti_turno = []
             
             for idx, m in enumerate(f_turno["partite"]):
-                tavolo_num = (idx % num_tavoli) + 1
-                match_id = m['id']
-                
                 if m.get("giocata", False):
                     if m["gol1"] >= m["gol2"]:
                         vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
@@ -711,49 +686,68 @@ if db["stato"] == "eliminatorie":
                 else:
                     tutti_giocati = False
 
-                if m["giocata"]:
-                    row_class = "match-row-green"
-                    center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
-                elif m.get("in_corso", False):
-                    row_class = "match-row-yellow"
-                    center_content = f"🔥 In corso (Biliardino {tavolo_num})"
-                else:
-                    row_class = "match-row-white"
-                    center_content = "VS"
+            # Espander per le fasi finali
+            almeno_una_ef_corso = any(m.get("in_corso", False) for m in f_turno["partite"])
+            ef_chiuse = tutti_giocati
+            
+            if ef_chiuse:
+                ef_header = f"🔥 {f_turno['nome']} (Completato ✅)"
+                ef_exp = False
+            elif almeno_una_ef_corso:
+                ef_header = f"🔥 {f_turno['nome']} (In corso 🔥)"
+                ef_exp = True
+            else:
+                ef_header = f"🔥 {f_turno['nome']} (Chiuso ⏳)"
+                ef_exp = False
 
-                st.html(f"""
-                    <div class="{row_class}">
-                        <div class="team-left">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
-                        <div class="match-center">{center_content}</div>
-                        <div class="team-right">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
-                    </div>
-                """)
+            with st.expander(ef_header, expanded=ef_exp):
+                for idx, m in enumerate(f_turno["partite"]):
+                    tavolo_num = (idx % num_tavoli) + 1
+                    match_id = m['id']
 
-                if is_admin:
-                    col_ea1, col_ea2 = st.columns(2)
-                    with col_ea1:
-                        if not m["giocata"]:
-                            if m.get("in_corso", False):
-                                if st.button(f"⏹️ Ferma Biliardino {tavolo_num}", key=f"ef_stop_{match_id}", use_container_width=True):
-                                    m["in_corso"] = False
+                    if m["giocata"]:
+                        row_class = "match-row-green"
+                        center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
+                    elif m.get("in_corso", False):
+                        row_class = "match-row-yellow"
+                        center_content = f"🔥 In corso (Biliardino {tavolo_num})"
+                    else:
+                        row_class = "match-row-white"
+                        center_content = "VS"
+
+                    st.html(f"""
+                        <div class="{row_class}">
+                            <div class="team-left">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
+                            <div class="match-center">{center_content}</div>
+                            <div class="team-right">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
+                        </div>
+                    """)
+
+                    if is_admin:
+                        col_ea1, col_ea2 = st.columns(2)
+                        with col_ea1:
+                            if not m["giocata"]:
+                                if m.get("in_corso", False):
+                                    if st.button(f"⏹️ Ferma Biliardino {tavolo_num}", key=f"ef_stop_{match_id}", use_container_width=True):
+                                        m["in_corso"] = False
+                                        salva_dati(db)
+                                        st.rerun()
+                                else:
+                                    if st.button(f"▶️ Avvia Biliardino {tavolo_num}", key=f"ef_start_{match_id}", use_container_width=True):
+                                        m["in_corso"] = True
+                                        salva_dati(db)
+                                        st.rerun()
+                        with col_ea2:
+                            with st.expander(f"⚙️ Risultato Biliardino {tavolo_num}", expanded=False):
+                                rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
+                                rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
+                                if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
+                                    m['gol1'] = rg1
+                                    m['gol2'] = rg2
+                                    m['giocata'] = True
+                                    m['in_corso'] = False
                                     salva_dati(db)
                                     st.rerun()
-                            else:
-                                if st.button(f"▶️ Avvia Biliardino {tavolo_num}", key=f"ef_start_{match_id}", use_container_width=True):
-                                    m["in_corso"] = True
-                                    salva_dati(db)
-                                    st.rerun()
-                    with col_ea2:
-                        with st.expander(f"⚙️ Risultato Biliardino {tavolo_num}", expanded=False):
-                            rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
-                            rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
-                            if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
-                                m['gol1'] = rg1
-                                m['gol2'] = rg2
-                                m['giocata'] = True
-                                m['in_corso'] = False
-                                salva_dati(db)
-                                st.rerun()
 
             if tutti_giocati and is_admin:
                 if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
