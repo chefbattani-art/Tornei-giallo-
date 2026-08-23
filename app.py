@@ -115,12 +115,12 @@ st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal brow
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
 
-# Scritta testuale con link HTML per ricaricare la pagina all'istante senza bloccare nulla
+# Testo aggiornato con link HTML per ricaricare la pagina all'istante
 st.markdown(
     """
     <div style="padding: 10px; background-color: #f0f2f6; border-radius: 8px; text-align: center; margin-bottom: 20px;">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 16px;">
-            Ricarica la pagina per aggiornare l’andamento della gara
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 15px;">
+            Quando vuoi vedere l’andamento della gara e quando devi giocare ricarica la pagina del browser
         </a>
     </div>
     """,
