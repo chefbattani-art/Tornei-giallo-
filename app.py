@@ -482,10 +482,10 @@ if db["stato"] == "gironi":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
-            # Chiave di sessione dedicata per controllare programmaticamente l'apertura/chiusura della tendina
-            exp_state_key = f"exp_open_{match_id}"
-            if exp_state_key not in st.session_state:
-                st.session_state[exp_state_key] = False
+            # Chiave univoca basata sul match_id per gestire lo stato dell'expander programmaticamente
+            edit_flag_key = f"edit_mode_{match_id}"
+            if edit_flag_key not in st.session_state:
+                st.session_state[edit_flag_key] = False
 
             if m["giocata"]:
                 bg_color = "#ffebee"
@@ -523,8 +523,9 @@ if db["stato"] == "gironi":
                                 salva_dati(db)
                                 st.rerun()
                 with col_l2:
-                    # Utilizziamo lo stato in sessione per controllare l'apertura dell'expander
-                    with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[exp_state_key], key=f"exp_{match_id}"):
+                    # Usiamo l'ID dinamico completo per forzare la ricreazione dell'expander quando cambia lo stato
+                    exp_key_dynamic = f"exp_{match_id}_{st.session_state[edit_flag_key]}"
+                    with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key], key=exp_key_dynamic):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
                         if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
@@ -534,8 +535,8 @@ if db["stato"] == "gironi":
                             m['in_corso'] = False
                             ricalcola_classifiche()
                             salva_dati(db)
-                            # Forza la chiusura immediata della tendina salvando lo stato a False
-                            st.session_state[exp_state_key] = False
+                            # Forziamo a False per chiudere la tendina all'istante
+                            st.session_state[edit_flag_key] = False
                             st.rerun()
             st.markdown("---")
 
@@ -576,9 +577,9 @@ if db["stato"] == "eliminatorie":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
-            exp_state_key = f"ef_exp_open_{match_id}"
-            if exp_state_key not in st.session_state:
-                st.session_state[exp_state_key] = False
+            edit_flag_key = f"ef_edit_mode_{match_id}"
+            if edit_flag_key not in st.session_state:
+                st.session_state[edit_flag_key] = False
 
             if m.get("giocata", False):
                 if m["gol1"] >= m["gol2"]:
@@ -626,7 +627,8 @@ if db["stato"] == "eliminatorie":
                             salva_dati(db)
                             st.rerun()
                 
-                with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[exp_state_key], key=f"ef_exp_{match_id}"):
+                exp_key_dynamic = f"ef_exp_{match_id}_{st.session_state[edit_flag_key]}"
+                with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key], key=exp_key_dynamic):
                     rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
                     rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
                     if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
@@ -635,13 +637,13 @@ if db["stato"] == "eliminatorie":
                         m['giocata'] = True
                         m['in_corso'] = False
                         salva_dati(db)
-                        st.session_state[exp_state_key] = False
+                        st.session_state[edit_flag_key] = False
                         st.rerun()
 
             st.markdown("---")
 
         if tutti_giocati and is_admin:
-            if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
+            if f_turno['nome'] == "Quarti di Finale" da len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
                 if st.button("🚀 Genera Semifinali", use_container_width=True):
                     q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
                     semifinale_partite = [
