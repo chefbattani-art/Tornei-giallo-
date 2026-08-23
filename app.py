@@ -26,7 +26,6 @@ st.markdown("""
         .stMarkdown { margin-bottom: 0px !important; }
         hr { margin: 0.8rem 0px !important; }
         
-        /* Stili per i quadranti unici e le classifiche */
         @keyframes scrollUp {
             0% { transform: translateY(0); }
             50% { transform: translateY(-100px); }
@@ -272,15 +271,14 @@ st.html(
     """
 )
 
-st.markdown(
+st.html(
     """
     <div style="padding: 6px; background-color: #f0f2f6; border-radius: 6px; text-align: center; margin-bottom: 10px;">
         🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 13px;">
             Ricarica la pagina del browser per aggiornare l'andamento in tempo reale
         </a>
     </div>
-    """,
-    unsafe_allow_html=True
+    """
 )
 
 # 1. SETUP
@@ -381,7 +379,7 @@ if db["stato"] == "gironi":
                 </div>
             """
         html_corso += '</div>'
-        st.markdown(html_corso, unsafe_allow_html=True)
+        st.html(html_corso)
 
     # 2. QUADRANTE UNICO VERDE: PROSSIMI IN CODA
     if partite_in_coda:
@@ -396,11 +394,11 @@ if db["stato"] == "gironi":
                 </div>
             """
         html_coda += '</div>'
-        st.markdown(html_coda, unsafe_allow_html=True)
+        st.html(html_coda)
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO, INCORNICIATE E SENZA INDICE
+    # 3. CLASSIFICHE IN TEMPO REALE
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
 
@@ -420,7 +418,7 @@ if db["stato"] == "gironi":
         df_p = pd.DataFrame(data_p)
         
         html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.markdown(f"""
+        st.html(f"""
             <div class="ranking-box">
                 <div class="scrolling-wrapper">
                     <div class="scrolling-content">
@@ -428,7 +426,7 @@ if db["stato"] == "gironi":
                     </div>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
     with col_c2:
         st.markdown("#### ⚽ Attaccanti")
@@ -440,7 +438,7 @@ if db["stato"] == "gironi":
         df_a = pd.DataFrame(data_a)
         
         html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.markdown(f"""
+        st.html(f"""
             <div class="ranking-box">
                 <div class="scrolling-wrapper">
                     <div class="scrolling-content">
@@ -448,21 +446,20 @@ if db["stato"] == "gironi":
                     </div>
                 </div>
             </div>
-        """, unsafe_allow_html=True)
+        """)
 
     st.markdown("---")
 
-    # 4. LISTA COMPLETA TURNI APERTI CON SFONDO DORATO
+    # 4. LISTA COMPLETA TURNI APERTI
     st.markdown("### 📅 Lista Completa Turni")
 
     for turno_obj in db["turni_partite"]:
-        st.markdown(
+        st.html(
             f"""
             <div style="padding: 8px; background-color: #ffd700; border: 2px solid #ffb300; border-radius: 6px; text-align: center; margin-top: 15px; margin-bottom: 10px;">
                 <h3 style="margin: 0; color: #3e2723; font-size: 1.2rem;">TURNO {turno_obj['turno']}</h3>
             </div>
-            """,
-            unsafe_allow_html=True
+            """
         )
 
         for idx, m in enumerate(turno_obj["partite"]):
@@ -479,7 +476,7 @@ if db["stato"] == "gironi":
                 bg_color = "#f1f8e9"
                 stato_testo = "⏳ <b>Da giocare</b>"
 
-            st.markdown(f"""
+            st.html(f"""
                 <div style="padding: 10px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
                     <b>📍 Tavolo {tavolo_num}</b><br>
                     🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
@@ -488,7 +485,7 @@ if db["stato"] == "gironi":
                         {stato_testo}
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            """)
 
             if is_admin:
                 col_l1, col_l2 = st.columns(2)
@@ -572,16 +569,16 @@ if db["stato"] == "eliminatorie":
                 bg_color = "#f1f8e9"
                 stato_testo = "⏳ <b>Da giocare</b>"
 
-            st.markdown(f"""
+            st.html(f"""
                 <div style="padding: 10px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
                     <b>📍 Biliardino {tavolo_num}</b><br>
-                    🥅 **{m['p1']}** &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ **{m['a1']}**<br>
-                    🥅 **{m['p2']}** &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ **{m['a2']}**<br>
+                    🥅 <b>{m['p1']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a1']}</b><br>
+                    🥅 <b>{m['p2']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a2']}</b><br>
                     <div style="text-align: center; margin-top: 6px; font-size: 14px;">
                         {stato_testo}
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            """)
 
             if is_admin:
                 col_a1, col_a2 = st.columns(2)
