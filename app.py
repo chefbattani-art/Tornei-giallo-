@@ -25,6 +25,20 @@ st.markdown("""
         h4 { margin-top: 0.3rem; margin-bottom: 0.3rem; font-size: 1.1rem; }
         .stMarkdown { margin-bottom: 0px !important; }
         hr { margin: 0.8rem 0px !important; }
+        
+        /* Stile per l'effetto scorrimento automatico delle classifiche */
+        @keyframes scrollUp {
+            0% { transform: translateY(0); }
+            50% { transform: translateY(-40px); }
+            100% { transform: translateY(0); }
+        }
+        .scrolling-wrapper {
+            overflow: hidden;
+            height: 230px;
+        }
+        .scrolling-content {
+            animation: scrollUp 10s ease-in-out infinite;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -301,7 +315,67 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # 1. CLASSIFICHE IN TEMPO REALE
+    tutte_attive = []
+    for turno_obj in db["turni_partite"]:
+        for idx, m in enumerate(turno_obj["partite"]):
+            tavolo_num = (idx % num_tavoli) + 1
+            if not m["giocata"]:
+                tutte_attive.append({"turno": turno_obj["turno"], "tavolo": tavolo_num, "m": m})
+
+    partite_in_corso = [item for item in tutte_attive if item["m"].get("in_corso", False)]
+    rimanenti = [item for item in tutte_attive if not item["m"].get("in_corso", False)]
+
+    if not partite_in_corso and rimanenti:
+        partite_in_corso = rimanenti[:num_tavoli]
+        rimanenti = rimanenti[num_tavoli:]
+
+    num_da_mostrare = len(partite_in_corso)
+    partite_in_coda = rimanenti[:num_da_mostrare]
+
+    # 1. SEZIONE PARTITE IN CORSO IN ALTO
+    if partite_in_corso:
+        st.markdown(
+            """
+            <div style="padding: 10px; background-color: #fffde7; border: 2px solid #ffd54f; border-radius: 6px; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #f57f17;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        for item in partite_in_corso:
+            m = item["m"]
+            st.markdown(f"""
+                <div style="padding: 8px; background-color: #d4edda; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
+                    <b>📍 Biliardino {item['tavolo']} (Turno {item['turno']})</b><br>
+                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
+                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
+                    <div style="text-align: center; margin-top: 4px; font-size: 13px;">🔥 <b>PARTITA IN CORSO</b></div>
+                </div>
+            """, unsafe_allow_html=True)
+
+    # 2. SEZIONE PARTITE IN CODA IN ALTO
+    if partite_in_coda:
+        st.markdown(
+            """
+            <div style="padding: 10px; background-color: #e8f5e9; border: 2px solid #81c784; border-radius: 6px; margin-bottom: 10px;">
+                <h4 style="margin: 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        for item in partite_in_coda:
+            m = item["m"]
+            st.markdown(f"""
+                <div style="padding: 8px; background-color: #f1f8e9; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
+                    <b>👉 In Coda (Turno {item['turno']})</b><br>
+                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
+                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
+                </div>
+            """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
+    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
 
@@ -313,9 +387,22 @@ if db["stato"] == "gironi":
             gioc, tot = calcola_partite_giocate('portiere', p)
             data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
         df_p = pd.DataFrame(data_p)
-        def colora_top8(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f9f9f9' for _ in row]
-        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True, height=220)
+        
+        def colora_posizioni(row):
+            # Prime 8 posizioni (indice 0 a 7): verde chiaro. Dalla 9° posizione in poi (indice >= 8): rosso chiaro.
+            if row.name < 8:
+                return ['background-color: #e6f2e6' for _ in row]
+            else:
+                return ['background-color: #fde8e8' for _ in row]
+        
+        html_table_p = df_p.style.apply(colora_posizioni, axis=1).to_html()
+        st.markdown(f"""
+            <div class="scrolling-wrapper">
+                <div class="scrolling-content">
+                    {html_table_p}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     with col_c2:
         st.markdown("#### ⚽ Attaccanti (Top 8)")
@@ -325,17 +412,22 @@ if db["stato"] == "gironi":
             gioc, tot = calcola_partite_giocate('attaccante', a)
             data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
         df_a = pd.DataFrame(data_a)
-        def colora_top8_a(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f9f9f9' for _ in row]
-        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True, height=220)
+        
+        html_table_a = df_a.style.apply(colora_posizioni, axis=1).to_html()
+        st.markdown(f"""
+            <div class="scrolling-wrapper">
+                <div class="scrolling-content">
+                    {html_table_a}
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # 2. LISTA COMPLETA TURNI APERTI CON SFONDO DORATO
+    # 4. LISTA COMPLETA TURNI APERTI CON SFONDO DORATO
     st.markdown("### 📅 Lista Completa Turni")
 
     for turno_obj in db["turni_partite"]:
-        # Intestazione turno dorata in maiuscolo e centrata
         st.markdown(
             f"""
             <div style="padding: 8px; background-color: #ffd700; border: 2px solid #ffb300; border-radius: 6px; text-align: center; margin-top: 15px; margin-bottom: 10px;">
@@ -349,15 +441,14 @@ if db["stato"] == "gironi":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
-            # Controllo stato per il colore del riquadro
             if m["giocata"]:
-                bg_color = "#ffebee" # Rosso chiaro se giocata
+                bg_color = "#ffebee"
                 stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
             elif m.get("in_corso", False):
-                bg_color = "#d4edda" # Verde chiaro se in corso
+                bg_color = "#d4edda"
                 stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
             else:
-                bg_color = "#f1f8e9" # Neutro/Verdino chiaro se da giocare
+                bg_color = "#f1f8e9"
                 stato_testo = "⏳ <b>Da giocare</b>"
 
             st.markdown(f"""
@@ -371,7 +462,6 @@ if db["stato"] == "gironi":
                 </div>
             """, unsafe_allow_html=True)
 
-            # Pulsanti rapidi Admin
             if is_admin:
                 col_l1, col_l2 = st.columns(2)
                 with col_l1:
