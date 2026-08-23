@@ -394,7 +394,7 @@ if db["stato"] == "gironi":
                 st.markdown(f"""
                     <div style="padding: 6px; background-color: {colore_bg}; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px; font-size: 0.9rem;">
                         <b>📍 Tavolo {tavolo_num}</b> — 🥅 {m['p1']} & ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} & ⚽ {m['a2']} 
-                        | Risultato: <b>{m['gol1']} - {m['gol2']}</b> {'(✅)' : '(⏳)' if not m['giocata'] else ''}
+                        | Risultato: <b>{m['gol1']} - {m['gol2']}</b> {'(✅)' if m['giocata'] else '(⏳)'}
                     </div>
                 """, unsafe_allow_html=True)
 
