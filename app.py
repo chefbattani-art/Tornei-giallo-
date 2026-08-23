@@ -184,20 +184,59 @@ elif db["stato"] == "gironi":
     st.subheader("📊 Classifiche e Calendario in Diretta (Gironi)")
     ricalcola_classifiche()
 
+    # --- SEZIONE PROSSIMI IN CODA ---
+    prossima_partita = None
+    for turno_obj in db["turni_partite"]:
+        for m in turno_obj["partite"]:
+            if not m.get("giocata", False) and not m.get("in_corso", False):
+                prossima_partita = (turno_obj['turno'], m)
+                break
+        if prossima_partita:
+            break
+
+    if prossima_partita:
+        t_num, pm = prossima_partita
+        st.success(f"📢 **PROSSIMI IN CODA (Turno {t_num})**  \n"
+                    f"🥅 **{pm['p1']}** & ⚽ **{pm['a1']}**  **VS**  🥅 **{pm['p2']}** & ⚽ **{pm['a2']}**  \n"
+                    f"👉 *Preparatevi ad andare al prossimo biliardino disponibile!*")
+
     st.markdown("### 🏆 Classifiche in Tempo Reale")
+    
+    def colora_zona_qualificazione(val):
+        try:
+            pos = int(str(val).replace("°", ""))
+            if pos <= 8:
+                return 'background-color: #d4edda; color: #155724; font-weight: bold;'
+            else:
+                return 'background-color: #f8d7da; color: #721c24;'
+        except:
+            return ''
+
     col_c1, col_c2 = st.columns(2)
 
     with col_c1:
-        st.markdown("#### 🥅 Classifica Portieri")
+        st.markdown("#### 🥅 Classifica Portieri (Top 8)")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
         data_p = [{"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{calcola_partite_giocate('portiere', p)[0]}/{calcola_partite_giocate('portiere', p)[1]}"} for idx, (p, pt) in enumerate(sorted_p)]
-        st.dataframe(pd.DataFrame(data_p), hide_index=True, use_container_width=True)
+        
+        df_p = pd.DataFrame(data_p)
+        if not df_p.empty:
+            df_p_styled = df_p.style.map(colora_zona_qualificazione, subset=["Pos"])
+            st.dataframe(df_p_styled, hide_index=True, use_container_width=True)
+        else:
+            st.dataframe(df_p, hide_index=True, use_container_width=True)
 
     with col_c2:
-        st.markdown("#### ⚽ Classifica Attaccanti")
+        st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
         data_a = [{"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{calcola_partite_giocate('attaccante', a)[0]}/{calcola_partite_giocate('attaccante', a)[1]}"} for idx, (a, pt) in enumerate(sorted_a)]
-        st.dataframe(pd.DataFrame(data_a), hide_index=True, use_container_width=True)
+        
+        df_a = pd.DataFrame(data_a)
+        if not df_a.empty:
+            df_a_styled = df_a.style.map(colora_zona_qualificazione, subset=["Pos"])
+            st.dataframe(df_a_styled, hide_index=True, use_container_width=True)
+        else:
+            st.dataframe(df_a, hide_index=True, use_container_width=True)
 
     st.markdown("---")
     st.markdown("### 📅 Calendario Partite")
@@ -269,12 +308,10 @@ elif db["stato"] == "eliminatorie":
     
     for f_turno in db["fasi_finali"]:
         st.markdown(f"### 🔥 {f_turno['nome']} (Turno {f_turno['turno']})")
-        turno_completato = True
         
         for idx, m in enumerate(f_turno["partite"]):
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
-            if not m["giocata"]: turno_completato = False
 
             st.markdown(f"**📍 Biliardino {tavolo_num}**")
             col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
