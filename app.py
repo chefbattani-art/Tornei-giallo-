@@ -5,6 +5,7 @@ import os
 import re
 import random
 from streamlit_autorefresh import st_autorefresh
+from base64 import b64encode
 from fpdf import FPDF
 
 st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
@@ -29,6 +30,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 DB_FILE = "torneo_data.json"
+LOGO_FILE = "logo_uisp.png"
 
 def carica_dati():
     dati_default = {
@@ -205,20 +207,34 @@ st.sidebar.markdown("---")
 st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
 
 # --- INTERFACCIA PRINCIPALE ---
-# Logo UISP incorporato in alto
-logo_b64 = f"{b64_string}"
-st.markdown(
-    f"""
-    <div style="text-align: center; margin-bottom: 15px;">
-        <img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" />
-        <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
-            <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-            <p style="margin: 5px 0 0 0; font-size: 1.1rem; color: #0d47a1; font-weight: bold;">📜 Regolamento Ufficiale: 3 Tocchi UISP</p>
+# Caricamento dinamico del logo in base64 se presente nella cartella
+if os.path.exists(LOGO_FILE):
+    with open(LOGO_FILE, "rb") as f:
+        logo_b64 = b64encode(f.read()).decode("utf-8")
+    st.markdown(
+        f"""
+        <div style="text-align: center; margin-bottom: 15px;">
+            <img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" />
+            <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
+                <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+                <p style="margin: 5px 0 0 0; font-size: 1.1rem; color: #0d47a1; font-weight: bold;">📜 Regolamento Ufficiale: 3 Tocchi UISP</p>
+            </div>
         </div>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
+        """,
+        unsafe_allow_html=True
+    )
+else:
+    st.markdown(
+        """
+        <div style="text-align: center; margin-bottom: 15px;">
+            <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
+                <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+                <p style="margin: 5px 0 0 0; font-size: 1.1rem; color: #0d47a1; font-weight: bold;">📜 Regolamento Ufficiale: 3 Tocchi UISP</p>
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
 
 st.markdown(
     """
