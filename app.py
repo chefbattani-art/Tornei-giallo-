@@ -439,7 +439,7 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # --- AGGIORNAMENTO STATO TURNO IN TEMPO REALE (SPOSTATO ALL'INIZIO) ---
+    # --- AGGIORNAMENTO STATO TURNO IN TEMPO REALE ---
     for turno_obj in db["turni_partite"]:
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
@@ -493,7 +493,8 @@ if db["stato"] == "gironi":
                     </div>
             """)
             
-            if is_admin:
+            # BLOCCO: SE LA PARTITA NON È GIOCATA SI POSSONO INSERIRE I GOL, ALTRIMENTI SPARISCONO I COMANDI
+            if not m.get("giocata", False):
                 st.html(f"""
                     <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
                         ⚽ Gol: {squadra1_nome}
@@ -524,7 +525,9 @@ if db["stato"] == "gironi":
                     salva_dati(db)
                     st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
                     st.rerun()
-            
+            else:
+                st.info("✅ Partita già conclusa e salvata. Risultato blindato.")
+
             st.html('</div>')
         st.html('</div>')
 
@@ -593,7 +596,6 @@ if db["stato"] == "gironi":
 
     st.markdown("### 📅 Lista Completa Turni")
 
-    # Renderizzazione dei turni con etichette corrette: Da iniziare / In corso / Completato
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
         is_chiuso = turno_obj.get("chiuso", True)
@@ -661,23 +663,23 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
-                if is_admin:
-                    col_l1, col_l2 = st.columns(2)
-                    with col_l1:
-                        if not m["giocata"]:
-                            if m.get("in_corso", False):
-                                if st.button("⏹️ Ferma", key=f"list_stop_{match_id}", use_container_width=True):
-                                    m["in_corso"] = False
-                                    salva_dati(db)
-                                    st.rerun()
-                            else:
-                                if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
-                                    m["in_corso"] = True
-                                    turno_obj["chiuso"] = False
-                                    salva_dati(db)
-                                    st.rerun()
-                    with col_l2:
-                        with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
+                col_l1, col_l2 = st.columns(2)
+                with col_l1:
+                    if is_admin and not m["giocata"]:
+                        if m.get("in_corso", False):
+                            if st.button("⏹️ Ferma", key=f"list_stop_{match_id}", use_container_width=True):
+                                m["in_corso"] = False
+                                salva_dati(db)
+                                st.rerun()
+                        else:
+                            if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
+                                m["in_corso"] = True
+                                turno_obj["chiuso"] = False
+                                salva_dati(db)
+                                st.rerun()
+                with col_l2:
+                    if is_admin:
+                        with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
                             st.html(f"""
                                 <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
                                     ⚽ Gol: {squadra1_nome}
@@ -693,7 +695,7 @@ if db["stato"] == "gironi":
                             rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}", label_visibility="collapsed")
                             
                             st.html("<div style='margin-top: 8px;'></div>")
-                            if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
+                            if st.button("💾 Salva Risultato (Admin)", key=f"list_save_{match_id}", use_container_width=True):
                                 m['gol1'] = rg1
                                 m['gol2'] = rg2
                                 m['giocata'] = True
@@ -852,22 +854,22 @@ if db["stato"] == "eliminatorie":
                     </div>
                 """)
 
+                col_a1, col_a2 = st.columns(2)
+                with col_a1:
+                    if is_admin and not m.get("in_corso", False) and not m["giocata"]:
+                        if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
+                            m["in_corso"] = True
+                            salva_dati(db)
+                            st.rerun()
+                with col_a2:
+                    if is_admin and m.get("in_corso", False):
+                        if st.button("⏹️ Ferma", key=f"ef_stop_{match_id}", use_container_width=True):
+                            m["in_corso"] = False
+                            salva_dati(db)
+                            st.rerun()
+                
                 if is_admin:
-                    col_a1, col_a2 = st.columns(2)
-                    with col_a1:
-                        if not m.get("in_corso", False) and not m["giocata"]:
-                            if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
-                                m["in_corso"] = True
-                                salva_dati(db)
-                                st.rerun()
-                    with col_a2:
-                        if m.get("in_corso", False):
-                            if st.button("⏹️ Ferma", key=f"ef_stop_{match_id}", use_container_width=True):
-                                m["in_corso"] = False
-                                salva_dati(db)
-                                st.rerun()
-                    
-                    with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
+                    with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
                         st.html(f"""
                             <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
                                 ⚽ Gol: {squadra1_nome}
@@ -883,7 +885,7 @@ if db["stato"] == "eliminatorie":
                         rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}", label_visibility="collapsed")
                         
                         st.html("<div style='margin-top: 8px;'></div>")
-                        if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
+                        if st.button("💾 Salva Risultato (Admin)", key=f"ef_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
