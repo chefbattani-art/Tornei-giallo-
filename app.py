@@ -35,7 +35,6 @@ st.markdown("""
             margin-top: 2px;
         }
         
-        /* Gestione larghezza colonne tabelle classifiche con DR */
         .ranking-box table {
             width: 100% !important;
             table-layout: fixed !important;
@@ -150,14 +149,12 @@ def ricalcola_classifiche():
                 else:
                     pt_s1, pt_s2 = 2, 2
                 
-                # Squadra 1
                 p_punti[m['p1']] = p_punti.get(m['p1'], 0) + pt_s1
                 p_dr[m['p1']] = p_dr.get(m['p1'], 0) + (g1 - g2)
                 
                 a_punti[m['a1']] = a_punti.get(m['a1'], 0) + pt_s1
                 a_dr[m['a1']] = a_dr.get(m['a1'], 0) + (g1 - g2)
                 
-                # Squadra 2
                 p_punti[m['p2']] = p_punti.get(m['p2'], 0) + pt_s2
                 p_dr[m['p2']] = p_dr.get(m['p2'], 0) + (g2 - g1)
                 
@@ -485,6 +482,11 @@ if db["stato"] == "gironi":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
+            # Chiave di sessione dedicata per controllare programmaticamente l'apertura/chiusura della tendina
+            exp_state_key = f"exp_open_{match_id}"
+            if exp_state_key not in st.session_state:
+                st.session_state[exp_state_key] = False
+
             if m["giocata"]:
                 bg_color = "#ffebee"
                 stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
@@ -521,9 +523,8 @@ if db["stato"] == "gironi":
                                 salva_dati(db)
                                 st.rerun()
                 with col_l2:
-                    # L'expander appare solo se la partita NON è ancora giocata o se l'admin vuole modificarla.
-                    # Una volta salvata, la tendina si chiude e sparisce in automatico grazie al ricaricamento.
-                    with st.expander(f"⚙️ Gestisci Risultato", key=f"exp_{match_id}"):
+                    # Utilizziamo lo stato in sessione per controllare l'apertura dell'expander
+                    with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[exp_state_key], key=f"exp_{match_id}"):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
                         if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
@@ -533,6 +534,8 @@ if db["stato"] == "gironi":
                             m['in_corso'] = False
                             ricalcola_classifiche()
                             salva_dati(db)
+                            # Forza la chiusura immediata della tendina salvando lo stato a False
+                            st.session_state[exp_state_key] = False
                             st.rerun()
             st.markdown("---")
 
@@ -572,6 +575,10 @@ if db["stato"] == "eliminatorie":
         for idx, m in enumerate(f_turno["partite"]):
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
+            
+            exp_state_key = f"ef_exp_open_{match_id}"
+            if exp_state_key not in st.session_state:
+                st.session_state[exp_state_key] = False
 
             if m.get("giocata", False):
                 if m["gol1"] >= m["gol2"]:
@@ -619,7 +626,7 @@ if db["stato"] == "eliminatorie":
                             salva_dati(db)
                             st.rerun()
                 
-                with st.expander("⚙️ Gestisci Risultato", key=f"ef_exp_{match_id}"):
+                with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[exp_state_key], key=f"ef_exp_{match_id}"):
                     rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
                     rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
                     if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
@@ -628,6 +635,7 @@ if db["stato"] == "eliminatorie":
                         m['giocata'] = True
                         m['in_corso'] = False
                         salva_dati(db)
+                        st.session_state[exp_state_key] = False
                         st.rerun()
 
             st.markdown("---")
