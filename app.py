@@ -18,8 +18,8 @@ def carica_dati():
         "stato": "setup",
         "portieri": [],
         "attaccanti": [],
-        "num_tavoli": 2,
-        "partite_per_giocatore": 5,
+        "num_tavoli": 3,
+        "partite_per_giocatore": 6,
         "admin_pin": "0000",
         "turni_partite": [], 
         "punti_portieri": {},
@@ -102,7 +102,7 @@ def genera_pdf_calendario():
     pdf.cell(0, 10, "Torneo Biliardino 'Giallo' - Schema Partite", 0, 1, "C")
     pdf.ln(5)
     
-    num_tavoli = db.get("num_tavoli", 2)
+    num_tavoli = db.get("num_tavoli", 3)
     
     for turno_obj in db["turni_partite"]:
         pdf.set_font("Arial", "B", 12)
@@ -242,77 +242,115 @@ if db["stato"] == "setup":
 
 # 2. GIRONI
 if db["stato"] == "gironi":
-    st.subheader("📊 Classifiche e Calendario in Diretta")
+    st.subheader("📊 Classifiche e Calendario in Diretta (Gironi)")
     ricalcola_classifiche()
+    num_tavoli = db.get("num_tavoli", 3)
 
-    num_tavoli = db.get("num_tavoli", 2)
+    # Raccogliamo partite in corso e in coda
+    partite_in_corso = []
+    partite_in_coda = []
 
+    for turno_obj in db["turni_partite"]:
+        for idx, m in enumerate(turno_obj["partite"]):
+            tavolo_num = (idx % num_tavoli) + 1
+            if not m["giocata"]:
+                info_m = {"turno": turno_obj["turno"], "tavolo": tavolo_num, "m": m}
+                if m.get("in_corso", False):
+                    partite_in_corso.append(info_m)
+                else:
+                    partite_in_coda.append(info_m)
+
+    if partite_in_corso:
+        st.markdown(
+            """
+            <div style="padding: 12px; background-color: #fff9e6; border-left: 5px solid #ffcc00; border-radius: 4px; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: #b38600;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        for item in partite_in_corso:
+            m = item["m"]
+            match_id = m['id']
+            st.markdown(f"📍 **Biliardino {item['tavolo']} (Turno {item['turno']}):** 🥅 {m['p1']} & ⚽ {m['a1']} **VS** 🥅 {m['p2']} & ⚽ {m['a2']}")
+            if is_admin:
+                col_btn1, col_btn2 = st.columns(2)
+                with col_btn1:
+                    if st.button("⏹️ Ferma", key=f"stop_{match_id}", use_container_width=True):
+                        m["in_corso"] = False
+                        salva_dati(db)
+                        st.rerun()
+                with col_btn2:
+                    with st.expander("⚙️ Risultato"):
+                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"rg1_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"rg2_{match_id}")
+                        if st.button("💾 Salva", key=f"save_{match_id}", use_container_width=True):
+                            m['gol1'] = rg1
+                            m['gol2'] = rg2
+                            m['giocata'] = True
+                            m['in_corso'] = False
+                            ricalcola_classifiche()
+                            salva_dati(db)
+                            st.success("Salvato!")
+                            st.rerun()
+            st.markdown("---")
+
+    if partite_in_coda:
+        st.markdown(
+            """
+            <div style="padding: 12px; background-color: #e6f7ff; border-left: 5px solid #1890ff; border-radius: 4px; margin-bottom: 15px;">
+                <h4 style="margin: 0; color: #0050b3;">📢 PROSSIMI IN CODA (Preparatevi):</h4>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+        for item in partite_in_coda[:6]:
+            m = item["m"]
+            match_id = m['id']
+            col_c1, col_c2 = st.columns([5, 1])
+            with col_c1:
+                st.markdown(f"👉 In Coda (Turno {item['turno']}): 🥅 {m['p1']} & ⚽ {m['a1']} **VS** 🥅 {m['p2']} & ⚽ {m['a2']}")
+            with col_c2:
+                if is_admin:
+                    if st.button("▶️ Avvia", key=f"start_{match_id}", use_container_width=True):
+                        m["in_corso"] = True
+                        salva_dati(db)
+                        st.rerun()
+
+    st.markdown("---")
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
 
     with col_c1:
         st.markdown("#### 🥅 Classifica Portieri (Top 8)")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
-        data_p = [{"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{calcola_partite_giocate('portiere', p)[0]}/{calcola_partite_giocate('portiere', p)[1]}"} for idx, (p, pt) in enumerate(sorted_p)]
+        data_p = []
+        for idx, (p, pt) in enumerate(sorted_p):
+            gioc, tot = calcola_partite_giocate('portiere', p)
+            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+        
         df_p = pd.DataFrame(data_p)
-        st.dataframe(df_p, hide_index=True, use_container_width=True)
+        def colora_top8(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True)
 
     with col_c2:
         st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
-        data_a = [{"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{calcola_partite_giocate('attaccante', a)[0]}/{calcola_partite_giocate('attaccante', a)[1]}"} for idx, (a, pt) in enumerate(sorted_a)]
+        data_a = []
+        for idx, (a, pt) in enumerate(sorted_a):
+            gioc, tot = calcola_partite_giocate('attaccante', a)
+            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+            
         df_a = pd.DataFrame(data_a)
-        st.dataframe(df_a, hide_index=True, use_container_width=True)
+        def colora_top8_a(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True)
 
-    st.markdown("---")
-    st.markdown("### 📅 Calendario Partite Gironi")
-
-    for turno_obj in db["turni_partite"]:
-        st.markdown(f"### 🚩 Turno {turno_obj['turno']}")
-        for idx, m in enumerate(turno_obj["partite"]):
-            tavolo_num = (idx % num_tavoli) + 1
-            match_id = m['id']
-
-            st.markdown(f"**📍 Biliardino {tavolo_num}**")
-            col_s1, col_mid, col_s2 = st.columns([4, 2.5, 4], gap="small")
-            
-            with col_s1:
-                st.info(f"🥅 **{m['p1']}**\n\n⚽ **{m['a1']}**")
-            
-            with col_mid:
-                if m["giocata"]:
-                    st.error(f"🛑 **{m['gol1']} - {m['gol2']}**")
-                elif m.get("in_corso", False):
-                    st.warning("🔥 **In Corso**")
-                else:
-                    st.write("**VS**")
-                    if is_admin:
-                        if st.button("▶️ Avvia", key=f"btn_avvia_{match_id}", use_container_width=True):
-                            m["in_corso"] = True
-                            salva_dati(db)
-                            st.rerun()
-
-            with col_s2:
-                st.info(f"🥅 **{m['p2']}**\n\n⚽ **{m['a2']}**")
-            
-            if is_admin:
-                with st.expander("⚙️ Gestisci Risultato"):
-                    rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"rg1_{match_id}")
-                    rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"rg2_{match_id}")
-                    if st.button("💾 Salva", key=f"save_{match_id}", use_container_width=True):
-                        m['gol1'] = rg1
-                        m['gol2'] = rg2
-                        m['giocata'] = True
-                        m['in_corso'] = False
-                        ricalcola_classifiche()
-                        salva_dati(db)
-                        st.success("Salvato!")
-                        st.rerun()
-            st.markdown("---")
-            
     if is_admin:
+        st.markdown("---")
         st.markdown("### ⚡ Passaggio alle Fasi Finali")
-        if st.button("🏆 Avvia Quarti di Finale", use_container_width=True):
+        if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
             top_p = [p[0] for p in sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)[:8]]
             top_a = [a[0] for a in sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)[:8]]
             
@@ -330,7 +368,7 @@ if db["stato"] == "gironi":
 # 3. ELIMINATORIE
 if db["stato"] == "eliminatorie":
     st.subheader("🏆 Fase a Eliminazione Diretta")
-    num_tavoli = db.get("num_tavoli", 2)
+    num_tavoli = db.get("num_tavoli", 3)
     fasi = db["fasi_finali"]
     
     for f_idx, f_turno in enumerate(fasi):
@@ -392,7 +430,7 @@ if db["stato"] == "eliminatorie":
 
         if tutti_giocati and is_admin:
             if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
-                if st.button("🚀 Genera Semifinali", use_container_width=True):
+                if st.button("🚀 Genera Semifinali (Incrociate)", use_container_width=True):
                     q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
                     semifinale_partite = [
                         {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
@@ -404,7 +442,7 @@ if db["stato"] == "eliminatorie":
                     st.rerun()
 
             elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
-                if st.button("🏁 Genera Finali", use_container_width=True):
+                if st.button("🏁 Genera Finali (1°-2° e 3°-4° Posto)", use_container_width=True):
                     sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
                     sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
                     finali_partite = [
