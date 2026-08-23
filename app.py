@@ -455,19 +455,37 @@ if db["stato"] == "gironi":
     partite_in_coda = rimanenti[:num_da_mostrare]
 
     if partite_in_corso:
-        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
+        st.html('<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso:
             m = item["m"]
-            html_corso += f"""
+            match_id = m['id']
+            st.html(f"""
                 <div class="sub-card-green">
                     <b>📍 Biliardino {item['tavolo']} (Turno {item['turno']})</b><br>
                     🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
                     🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
-                    <div style="text-align: center; margin-top: 2px; font-size: 12px;">🔥 <b>PARTITA IN CORSO</b></div>
                 </div>
-            """
-        html_corso += '</div>'
-        st.html(html_corso)
+            """)
+            
+            # Se siamo admin, inseriamo direttamente i comandi per inserire i gol e salvare
+            if is_admin:
+                col_g1, col_g2 = st.columns(2)
+                with col_g1:
+                    g1_input = st.number_input(f"Gol S1 ({m['p1']} / {m['a1']})", min_value=0, max_value=20, value=int(m.get('gol1', 0)), key=f"live_g1_{match_id}")
+                with col_g2:
+                    g2_input = st.number_input(f"Gol S2 ({m['p2']} / {m['a2']})", min_value=0, max_value=20, value=int(m.get('gol2', 0)), key=f"live_g2_{match_id}")
+                
+                if st.button(f"💾 Salva Risultato Biliardino {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
+                    m['gol1'] = g1_input
+                    m['gol2'] = g2_input
+                    m['giocata'] = True
+                    m['in_corso'] = False
+                    ricalcola_classifiche()
+                    salva_dati(db)
+                    st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
+                    st.rerun()
+            st.markdown("<hr style='margin: 4px 0;'>", unsafe_allow_html=True)
+        st.html('</div>')
 
     if partite_in_coda:
         html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
@@ -588,8 +606,8 @@ if db["stato"] == "gironi":
                                 st.rerun()
                 with col_l2:
                     with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
+                        rg1 = st.radio("Gol S1", list(range(15)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(15)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
                         if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
@@ -759,8 +777,8 @@ if db["stato"] == "eliminatorie":
                                 st.rerun()
                     
                     with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
+                        rg1 = st.radio("Gol S1", list(range(15)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
+                        rg2 = st.radio("Gol S2", list(range(15)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
                         if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
