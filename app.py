@@ -503,7 +503,7 @@ if db["stato"] == "gironi":
                     m['giocata'] = True
                     m['in_corso'] = False
                     
-                    # Verifica se tutte le partite del turno sono completate, in tal caso chiudilo
+                    # Verifica automatica chiusura turno
                     for t_obj in db["turni_partite"]:
                         if t_obj["turno"] == item["turno"]:
                             if all(pt.get("giocata", False) for pt in t_obj["partite"]):
@@ -582,18 +582,30 @@ if db["stato"] == "gironi":
 
     st.markdown("### 📅 Lista Completa Turni")
 
+    # Aggiornamento automatico dello stato di chiusura di ogni turno
     for turno_obj in db["turni_partite"]:
-        turno_num = turno_obj['turno']
-        tutte_giocate_turno = all(m.get("giocata", False) for m in turno_obj["partite"])
-        
-        if tutte_giocate_turno and not turno_obj.get("chiuso", False):
+        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        if tutte_giocate:
             turno_obj["chiuso"] = True
 
+    # Trova automaticamente il primo turno non ancora completato da tenere aperto in automatico
+    primo_turno_aperto_trovato = False
+    for turno_obj in db["turni_partite"]:
+        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        if not tutte_giocate and not primo_turno_aperto_trovato:
+            turno_obj["chiuso"] = False
+            primo_turno_aperto_trovato = True
+
+    salva_dati(db)
+
+    # Renderizzazione dei turni con apertura automatica per quello in corso
+    for turno_obj in db["turni_partite"]:
+        turno_num = turno_obj['turno']
         is_chiuso = turno_obj.get("chiuso", False)
 
         header_bg = "#b0bec5" if is_chiuso else "#ffd700"
         header_border = "#78909c" if is_chiuso else "#ffb300"
-        header_text = f"TURNO {turno_num} (Completato ✅)" if is_chiuso else f"TURNO {turno_num}"
+        header_text = f"TURNO {turno_num} (Completato ✅)" if is_chiuso else f"TURNO {turno_num} (In Corso 🔥)"
 
         st.html(
             f"""
@@ -603,7 +615,6 @@ if db["stato"] == "gironi":
             """
         )
 
-        # Pulsante Admin per riaprire un turno chiuso
         if is_chiuso and is_admin:
             if st.button(f"🔓 Riapri Turno {turno_num} per modifiche", key=f"riapri_t_{turno_num}", use_container_width=True):
                 turno_obj["chiuso"] = False
@@ -611,7 +622,7 @@ if db["stato"] == "gironi":
                 st.success(f"Turno {turno_num} riaperto!")
                 st.rerun()
 
-        # Mostra le partite del turno (apribile tramite expander o direttamente visibile se aperto)
+        # Espande in automatico se NON è chiuso (cioè il turno corrente/attivo)
         with st.expander(f"👁️ Visualizza partite Turno {turno_num}", expanded=not is_chiuso):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
