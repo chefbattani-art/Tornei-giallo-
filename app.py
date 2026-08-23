@@ -107,7 +107,6 @@ st.markdown("""
             background-color: #ffe082;
             margin-bottom: 10px;
         }
-        /* Stile avanzato per tabelle classifiche a tutto schermo e centrate */
         .ranking-card {
             background: #ffffff;
             border: 2px solid #90caf9;
@@ -663,16 +662,28 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI DENTRO FINESTRE ESPANDIBILI ---
+    # --- LISTA COMPLETA TURNI (APERTI SOLO SE IN CORSO, CHIUSI SE DA GIOCARE O COMPLETATI) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
 
-        header_text = f"Turno {turno_num} (Completato ✅)" if tutte_giocate else f"Turno {turno_num} (In corso / Da giocare ⏳)"
+        # Determina se il turno è "in corso" (almeno una partita giocata, ma non tutte)
+        in_corso = alcuna_giocata and not tutte_giocate
 
-        with st.expander(header_text, expanded=False):
+        if tutte_giocate:
+            header_text = f"Turno {turno_num} (Completato ✅)"
+            espanso_default = False  # Chiuso se completato
+        elif in_corso:
+            header_text = f"Turno {turno_num} (In corso ⏳)"
+            espanso_default = True   # APERTO SOLO SE IN CORSO
+        else:
+            header_text = f"Turno {turno_num} (Da giocare ⏳)"
+            espanso_default = False  # Chiuso se completamente da giocare
+
+        with st.expander(header_text, expanded=espanso_default):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
                 match_id = m['id']
@@ -800,6 +811,7 @@ if db["stato"] == "eliminatorie":
         
         for f_turno in fasi:
             tutti_giocati = True
+            alcuna_giocata_ef = any(m.get("giocata", False) for m in f_turno["partite"])
             vincitori_turno = []
             perdenti_turno = []
             
@@ -815,9 +827,16 @@ if db["stato"] == "eliminatorie":
                     tutti_giocati = False
 
             ef_chiuse = tutti_giocati
-            ef_header = f"🔥 {f_turno['nome']} (Completato ✅)" if ef_chiuse else f"🔥 {f_turno['nome']} (In corso / Da giocare ⏳)"
+            ef_in_corso = alcuna_giocata_ef and not tutti_giocati
+            
+            if ef_chiuse:
+                ef_header = f"🔥 {f_turno['nome']} (Completato ✅)"
+            elif ef_in_corso:
+                ef_header = f"🔥 {f_turno['nome']} (In corso ⏳)"
+            else:
+                ef_header = f"🔥 {f_turno['nome']} (Da giocare ⏳)"
 
-            with st.expander(ef_header, expanded=False):
+            with st.expander(ef_header, expanded=ef_in_corso):
                 for idx, m in enumerate(f_turno["partite"]):
                     tavolo_num = (idx % num_tavoli) + 1
                     match_id = m['id']
