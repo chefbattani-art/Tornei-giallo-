@@ -184,10 +184,24 @@ elif db["stato"] == "gironi":
     st.subheader("📊 Classifiche e Calendario in Diretta (Gironi)")
     ricalcola_classifiche()
 
-    # --- SEZIONE PROSSIMI IN CODA (Incolonnati uno sotto l'altro) ---
     num_tavoli = db.get("num_tavoli", 2)
+
+    # --- 1. SEZIONE PARTITE IN CORSO (In alto) ---
+    partite_in_corso = []
+    for turno_obj in db["turni_partite"]:
+        for idx, m in enumerate(turno_obj["partite"]):
+            if m.get("in_corso", False) and not m.get("giocata", False):
+                tavolo_num = (idx % num_tavoli) + 1
+                partite_in_corso.append((tavolo_num, turno_obj['turno'], m))
+
+    if partite_in_corso:
+        testo_corso = f"🔥 **PARTITE IN CORSO (Sui biliardini):**\n\n"
+        for tavolo_num, t_num, pm in partite_in_corso:
+            testo_corso += f"📍 **Biliardino {tavolo_num} (Turno {t_num}):** 🥅 {pm['p1']} & ⚽ {pm['a1']}  **VS**  🥅 {pm['p2']} & ⚽ {pm['a2']}\n\n"
+        st.warning(testo_corso)
+
+    # --- 2. SEZIONE PROSSIMI IN CODA ---
     prossime_partite = []
-    
     for turno_obj in db["turni_partite"]:
         for m in turno_obj["partite"]:
             if not m.get("giocata", False) and not m.get("in_corso", False):
@@ -198,9 +212,9 @@ elif db["stato"] == "gironi":
             break
 
     if prossime_partite:
-        testo_coda = f"📢 **PROSSIMI IN CODA (Preparatevi per i {num_tavoli} biliardini):**\n\n"
+        testo_coda = f"📢 **PROSSIMI IN CODA (Preparatevi):**\n\n"
         for i, (t_num, pm) in enumerate(prossime_partite):
-            testo_coda += f"👉 **Tavolo {i+1} (Turno {t_num}):** 🥅 {pm['p1']} & ⚽ {pm['a1']}  **VS**  🥅 {pm['p2']} & ⚽ {pm['a2']}\n\n"
+            testo_coda += f"👉 **In Coda (Turno {t_num}):** 🥅 {pm['p1']} & ⚽ {pm['a1']}  **VS**  🥅 {pm['p2']} & ⚽ {pm['a2']}\n\n"
         st.success(testo_coda)
 
     st.markdown("### 🏆 Classifiche in Tempo Reale")
