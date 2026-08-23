@@ -96,9 +96,18 @@ def calcola_partite_giocate(ruolo, nome):
                     giocate += 1
     return giocate, totali
 
-# --- BARRA LATERALE ADMIN ---
-st.sidebar.header("⚙️ Pannello di Controllo")
-modalita_admin = st.sidebar.checkbox("Modalità Amministratore (Inserisci PIN)")
+# --- BARRA LATERALE ---
+st.sidebar.header("⚙️ Pannello e Notifiche")
+
+# Sezione Gestione Notifiche Personali
+st.sidebar.subheader("🔔 Avvisi Audio Personali")
+tutti_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
+giocatore_selezionato = st.sidebar.selectbox("Seleziona il tuo nome:", ["-- Scegli --"] + tutti_giocatori)
+
+attiva_audio = st.sidebar.checkbox("Attiva allarme sonoro per le mie partite", value=False)
+
+st.sidebar.markdown("---")
+modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
 
 is_admin = False
 if modalita_admin:
@@ -107,14 +116,17 @@ if modalita_admin:
         is_admin = True
         st.sidebar.success("Accesso Admin Autorizzato ✅")
     else:
-        st.sidebar.error("PIN errato. Vista solo lettura (Pubblica).")
+        st.sidebar.error("PIN errato.")
 
 st.sidebar.markdown("---")
-st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo. La pagina si aggiornerà automaticamente ogni 5 secondi per tutti!")
+st.sidebar.info("📱 **Link WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
 
 # --- INTERFACCIA PRINCIPALE ---
 st.title("⚽ Torneo Biliardino 'Giallo' Live")
-st.info("🔄 Questa pagina si aggiorna automaticamente ogni 5 secondi per mostrare risultati e partite in tempo reale!")
+
+# Pulsante interattivo per aggiornare manualmente all'istante
+if st.button("🔄 Clicca per aggiornare i risultati", use_container_width=True):
+    st.rerun()
 
 # 1. SETUP
 if db["stato"] == "setup":
@@ -186,7 +198,34 @@ elif db["stato"] == "gironi":
 
     num_tavoli = db.get("num_tavoli", 2)
 
-    # --- 1. SEZIONE PARTITE IN CORSO (In alto) ---
+    # --- CONTROLLO NOTIFICA AUDIO PER IL GIOCATORE SELEZIONATO ---
+    deve_suonare = False
+    
+    if giocatore_selezionato != "-- Scegli --" and attiva_audio:
+        # Cerca se il giocatore è nei prossimi in coda o in corso
+        for turno_obj in db["turni_partite"]:
+            for m in turno_obj["partite"]:
+                is_coinvolto = (m['p1'] == giocatore_selezionato or m['a1'] == giocatore_selezionato or 
+                                m['p2'] == giocatore_selezionato or m['a2'] == giocatore_selezionato)
+                if is_coinvolto and not m.get("giocata", False):
+                    deve_suonare = True
+                    break
+            if deve_suonare:
+                break
+
+    if deve_suonare:
+        # Codice JavaScript per emettere un beep sonoro nel browser
+        st.markdown(
+            """
+            <audio autoplay>
+              <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+            </audio>
+            """,
+            unsafe_allow_html=True
+        )
+        st.sidebar.warning(f"🚨 **È il tuo turno, {giocatore_selezionato}! Preparati ad andare al biliardino!**")
+
+    # --- 1. SEZIONE PARTITE IN CORSO ---
     partite_in_corso = []
     for turno_obj in db["turni_partite"]:
         for idx, m in enumerate(turno_obj["partite"]):
