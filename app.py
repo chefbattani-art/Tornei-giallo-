@@ -26,18 +26,18 @@ st.markdown("""
         .stMarkdown { margin-bottom: 0px !important; }
         hr { margin: 0.8rem 0px !important; }
         
-        /* Stile per l'effetto scorrimento automatico delle classifiche */
+        /* Stile per l'effetto scorrimento automatico delle classifiche ingrandito a 400px */
         @keyframes scrollUp {
             0% { transform: translateY(0); }
-            50% { transform: translateY(-40px); }
+            50% { transform: translateY(-100px); }
             100% { transform: translateY(0); }
         }
         .scrolling-wrapper {
             overflow: hidden;
-            height: 230px;
+            height: 400px;
         }
         .scrolling-content {
-            animation: scrollUp 10s ease-in-out infinite;
+            animation: scrollUp 15s ease-in-out infinite;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -375,25 +375,25 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO
+    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO INGREDITO A 400PX
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
 
+    def colora_posizioni(row):
+        # Prime 8 posizioni (indice 0 a 7): verde chiaro. Dalla 9° posizione in poi (indice >= 8): rosso chiaro.
+        if row.name < 8:
+            return ['background-color: #e6f2e6' for _ in row]
+        else:
+            return ['background-color: #fde8e8' for _ in row]
+
     with col_c1:
-        st.markdown("#### 🥅 Portieri (Top 8)")
+        st.markdown("#### 🥅 Portieri")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
             gioc, tot = calcola_partite_giocate('portiere', p)
             data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
         df_p = pd.DataFrame(data_p)
-        
-        def colora_posizioni(row):
-            # Prime 8 posizioni (indice 0 a 7): verde chiaro. Dalla 9° posizione in poi (indice >= 8): rosso chiaro.
-            if row.name < 8:
-                return ['background-color: #e6f2e6' for _ in row]
-            else:
-                return ['background-color: #fde8e8' for _ in row]
         
         html_table_p = df_p.style.apply(colora_posizioni, axis=1).to_html()
         st.markdown(f"""
@@ -405,7 +405,7 @@ if db["stato"] == "gironi":
         """, unsafe_allow_html=True)
 
     with col_c2:
-        st.markdown("#### ⚽ Attaccanti (Top 8)")
+        st.markdown("#### ⚽ Attaccanti")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
