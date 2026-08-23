@@ -288,7 +288,7 @@ if db["stato"] == "gironi":
                 else:
                     partite_in_coda.append(info_m)
 
-    # 1. RIQUADRO GIALLO: PARTITE IN CORSO
+    # 1. SEZIONE PARTITE IN CORSO (SFONDO GIALLO)
     if partite_in_corso:
         st.markdown(
             """
@@ -301,9 +301,14 @@ if db["stato"] == "gironi":
         for item in partite_in_corso:
             m = item["m"]
             match_id = m['id']
-            st.markdown(f"📍 **Biliardino {item['tavolo']} (Turno {item['turno']}):**")
-            st.markdown(f"🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}")
-            st.markdown(f"🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}")
+            
+            st.markdown(f"""
+                <div style="padding: 8px; background-color: #fffde7; border: 1px solid #ffe082; border-radius: 6px; margin-bottom: 8px;">
+                    <b>📍 Biliardino {item['tavolo']} (Turno {item['turno']})</b><br>
+                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
+                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
+                </div>
+            """, unsafe_allow_html=True)
             
             if is_admin:
                 col_btn1, col_btn2 = st.columns(2)
@@ -326,7 +331,7 @@ if db["stato"] == "gironi":
                             st.rerun()
             st.markdown("---")
 
-    # 2. RIQUADRO VERDE: PROSSIMI IN CODA
+    # 2. SEZIONE PARTITE IN CODA (SFONDO VERDE)
     if partite_in_coda:
         st.markdown(
             """
@@ -339,17 +344,21 @@ if db["stato"] == "gironi":
         for item in partite_in_coda[:6]:
             m = item["m"]
             match_id = m['id']
-            col_c1, col_c2 = st.columns([5, 1])
-            with col_c1:
-                st.markdown(f"👉 In Coda (Turno {item['turno']}): 🥅 {m['p1']} & ⚽ {m['a1']} **VS** 🥅 {m['p2']} & ⚽ {m['a2']}")
-            with col_c2:
-                if is_admin:
-                    if st.button("▶️ Avvia", key=f"start_{match_id}", use_container_width=True):
-                        m["in_corso"] = True
-                        salva_dati(db)
-                        st.rerun()
-
-    st.markdown("---")
+            
+            st.markdown(f"""
+                <div style="padding: 8px; background-color: #e8f5e9; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
+                    <b>👉 In Coda (Turno {item['turno']})</b><br>
+                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
+                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
+                </div>
+            """, unsafe_allow_html=True)
+            
+            if is_admin:
+                if st.button("▶️ Avvia Partita", key=f"start_{match_id}", use_container_width=True):
+                    m["in_corso"] = True
+                    salva_dati(db)
+                    st.rerun()
+            st.markdown("---")
 
     # 3. CLASSIFICHE IN TEMPO REALE
     st.markdown("### 🏆 Classifiche in Tempo Reale")
