@@ -521,6 +521,8 @@ if db["stato"] == "gironi":
                                 salva_dati(db)
                                 st.rerun()
                 with col_l2:
+                    # L'expander appare solo se la partita NON è ancora giocata o se l'admin vuole modificarla.
+                    # Una volta salvata, la tendina si chiude e sparisce in automatico grazie al ricaricamento.
                     with st.expander(f"⚙️ Gestisci Risultato", key=f"exp_{match_id}"):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
@@ -617,7 +619,7 @@ if db["stato"] == "eliminatorie":
                             salva_dati(db)
                             st.rerun()
                 
-                with st.expander("⚙️ Gestisci Risultato"):
+                with st.expander("⚙️ Gestisci Risultato", key=f"ef_exp_{match_id}"):
                     rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
                     rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
                     if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
