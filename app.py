@@ -275,7 +275,6 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # Raccogliamo partite in corso e in coda
     partite_in_corso = []
     partite_in_coda = []
 
@@ -302,7 +301,10 @@ if db["stato"] == "gironi":
         for item in partite_in_corso:
             m = item["m"]
             match_id = m['id']
-            st.markdown(f"📍 **Biliardino {item['tavolo']} (Turno {item['turno']}):** 🥅 {m['p1']} & ⚽ {m['a1']} **VS** 🥅 {m['p2']} & ⚽ {m['a2']}")
+            st.markdown(f"📍 **Biliardino {item['tavolo']} (Turno {item['turno']}):**")
+            st.markdown(f"🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}")
+            st.markdown(f"🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}")
+            
             if is_admin:
                 col_btn1, col_btn2 = st.columns(2)
                 with col_btn1:
@@ -311,10 +313,10 @@ if db["stato"] == "gironi":
                         salva_dati(db)
                         st.rerun()
                 with col_btn2:
-                    with st.expander("⚙️ Risultato"):
+                    with st.expander("⚙️ Gestisci Risultato"):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"rg2_{match_id}")
-                        if st.button("💾 Salva", key=f"save_{match_id}", use_container_width=True):
+                        if st.button("💾 Salva Risultato", key=f"save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
@@ -390,19 +392,28 @@ if db["stato"] == "gironi":
                 tavolo_num = (idx % num_tavoli) + 1
                 match_id = m['id']
                 
-                colore_bg = "#f1f8e9" if m["giocata"] else "#ffffff"
-                st.markdown(f"""
-                    <div style="padding: 6px; background-color: {colore_bg}; border: 1px solid #ddd; border-radius: 4px; margin-bottom: 5px; font-size: 0.9rem;">
-                        <b>📍 Tavolo {tavolo_num}</b> — 🥅 {m['p1']} & ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} & ⚽ {m['a2']} 
-                        | Risultato: <b>{m['gol1']} - {m['gol2']}</b> {'(✅)' if m['giocata'] else '(⏳)'}
-                    </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f"**📍 Tavolo {tavolo_num}**")
+                st.markdown(f"🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}")
+                st.markdown(f"🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}")
+                
+                if m["giocata"]:
+                    st.markdown(f"""
+                        <div style="padding: 4px; background-color: #ffebee; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                            🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)
+                        </div>
+                    """, unsafe_allow_html=True)
+                else:
+                    st.markdown(f"""
+                        <div style="padding: 4px; background-color: #f1f8e9; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                            ⏳ <b>Da giocare</b>
+                        </div>
+                    """, unsafe_allow_html=True)
 
                 if is_admin:
-                    with st.expander(f"⚙️ Modifica Tavolo {tavolo_num} (T.{turno_obj['turno']})", key=f"exp_{match_id}"):
+                    with st.expander(f"⚙️ Gestisci Risultato (Tavolo {tavolo_num})", key=f"exp_{match_id}"):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"list_rg2_{match_id}")
-                        if st.button("💾 Salva", key=f"list_save_{match_id}", use_container_width=True):
+                        if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
@@ -410,6 +421,7 @@ if db["stato"] == "gironi":
                             ricalcola_classifiche()
                             salva_dati(db)
                             st.rerun()
+                st.markdown("---")
 
     if is_admin:
         st.markdown("---")
@@ -456,38 +468,54 @@ if db["stato"] == "eliminatorie":
                 tutti_giocati = False
 
             st.markdown(f"**📍 Biliardino {tavolo_num}**")
-            col_s1, col_mid, col_s2 = st.columns([4, 2, 4], gap="small")
+            st.markdown(f"🥅 **{m['p1']}** &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ **{m['a1']}**")
+            st.markdown(f"🥅 **{m['p2']}** &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ **{m['a2']}**")
             
-            with col_s1:
-                st.info(f"🥅 **{m['p1']}** | ⚽ **{m['a1']}**")
-            
-            with col_mid:
-                if m["giocata"]:
-                    st.error(f"🛑 **{m['gol1']} - {m['gol2']}**")
-                elif m.get("in_corso", False):
-                    st.warning("🔥 **In Corso**")
-                else:
-                    st.write("**VS**")
-                    if is_admin:
+            if m["giocata"]:
+                st.markdown(f"""
+                    <div style="padding: 4px; background-color: #ffebee; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                        🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)
+                    </div>
+                """, unsafe_allow_html=True)
+            elif m.get("in_corso", False):
+                st.markdown(f"""
+                    <div style="padding: 4px; background-color: #fffde7; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                        🔥 <b>In Corso</b>
+                    </div>
+                """, unsafe_allow_html=True)
+            else:
+                st.markdown(f"""
+                    <div style="padding: 4px; background-color: #f1f8e9; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
+                        ⏳ <b>Da giocare</b>
+                    </div>
+                """, unsafe_allow_html=True)
+
+            if is_admin:
+                col_a1, col_a2 = st.columns(2)
+                with col_a1:
+                    if not m.get("in_corso", False) and not m["giocata"]:
                         if st.button("▶️ Avvia", key=f"ef_btn_{match_id}", use_container_width=True):
                             m["in_corso"] = True
                             salva_dati(db)
                             st.rerun()
-                
-                if is_admin:
-                    with st.expander("⚙️ Gestisci"):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
-                        if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
-                            m['gol1'] = rg1
-                            m['gol2'] = rg2
-                            m['giocata'] = True
-                            m['in_corso'] = False
+                with col_a2:
+                    if m.get("in_corso", False):
+                        if st.button("⏹️ Ferma", key=f"ef_stop_{match_id}", use_container_width=True):
+                            m["in_corso"] = False
                             salva_dati(db)
                             st.rerun()
+                
+                with st.expander("⚙️ Gestisci Risultato"):
+                    rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"ef_rg1_{match_id}")
+                    rg2 = st.radio("Gol S2", list(range(8)), index=int(m.get('gol2', 0)), horizontal=True, key=f"ef_rg2_{match_id}")
+                    if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
+                        m['gol1'] = rg1
+                        m['gol2'] = rg2
+                        m['giocata'] = True
+                        m['in_corso'] = False
+                        salva_dati(db)
+                        st.rerun()
 
-            with col_s2:
-                st.info(f"🥅 **{m['p2']}** | ⚽ **{m['a2']}**")
             st.markdown("---")
 
         if tutti_giocati and is_admin:
