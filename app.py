@@ -222,8 +222,6 @@ if os.path.exists(LOGO_FILE):
         logo_b64 = b64encode(f.read()).decode("utf-8")
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" /><br>'
 
-# Se il file del regolamento esiste, crea il link per aprirlo. 
-# Altrimenti, se vuoi inserirlo direttamente via codice senza caricarlo ogni volta, puoi lasciarlo puntare a un viewer.
 regolamento_link_html = '📜 Regolamento Ufficiale UISP 2026-2027 (Non caricato)'
 if os.path.exists(REGOLAMENTO_FILE):
     with open(REGOLAMENTO_FILE, "rb") as f:
