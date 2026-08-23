@@ -64,7 +64,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO PER CLASSIFICHE CENTRALI E LARGHE ---
 st.markdown("""
     <style>
         .match-row-green {
@@ -100,34 +100,56 @@ st.markdown("""
             margin-bottom: 8px;
             font-size: 0.95rem;
         }
-        .team-left {
-            text-align: left;
-            width: 38%;
-            font-weight: 500;
-        }
-        .team-right {
-            text-align: right;
-            width: 38%;
-            font-weight: 500;
-        }
-        .match-center {
-            text-align: center;
-            width: 24%;
-            font-weight: bold;
-        }
-        .ranking-box {
-            border: 1px solid #90caf9;
-            border-radius: 8px;
-            padding: 10px;
-            background-color: #ffffff;
-            margin-bottom: 10px;
-        }
         .container-yellow {
             border: 2px solid #f57f17;
             border-radius: 8px;
             padding: 10px;
             background-color: #ffe082;
             margin-bottom: 10px;
+        }
+        /* Stile avanzato per tabelle classifiche a tutto schermo e centrate */
+        .ranking-card {
+            background: #ffffff;
+            border: 2px solid #90caf9;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            margin-bottom: 25px;
+        }
+        .ranking-title {
+            text-align: center;
+            color: #0d47a1;
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 15px;
+        }
+        table.styled-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-family: inherit;
+            font-size: 1.05rem;
+        }
+        table.styled-table th {
+            background-color: #1565c0;
+            color: white;
+            text-align: center;
+            padding: 12px;
+            font-weight: bold;
+        }
+        table.styled-table td {
+            padding: 10px 12px;
+            text-align: center;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        table.styled-table tr.qualificato {
+            background-color: #e8f5e9;
+            font-weight: 500;
+        }
+        table.styled-table tr.eliminato {
+            background-color: #ffebee;
+        }
+        table.styled-table tr:hover {
+            background-color: #f1f8e9;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -499,7 +521,6 @@ if db["stato"] == "gironi":
             m, turno_num = partite_per_tavolo[b_num]
             match_id = m['id']
             
-            # Sfondo giallo quasi marcato (#fff176) con bordo ambra scuro (#fbc02d)
             st.html(f"""
                 <div style="background-color: #fff176; border: 2px solid #fbc02d; border-radius: 8px; padding: 12px; margin-bottom: 6px;">
                     <div style="font-weight: bold; color: #5d4037; margin-bottom: 4px; font-size: 0.95rem;">
@@ -541,7 +562,6 @@ if db["stato"] == "gironi":
                 partite_in_coda.append((t_obj['turno'], m))
 
     if partite_in_coda and num_partite_in_corso > 0:
-        # Sfondo verde scuro marcato (#2e7d32) per l'intero box di coda con bordo scuro (#1b5e20)
         st.html('<div style="border: 2px solid #1b5e20; border-radius: 8px; padding: 12px; background-color: #2e7d32; margin-bottom: 10px;">')
         for turno_num, m in partite_in_coda[:num_partite_in_corso]:
             st.html(f"""
@@ -560,41 +580,86 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # CLASSIFICHE IN TEMPO REALE
-    st.html("<h3 style='text-align: center; margin: 0 0 6px 0;'>🏆 Classifiche in Tempo Reale</h3>")
-    col_c1, col_c2 = st.columns(2)
+    # --- CLASSIFICHE IN TEMPO REALE GRANDI E CENTRALI ---
+    st.html("<h2 style='text-align: center; color: #1565c0; margin-bottom: 20px;'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
 
-    def colora_posizioni(row):
-        if row.name < 8:
-            return ['background-color: #e6f2e6' for _ in row]
-        else:
-            return ['background-color: #fde8e8' for _ in row]
+    # TABELLA PORTIERI CENTRALE E LARGA
+    sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+    rows_p_html = ""
+    for idx, (p, pt) in enumerate(sorted_p):
+        dr = db["dr_portieri"].get(p, 0)
+        dr_str = f"+{dr}" if dr > 0 else str(dr)
+        gioc, tot = calcola_partite_giocate('portiere', p)
+        css_class = "qualificato" if idx < 8 else "eliminato"
+        rows_p_html += f"""
+            <tr class="{css_class}">
+                <td><b>{idx+1}°</b></td>
+                <td style="text-align: left; font-weight: bold;">🥅 {p}</td>
+                <td><b>{pt}</b></td>
+                <td>{dr_str}</td>
+                <td>{gioc}/{tot}</td>
+            </tr>
+        """
 
-    with col_c1:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
-        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-        data_p = []
-        for idx, (p, pt) in enumerate(sorted_p):
-            dr = db["dr_portieri"].get(p, 0)
-            dr_str = f"+{dr}" if dr > 0 else str(dr)
-            gioc, tot = calcola_partite_giocate('portiere', p)
-            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
-        df_p = pd.DataFrame(data_p)
-        html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f'<div class="ranking-box">{html_table_p}</div>')
+    table_p_full = f"""
+    <div class="ranking-card">
+        <div class="ranking-title">🥅 CLASSIFICA PORTIERI</div>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th style="text-align: left;">Portiere</th>
+                    <th>Punti</th>
+                    <th>DR</th>
+                    <th>Giocate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_p_html}
+            </tbody>
+        </table>
+    </div>
+    """
+    st.html(table_p_full)
 
-    with col_c2:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
-        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-        data_a = []
-        for idx, (a, pt) in enumerate(sorted_a):
-            dr = db["dr_attaccanti"].get(a, 0)
-            dr_str = f"+{dr}" if dr > 0 else str(dr)
-            gioc, tot = calcola_partite_giocate('attaccante', a)
-            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
-        df_a = pd.DataFrame(data_a)
-        html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f'<div class="ranking-box">{html_table_a}</div>')
+    # TABELLA ATTACCANTI CENTRALE E LARGA
+    sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+    rows_a_html = ""
+    for idx, (a, pt) in enumerate(sorted_a):
+        dr = db["dr_attaccanti"].get(a, 0)
+        dr_str = f"+{dr}" if dr > 0 else str(dr)
+        gioc, tot = calcola_partite_giocate('attaccante', a)
+        css_class = "qualificato" if idx < 8 else "eliminato"
+        rows_a_html += f"""
+            <tr class="{css_class}">
+                <td><b>{idx+1}°</b></td>
+                <td style="text-align: left; font-weight: bold;">⚽ {a}</td>
+                <td><b>{pt}</b></td>
+                <td>{dr_str}</td>
+                <td>{gioc}/{tot}</td>
+            </tr>
+        """
+
+    table_a_full = f"""
+    <div class="ranking-card">
+        <div class="ranking-title">⚽ CLASSIFICA ATTACCANTI</div>
+        <table class="styled-table">
+            <thead>
+                <tr>
+                    <th>Pos</th>
+                    <th style="text-align: left;">Attaccante</th>
+                    <th>Punti</th>
+                    <th>DR</th>
+                    <th>Giocate</th>
+                </tr>
+            </thead>
+            <tbody>
+                {rows_a_html}
+            </tbody>
+        </table>
+    </div>
+    """
+    st.html(table_a_full)
 
     st.markdown("---")
 
@@ -603,17 +668,11 @@ if db["stato"] == "gironi":
 
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
-        
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
 
-        if tutte_giocate:
-            header_text = f"Turno {turno_num} (Completato ✅)"
-            espanso_default = False
-        else:
-            header_text = f"Turno {turno_num} (In corso / Da giocare ⏳)"
-            espanso_default = False
+        header_text = f"Turno {turno_num} (Completato ✅)" if tutte_giocate else f"Turno {turno_num} (In corso / Da giocare ⏳)"
 
-        with st.expander(header_text, expanded=espanso_default):
+        with st.expander(header_text, expanded=False):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
                 match_id = m['id']
@@ -756,15 +815,9 @@ if db["stato"] == "eliminatorie":
                     tutti_giocati = False
 
             ef_chiuse = tutti_giocati
-            
-            if ef_chiuse:
-                ef_header = f"🔥 {f_turno['nome']} (Completato ✅)"
-                ef_exp = False
-            else:
-                ef_header = f"🔥 {f_turno['nome']} (In corso / Da giocare ⏳)"
-                ef_exp = False
+            ef_header = f"🔥 {f_turno['nome']} (Completato ✅)" if ef_chiuse else f"🔥 {f_turno['nome']} (In corso / Da giocare ⏳)"
 
-            with st.expander(ef_header, expanded=ef_exp):
+            with st.expander(ef_header, expanded=False):
                 for idx, m in enumerate(f_turno["partite"]):
                     tavolo_num = (idx % num_tavoli) + 1
                     match_id = m['id']
