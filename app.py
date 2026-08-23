@@ -213,7 +213,7 @@ if os.path.exists(LOGO_FILE):
         logo_b64 = b64encode(f.read()).decode("utf-8")
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" /><br>'
 
-st.markdown(
+st.html(
     f"""
     <div style="text-align: center; margin-bottom: 15px;">
         {logo_html}
@@ -221,8 +221,7 @@ st.markdown(
             <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
         </div>
     </div>
-    """,
-    unsafe_allow_html=True
+    """
 )
 
 st.markdown(
