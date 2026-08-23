@@ -64,7 +64,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS PERSONALIZZATO PER RIDURRE GLI SPAZI BIANCHI E COMPATTARE I QUADRANTI ---
+# --- CSS PERSONALIZZATO ---
 st.markdown("""
     <style>
         .block-container {
@@ -341,7 +341,7 @@ st.html(
     """
 )
 
-# SELETTORE RAPIDO GIOCATORE (PER OSPITI)
+# SELETTORE RAPIDO GIOCATORE
 if db["stato"] != "setup":
     tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
     giocatore_selezionato = st.selectbox(
@@ -477,7 +477,7 @@ if db["stato"] == "gironi":
             st.html('</div>')
         st.markdown("---")
 
-    # --- SEZIONE IN ALTO: PARTITE IN CORSO (SFONDO GIALLO) - PIÙ BASSE ---
+    # --- PARTITE IN CORSO (COMPATTE/BASSE) ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -528,7 +528,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- SEZIONE PROSSIMI IN CODA - PIÙ BASSI ---
+    # --- PROSSIMI IN CODA (COMPATTI/BASSI) ---
     num_partite_in_corso = len(partite_per_tavolo)
     st.markdown(f"### 📢 PROSSIMI IN CODA ({num_partite_in_corso} in attesa):")
     
@@ -642,7 +642,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI ---
+    # --- LISTA COMPLETA TURNI (STILE GRANDE ORIGINALE) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
@@ -670,23 +670,23 @@ if db["stato"] == "gironi":
                 if m["giocata"]:
                     box_bg = "#b71c1c"
                     border_color = "#ef5350"
-                    text_color = "#ffffff"
-                    center_content = f"<span style='color: #ffeb3b; font-size: 0.95rem; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
-                    label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
+                    text_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
+                    label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
                 else:
                     box_bg = "#1b5e20"
                     border_color = "#4caf50"
-                    text_color = "#ffffff"
-                    center_content = "<span style='color: #ffeb3b; font-weight: bold; font-size: 0.95rem;'>VS</span>"
+                    text_content = "<span style='color: #ffeb3b; font-size: 1.2rem; font-weight: bold;'>VS</span>"
                     label_stato = f"Biliardino {tavolo_num}"
 
                 st.html(f"""
-                    <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 4px; padding: 4px 8px; margin-bottom: 4px; color: {text_color};">
-                        <div style="font-size: 0.75rem; color: #ffccbc; font-weight: bold; margin-bottom: 1px;">{label_stato}</div>
-                        <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 500; font-size: 0.85rem;">
-                            <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
-                            <span>{center_content}</span>
-                            <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
+                    <div style="background-color: {box_bg}; border: 2px solid {border_color}; border-radius: 8px; padding: 12px; margin-bottom: 10px; color: white; text-align: center;">
+                        <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.95rem;">{label_stato}</div>
+                        <div style="margin-bottom: 6px; font-size: 1rem; font-weight: 500;">
+                            🥅 {m['p1']} &nbsp;&nbsp;&nbsp; ⚽ {m['a1']}
+                        </div>
+                        <div style="margin: 4px 0;">{text_content}</div>
+                        <div style="margin-top: 6px; font-size: 1rem; font-weight: 500;">
+                            🥅 {m['p2']} &nbsp;&nbsp;&nbsp; ⚽ {m['a2']}
                         </div>
                     </div>
                 """)
@@ -829,23 +829,23 @@ if db["stato"] == "eliminatorie":
                     if m["giocata"]:
                         box_bg = "#b71c1c"
                         border_color = "#ef5350"
-                        text_color = "#ffffff"
-                        center_content = f"<span style='color: #ffeb3b; font-size: 0.95rem; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
-                        label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
+                        text_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
+                        label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
                     else:
                         box_bg = "#1b5e20"
                         border_color = "#4caf50"
-                        text_color = "#ffffff"
-                        center_content = "<span style='color: #ffeb3b; font-weight: bold; font-size: 0.95rem;'>VS</span>"
+                        text_content = "<span style='color: #ffeb3b; font-size: 1.2rem; font-weight: bold;'>VS</span>"
                         label_stato = f"Biliardino {tavolo_num}"
 
                     st.html(f"""
-                        <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 4px; padding: 4px 8px; margin-bottom: 4px; color: {text_color};">
-                            <div style="font-size: 0.75rem; color: #ffccbc; font-weight: bold; margin-bottom: 1px;">{label_stato}</div>
-                            <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 500; font-size: 0.85rem;">
-                                <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
-                                <span>{center_content}</span>
-                                <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
+                        <div style="background-color: {box_bg}; border: 2px solid {border_color}; border-radius: 8px; padding: 12px; margin-bottom: 10px; color: white; text-align: center;">
+                            <div style="font-weight: bold; margin-bottom: 6px; font-size: 0.95rem;">{label_stato}</div>
+                            <div style="margin-bottom: 6px; font-size: 1rem; font-weight: 500;">
+                                🥅 {m['p1']} &nbsp;&nbsp;&nbsp; ⚽ {m['a1']}
+                            </div>
+                            <div style="margin: 4px 0;">{text_content}</div>
+                            <div style="margin-top: 6px; font-size: 1rem; font-weight: 500;">
+                                🥅 {m['p2']} &nbsp;&nbsp;&nbsp; ⚽ {m['a2']}
                             </div>
                         </div>
                     """)
