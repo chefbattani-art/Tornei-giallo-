@@ -440,9 +440,9 @@ if db["stato"] == "gironi":
                 st.html(f"""
                     <div style="background-color: #ffffff; border: 1px solid #ffa726; border-radius: 6px; padding: 8px; margin-bottom: 6px;">
                         <div style="font-size: 0.8rem; color: #d32f2f; font-weight: bold; margin-bottom: 4px;">Turno {item['turno']} | Biliardino {item['tavolo']}</div>
-                        <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;">
                             <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
-                            <div style="text-align: center; font-weight: bold; color: #e65100; font-size: 0.9rem;">VS</div>
+                            <div style="font-weight: bold; color: #e65100; font-size: 0.9rem;">VS</div>
                             <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                         </div>
                         <div style="text-align: center; margin-top: 6px; font-weight: bold; color: #333;">{center_txt}</div>
@@ -492,9 +492,9 @@ if db["stato"] == "gironi":
                     <div style="font-weight: bold; color: #5d4037; margin-bottom: 6px; font-size: 0.95rem;">
                         🏟️ Biliardino {b_num} (Turno {turno_num})
                     </div>
-                    <div style="background-color: #ffffff; padding: 10px 14px; border-radius: 6px; border: 1px solid #fbc02d; display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                    <div style="background-color: #ffffff; padding: 10px 14px; border-radius: 6px; border: 1px solid #fbc02d; display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;">
                         <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
-                        <div style="text-align: center; font-weight: bold; color: #d32f2f; font-size: 1rem;">VS</div>
+                        <div style="font-weight: bold; color: #d32f2f; font-size: 1rem;">VS</div>
                         <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                     </div>
                 </div>
@@ -533,9 +533,9 @@ if db["stato"] == "gironi":
             st.html(f"""
                 <div style="background-color: #1b5e20; border: 1px solid #4caf50; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: #ffffff;">
                     <div style="font-size: 0.85rem; color: #a5d6a7; font-weight: bold; margin-bottom: 4px;">👉 In Coda (Turno {turno_num})</div>
-                    <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;">
                         <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
-                        <div style="text-align: center; color: #ffeb3b; font-weight: bold; font-size: 1rem;">VS</div>
+                        <div style="color: #ffeb3b; font-weight: bold; font-size: 1rem;">VS</div>
                         <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                     </div>
                 </div>
@@ -629,7 +629,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (STILE VERDE PER DA GIOCARE, ROSSO MARCATO PER GIOCATE) ---
+    # --- LISTA COMPLETA TURNI ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
@@ -670,9 +670,9 @@ if db["stato"] == "gironi":
                 st.html(f"""
                     <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
                         <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 4px;">{label_stato}</div>
-                        <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                        <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;">
                             <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
-                            <div style="text-align: center; { 'color: #ffeb3b;' if m['giocata'] else 'color: #ffeb3b;' } font-weight: bold;">{center_content}</div>
+                            <div style="{ 'color: #ffeb3b;' if m['giocata'] else 'color: #ffeb3b;' } font-weight: bold;">{center_content}</div>
                             <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                         </div>
                     </div>
@@ -829,9 +829,9 @@ if db["stato"] == "eliminatorie":
                     st.html(f"""
                         <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
                             <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 4px;">{label_stato}</div>
-                            <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px; font-weight: 500;">
                                 <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
-                                <div style="text-align: center; color: #ffeb3b; font-weight: bold;">{center_content}</div>
+                                <div style="color: #ffeb3b; font-weight: bold;">{center_content}</div>
                                 <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                             </div>
                         </div>
