@@ -68,7 +68,7 @@ st.markdown("""
             margin-bottom: 10px;
         }
         
-        /* Cornice unita e pulita per ogni singola partita in corso */
+        /* Cornice unita e completa per la partita e l'inserimento gol */
         .match-card-box {
             border: 3px solid #ffa726;
             border-radius: 10px;
@@ -469,7 +469,7 @@ if db["stato"] == "gironi":
             squadra1_nome = f"{m['p1']} & {m['a1']}"
             squadra2_nome = f"{m['p2']} & {m['a2']}"
             
-            # Apertura cornice unita per ogni singola partita
+            # Apertura cornice unita totale (partita + inserimento gol + pulsante)
             st.html(f"""
                 <div class="match-card-box">
                     <div style="font-weight: bold; color: #b71c1c; margin-bottom: 6px; font-size: 1.05rem;">
@@ -480,14 +480,23 @@ if db["stato"] == "gironi":
                     </div>
             """)
             
-            # Se siamo admin, inseriamo i campi dei gol da 0 a 7
+            # Se siamo admin, inseriamo i campi dei gol da 0 a 7 all'interno della stessa cornice con i nomi larghi e centrati
             if is_admin:
-                st.markdown(f"⚽ **Gol: {squadra1_nome}**")
-                g1_input = st.radio("Seleziona Gol Squadra 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}")
+                st.html(f"""
+                    <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
+                        ⚽ Gol: {squadra1_nome}
+                    </div>
+                """)
+                g1_input = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}", label_visibility="collapsed")
                 
-                st.markdown(f"⚽ **Gol: {squadra2_nome}**")
-                g2_input = st.radio("Seleziona Gol Squadra 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}")
+                st.html(f"""
+                    <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 12px; margin-bottom: 4px;">
+                        ⚽ Gol: {squadra2_nome}
+                    </div>
+                """)
+                g2_input = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}", label_visibility="collapsed")
                 
+                st.html("<div style='margin-top: 10px;'></div>")
                 if st.button(f"💾 Registra e Libera Tavolo {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
                     m['gol1'] = g1_input
                     m['gol2'] = g2_input
@@ -498,7 +507,7 @@ if db["stato"] == "gironi":
                     st.success(f"Risultato salvato! Il biliardino {item['tavolo']} è ora libero.")
                     st.rerun()
             
-            # Chiusura della cornice della partita
+            # Chiusura della cornice della singola partita
             st.html('</div>')
         st.html('</div>')
 
@@ -579,6 +588,8 @@ if db["stato"] == "gironi":
         for idx, m in enumerate(turno_obj["partite"]):
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
+            squadra1_nome = f"{m['p1']} & {m['a1']}"
+            squadra2_nome = f"{m['p2']} & {m['a2']}"
             
             edit_flag_key = f"edit_mode_{match_id}"
             if edit_flag_key not in st.session_state:
@@ -621,8 +632,21 @@ if db["stato"] == "gironi":
                                 st.rerun()
                 with col_l2:
                     with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"list_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}")
+                        st.html(f"""
+                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
+                                ⚽ Gol: {squadra1_nome}
+                            </div>
+                        """)
+                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"list_rg1_{match_id}", label_visibility="collapsed")
+                        
+                        st.html(f"""
+                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
+                                ⚽ Gol: {squadra2_nome}
+                            </div>
+                        """)
+                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}", label_visibility="collapsed")
+                        
+                        st.html("<div style='margin-top: 8px;'></div>")
                         if st.button("💾 Salva Risultato", key=f"list_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
@@ -740,6 +764,8 @@ if db["stato"] == "eliminatorie":
             for idx, m in enumerate(f_turno["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
                 match_id = m['id']
+                squadra1_nome = f"{m['p1']} & {m['a1']}"
+                squadra2_nome = f"{m['p2']} & {m['a2']}"
                 
                 edit_flag_key = f"ef_edit_mode_{match_id}"
                 if edit_flag_key not in st.session_state:
@@ -748,7 +774,7 @@ if db["stato"] == "eliminatorie":
                 if m.get("giocata", False):
                     if m["gol1"] >= m["gol2"]:
                         vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
-                        perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
+                        perdenti_turno.append({"p": m["p2"], "a": m["p2"]})
                     else:
                         vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
                         perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
@@ -792,8 +818,21 @@ if db["stato"] == "eliminatorie":
                                 st.rerun()
                     
                     with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key]):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
+                        st.html(f"""
+                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
+                                ⚽ Gol: {squadra1_nome}
+                            </div>
+                        """)
+                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}", label_visibility="collapsed")
+                        
+                        st.html(f"""
+                            <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
+                                ⚽ Gol: {squadra2_nome}
+                            </div>
+                        """)
+                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}", label_visibility="collapsed")
+                        
+                        st.html("<div style='margin-top: 8px;'></div>")
                         if st.button("💾 Salva Risultato", key=f"ef_save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
