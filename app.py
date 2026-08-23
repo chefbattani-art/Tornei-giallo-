@@ -246,38 +246,6 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # 1. CLASSIFICHE IN ALTO
-    st.markdown("### 🏆 Classifiche in Tempo Reale")
-    col_c1, col_c2 = st.columns(2)
-
-    with col_c1:
-        st.markdown("#### 🥅 Classifica Portieri (Top 8)")
-        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
-        data_p = []
-        for idx, (p, pt) in enumerate(sorted_p):
-            gioc, tot = calcola_partite_giocate('portiere', p)
-            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
-        
-        df_p = pd.DataFrame(data_p)
-        def colora_top8(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
-        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True)
-
-    with col_c2:
-        st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
-        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
-        data_a = []
-        for idx, (a, pt) in enumerate(sorted_a):
-            gioc, tot = calcola_partite_giocate('attaccante', a)
-            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
-            
-        df_a = pd.DataFrame(data_a)
-        def colora_top8_a(row):
-            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
-        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True)
-
-    st.markdown("---")
-
     # Raccogliamo partite in corso e in coda
     partite_in_corso = []
     partite_in_coda = []
@@ -292,6 +260,7 @@ if db["stato"] == "gironi":
                 else:
                     partite_in_coda.append(info_m)
 
+    # 1. BOX PARTITE IN CORSO E IN CODA (SOPRA LA CLASSIFICA)
     if partite_in_corso:
         st.markdown(
             """
@@ -350,6 +319,40 @@ if db["stato"] == "gironi":
                         st.rerun()
 
     st.markdown("---")
+
+    # 2. CLASSIFICHE IN TEMPO REALE
+    st.markdown("### 🏆 Classifiche in Tempo Reale")
+    col_c1, col_c2 = st.columns(2)
+
+    with col_c1:
+        st.markdown("#### 🥅 Classifica Portieri (Top 8)")
+        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
+        data_p = []
+        for idx, (p, pt) in enumerate(sorted_p):
+            gioc, tot = calcola_partite_giocate('portiere', p)
+            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+        
+        df_p = pd.DataFrame(data_p)
+        def colora_top8(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_p.style.apply(colora_top8, axis=1), hide_index=True, use_container_width=True)
+
+    with col_c2:
+        st.markdown("#### ⚽ Classifica Attaccanti (Top 8)")
+        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
+        data_a = []
+        for idx, (a, pt) in enumerate(sorted_a):
+            gioc, tot = calcola_partite_giocate('attaccante', a)
+            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+            
+        df_a = pd.DataFrame(data_a)
+        def colora_top8_a(row):
+            return ['background-color: #e6f2e6' if row.name < 8 else 'background-color: #f2e6e6' for _ in row]
+        st.dataframe(df_a.style.apply(colora_top8_a, axis=1), hide_index=True, use_container_width=True)
+
+    st.markdown("---")
+
+    # 3. LISTA COMPLETA TURNI E PARTITE
     st.markdown("### 📅 Lista Completa Turni e Partite (Gironi)")
 
     for turno_obj in db["turni_partite"]:
@@ -358,7 +361,6 @@ if db["stato"] == "gironi":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
-            # Box colorato per ogni singola partita
             colore_bg = "#f9f9f9" if m["giocata"] else "#ffffff"
             st.markdown(f"""
                 <div style="padding: 10px; background-color: {colore_bg}; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 8px;">
