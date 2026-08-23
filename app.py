@@ -589,22 +589,32 @@ if db["stato"] == "gironi":
         almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
         
         if tutte_giocate:
-            # Se tutte le partite sono finite, chiudi automaticamente il turno
             turno_obj["chiuso"] = True
         elif almeno_una_iniziata:
-            # Se almeno una partita è iniziata o in corso, apri automaticamente il turno
             turno_obj["chiuso"] = False
 
     salva_dati(db)
 
-    # Renderizzazione dei turni
+    # Renderizzazione dei turni con etichette corrette: Da iniziare / In corso / Completato
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
         is_chiuso = turno_obj.get("chiuso", True)
+        
+        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
 
-        header_bg = "#b0bec5" if is_chiuso else "#ffd700"
-        header_border = "#78909c" if is_chiuso else "#ffb300"
-        header_text = f"TURNO {turno_num} (Completato ✅)" if is_chiuso else f"TURNO {turno_num} (In Corso 🔥)"
+        if tutte_giocate:
+            header_bg = "#b0bec5"
+            header_border = "#78909c"
+            header_text = f"TURNO {turno_num} (Completato ✅)"
+        elif almeno_una_iniziata:
+            header_bg = "#ffd700"
+            header_border = "#ffb300"
+            header_text = f"TURNO {turno_num} (In corso 🔥)"
+        else:
+            header_bg = "#e0f7fa"
+            header_border = "#b2ebf2"
+            header_text = f"TURNO {turno_num} (Da iniziare ⏳)"
 
         st.html(
             f"""
@@ -621,7 +631,6 @@ if db["stato"] == "gironi":
                 st.success(f"Turno {turno_num} riaperto!")
                 st.rerun()
 
-        # L'espansore si apre in automatico solo se il turno è in corso (is_chiuso = False)
         with st.expander(f"👁️ Visualizza partite Turno {turno_num}", expanded=not is_chiuso):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
@@ -666,7 +675,7 @@ if db["stato"] == "gironi":
                             else:
                                 if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
                                     m["in_corso"] = True
-                                    turno_obj["chiuso"] = False  # Apre automaticamente il turno all'avvio della partita
+                                    turno_obj["chiuso"] = False
                                     salva_dati(db)
                                     st.rerun()
                     with col_l2:
