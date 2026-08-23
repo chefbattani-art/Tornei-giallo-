@@ -482,7 +482,6 @@ if db["stato"] == "gironi":
             tavolo_num = (idx % num_tavoli) + 1
             match_id = m['id']
             
-            # Chiave univoca basata sul match_id per gestire lo stato dell'expander programmaticamente
             edit_flag_key = f"edit_mode_{match_id}"
             if edit_flag_key not in st.session_state:
                 st.session_state[edit_flag_key] = False
@@ -523,7 +522,6 @@ if db["stato"] == "gironi":
                                 salva_dati(db)
                                 st.rerun()
                 with col_l2:
-                    # Usiamo l'ID dinamico completo per forzare la ricreazione dell'expander quando cambia lo stato
                     exp_key_dynamic = f"exp_{match_id}_{st.session_state[edit_flag_key]}"
                     with st.expander("⚙️ Gestisci Risultato", expanded=st.session_state[edit_flag_key], key=exp_key_dynamic):
                         rg1 = st.radio("Gol S1", list(range(8)), index=int(m.get('gol1', 0)), horizontal=True, key=f"list_rg1_{match_id}")
@@ -535,7 +533,6 @@ if db["stato"] == "gironi":
                             m['in_corso'] = False
                             ricalcola_classifiche()
                             salva_dati(db)
-                            # Forziamo a False per chiudere la tendina all'istante
                             st.session_state[edit_flag_key] = False
                             st.rerun()
             st.markdown("---")
@@ -643,7 +640,7 @@ if db["stato"] == "eliminatorie":
             st.markdown("---")
 
         if tutti_giocati and is_admin:
-            if f_turno['nome'] == "Quarti di Finale" da len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
+            if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
                 if st.button("🚀 Genera Semifinali", use_container_width=True):
                     q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
                     semifinale_partite = [
