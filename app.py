@@ -67,39 +67,6 @@ if modalita_admin:
 # --- CSS PERSONALIZZATO PER CLASSIFICHE CENTRALI E LARGHE ---
 st.markdown("""
     <style>
-        .match-row-green {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #e8f5e9;
-            border: 1px solid #c8e6c9;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
-        .match-row-yellow {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #fffde7;
-            border: 1px solid #ffe082;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
-        .match-row-white {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background-color: #ffffff;
-            border: 1px solid #e0e0e0;
-            border-radius: 8px;
-            padding: 10px 15px;
-            margin-bottom: 8px;
-            font-size: 0.95rem;
-        }
         .container-yellow {
             border: 2px solid #f57f17;
             border-radius: 8px;
@@ -568,7 +535,7 @@ if db["stato"] == "gironi":
                     <div style="font-size: 0.85rem; color: #a5d6a7; font-weight: bold; margin-bottom: 3px;">👉 In Coda (Turno {turno_num})</div>
                     <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
                         <div style="width: 48%;">🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}</div>
-                        <div style="width: 4; text-align: center; color: #ffeb3b; font-weight: bold;">VS</div>
+                        <div style="width: 4px; text-align: center; color: #ffeb3b; font-weight: bold;">VS</div>
                         <div style="width: 48%; text-align: right;">🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}</div>
                     </div>
                 </div>
@@ -662,7 +629,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (APERTI SOLO SE IN CORSO, CHIUSI SE DA GIOCARE O COMPLETATI) ---
+    # --- LISTA COMPLETA TURNI (STILE VERDE PER DA GIOCARE, ROSSO MARCATO PER GIOCATE) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
@@ -670,18 +637,17 @@ if db["stato"] == "gironi":
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
 
-        # Determina se il turno è "in corso" (almeno una partita giocata, ma non tutte)
         in_corso = alcuna_giocata and not tutte_giocate
 
         if tutte_giocate:
             header_text = f"Turno {turno_num} (Completato ✅)"
-            espanso_default = False  # Chiuso se completato
+            espanso_default = False
         elif in_corso:
             header_text = f"Turno {turno_num} (In corso ⏳)"
-            espanso_default = True   # APERTO SOLO SE IN CORSO
+            espanso_default = True
         else:
             header_text = f"Turno {turno_num} (Da giocare ⏳)"
-            espanso_default = False  # Chiuso se completamente da giocare
+            espanso_default = False
 
         with st.expander(header_text, expanded=espanso_default):
             for idx, m in enumerate(turno_obj["partite"]):
@@ -689,20 +655,31 @@ if db["stato"] == "gironi":
                 match_id = m['id']
                 
                 if m["giocata"]:
-                    row_class = "match-row-green"
-                    center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
+                    # Stile Rosso Marcato per partite giocate
+                    box_bg = "#b71c1c"
+                    border_color = "#ef5350"
+                    text_color = "#ffffff"
+                    center_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>{m['gol1']} - {m['gol2']}</span>"
+                    label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
                 else:
-                    row_class = "match-row-white"
-                    center_content = f"Biliardino {tavolo_num}"
+                    # Stile Verde (uguale ai prossimi in coda) per partite da giocare
+                    box_bg = "#1b5e20"
+                    border_color = "#4caf50"
+                    text_color = "#ffffff"
+                    center_content = "<span style='color: #ffeb3b; font-weight: bold;'>VS</span>"
+                    label_stato = f"Biliardino {tavolo_num}"
 
-                team1_str = f"🥅 {m['p1']} &amp; ⚽ {m['a1']}"
-                team2_str = f"🥅 {m['p2']} &amp; ⚽ {m['a2']}"
+                team1_str = f"🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}"
+                team2_str = f"🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}"
 
                 st.html(f"""
-                    <div class="{row_class}">
-                        <div class="team-left">{team1_str}</div>
-                        <div class="match-center">{center_content}</div>
-                        <div class="team-right">{team2_str}</div>
+                    <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
+                        <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 3px;">{label_stato}</div>
+                        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
+                            <div style="width: 48%;">{team1_str}</div>
+                            <div style="width: 4px; text-align: center;">{center_content}</div>
+                            <div style="width: 48%; text-align: right;">{team2_str}</div>
+                        </div>
                     </div>
                 """)
 
@@ -842,17 +819,29 @@ if db["stato"] == "eliminatorie":
                     match_id = m['id']
 
                     if m["giocata"]:
-                        row_class = "match-row-green"
-                        center_content = f"<b>{m['gol1']} - {m['gol2']}</b>"
+                        box_bg = "#b71c1c"
+                        border_color = "#ef5350"
+                        text_color = "#ffffff"
+                        center_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>{m['gol1']} - {m['gol2']}</span>"
+                        label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
                     else:
-                        row_class = "match-row-white"
-                        center_content = "VS"
+                        box_bg = "#1b5e20"
+                        border_color = "#4caf50"
+                        text_color = "#ffffff"
+                        center_content = "<span style='color: #ffeb3b; font-weight: bold;'>VS</span>"
+                        label_stato = f"Biliardino {tavolo_num}"
+
+                    team1_str = f"🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}"
+                    team2_str = f"🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}"
 
                     st.html(f"""
-                        <div class="{row_class}">
-                            <div class="team-left">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
-                            <div class="match-center">{center_content}</div>
-                            <div class="team-right">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
+                        <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
+                            <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 3px;">{label_stato}</div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
+                                <div style="width: 48%;">{team1_str}</div>
+                                <div style="width: 4px; text-align: center;">{center_content}</div>
+                                <div style="width: 48%; text-align: right;">{team2_str}</div>
+                            </div>
                         </div>
                     """)
 
