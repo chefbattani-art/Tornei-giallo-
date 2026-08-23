@@ -38,10 +38,17 @@ st.markdown("""
             background-color: #ffffff;
             margin-bottom: 10px;
         }
-        /* Tabella estesa al 100% della larghezza della cornice */
+        /* Riempimento totale ed equo delle colonne nella cornice azzurra */
         .ranking-box table {
             width: 100% !important;
+            table-layout: fixed !important;
             margin: 0 auto;
+        }
+        .ranking-box th, .ranking-box td {
+            text-align: center !important;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
         .container-yellow {
             border: 3px solid #f57f17;
@@ -403,7 +410,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE (TITOLI CENTRATI)
+    # 3. CLASSIFICHE IN TEMPO REALE (TITOLI E TABELLE CENTRATE E ALLargate)
     st.markdown("### <p align='center'>🏆 Classifiche in Tempo Reale</p>", unsafe_allow_html=True)
     col_c1, col_c2 = st.columns(2)
 
