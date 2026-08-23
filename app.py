@@ -219,6 +219,7 @@ st.html(
         {logo_html}
         <div style="padding: 10px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
             <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+            <p style="margin: 5px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 14px;">Regolamento Uisp 3 tocchi</p>
         </div>
     </div>
     """
@@ -317,6 +318,8 @@ if db["stato"] == "gironi":
                     partite_in_coda.append(info_m)
 
     partite_in_corso = partite_in_corso[:num_tavoli]
+    # Limita le partite in coda in modo che siano esattamente pari a quelle in corso
+    partite_in_coda = partite_in_coda[:len(partite_in_corso)]
 
     # 1. SEZIONE PARTITE IN CORSO (SFONDO GIALLO)
     if partite_in_corso:
@@ -371,7 +374,7 @@ if db["stato"] == "gironi":
             """,
             unsafe_allow_html=True
         )
-        for item in partite_in_coda[:num_tavoli]:
+        for item in partite_in_coda:
             m = item["m"]
             match_id = m['id']
             
