@@ -205,7 +205,14 @@ st.sidebar.markdown("---")
 st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
 
 # --- INTERFACCIA PRINCIPALE ---
-st.title("⚽ Torneo Biliardino 'Giallo' Live")
+# 🖼️ INTESTAZIONE CON LOGO UISP E REGOLAMENTO
+col_logo, col_titolo = st.columns([1, 4])
+with col_logo:
+    # Mostra il logo UISP da un link ufficiale o immagine locale
+    st.image("https://www.uisp.it/immagini/UISP_logo_2016.png", width=100)
+with col_titolo:
+    st.title("⚽ Torneo Biliardino 'Giallo' Live")
+    st.markdown("##### 📜 Regolamento Ufficiale: **3 Tocchi UISP**")
 
 st.markdown(
     """
@@ -299,7 +306,6 @@ if db["stato"] == "gironi":
                 else:
                     partite_in_coda.append(info_m)
 
-    # Limitiamo le partite in corso esattamente al numero di tavoli disponibili
     partite_in_corso = partite_in_corso[:num_tavoli]
 
     # 1. SEZIONE PARTITE IN CORSO (SFONDO GIALLO)
@@ -345,7 +351,7 @@ if db["stato"] == "gironi":
                             st.rerun()
             st.markdown("---")
 
-    # 2. SEZIONE PARTITE IN CODA (SFONDO VERDE) - Limitata esattamente al numero di tavoli
+    # 2. SEZIONE PARTITE IN CODA (SFONDO VERDE)
     if partite_in_coda:
         st.markdown(
             """
