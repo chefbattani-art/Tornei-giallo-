@@ -335,7 +335,7 @@ if link_torneo and link_torneo != "https://":
     import urllib.parse
     encoded_url = urllib.parse.quote(link_torneo, safe='')
     qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=180x180&data={encoded_url}"
-    st.sidebar.image(qr_api_url, caption="Inquadra per aprire il torneo", use_column_width=True)
+    st.sidebar.image(qr_api_url, caption="Inquadra per aprire il torneo", use_container_width=True)
 
 st.sidebar.info("💡 **Suggerimento:** Copia il link sopra per condividerlo o fallo scansionare ai giocatori.")
 
@@ -790,10 +790,8 @@ if db["stato"] == "eliminatorie":
                         sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
                         finali_partite = [
                             {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2__p["p"] if "sf2__p" in locals() else sf2_p["p"], "a2": sf1_p["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
-                        # Fix di sicurezza per la variabile dei perdenti
-                        finali_partite[1]["p2"] = sf2_p["p"]
                         db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
                         salva_dati(db)
                         st.rerun()
