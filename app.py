@@ -38,11 +38,16 @@ st.markdown("""
             background-color: #ffffff;
             margin-bottom: 10px;
         }
+        /* Tabella estesa al 100% della larghezza della cornice */
+        .ranking-box table {
+            width: 100% !important;
+            margin: 0 auto;
+        }
         .container-yellow {
-            border: 2px solid #ffd54f;
+            border: 3px solid #f57f17;
             border-radius: 8px;
             padding: 12px;
-            background-color: #fffde7;
+            background-color: #ffe082;
             margin-bottom: 15px;
         }
         .container-green {
@@ -365,9 +370,9 @@ if db["stato"] == "gironi":
     num_da_mostrare = len(partite_in_corso)
     partite_in_coda = rimanenti[:num_da_mostrare]
 
-    # 1. QUADRANTE UNICO GIALLO: PARTITE IN CORSO
+    # 1. QUADRANTE UNICO GIALLO SCURO: PARTITE IN CORSO
     if partite_in_corso:
-        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 10px 0; color: #f57f17;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
+        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 10px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
         for item in partite_in_corso:
             m = item["m"]
             html_corso += f"""
@@ -398,8 +403,8 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE
-    st.markdown("### 🏆 Classifiche in Tempo Reale")
+    # 3. CLASSIFICHE IN TEMPO REALE (TITOLI CENTRATI)
+    st.markdown("### <p align='center'>🏆 Classifiche in Tempo Reale</p>", unsafe_allow_html=True)
     col_c1, col_c2 = st.columns(2)
 
     def colora_posizioni(row):
@@ -409,7 +414,7 @@ if db["stato"] == "gironi":
             return ['background-color: #fde8e8' for _ in row]
 
     with col_c1:
-        st.markdown("#### 🥅 Portieri")
+        st.markdown("#### <p align='center'>🥅 Portieri</p>", unsafe_allow_html=True)
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
@@ -429,7 +434,7 @@ if db["stato"] == "gironi":
         """)
 
     with col_c2:
-        st.markdown("#### ⚽ Attaccanti")
+        st.markdown("#### <p align='center'>⚽ Attaccanti</p>", unsafe_allow_html=True)
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
