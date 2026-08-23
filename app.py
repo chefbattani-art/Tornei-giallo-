@@ -428,7 +428,6 @@ if db["stato"] == "setup":
                             "gol1": 0, "gol2": 0
                         })
                         i += 2
-                    # Tutti i turni partono chiusi (chiuso = True)
                     db["turni_partite"].append({"turno": t, "chiuso": True, "partite": partite_turno})
 
                 salva_dati(db)
@@ -504,7 +503,6 @@ if db["stato"] == "gironi":
                     m['giocata'] = True
                     m['in_corso'] = False
                     
-                    # Chiusura automatica del turno se tutte le partite sono state giocate
                     for t_obj in db["turni_partite"]:
                         if t_obj["turno"] == item["turno"]:
                             if all(pt.get("giocata", False) for pt in t_obj["partite"]):
@@ -583,11 +581,12 @@ if db["stato"] == "gironi":
 
     st.markdown("### 📅 Lista Completa Turni")
 
-    # Gestione automatica apertura/chiusura in base allo stato delle partite
+    # --- AGGIORNAMENTO STATO TURNO IN TEMPO REALE ---
     for turno_obj in db["turni_partite"]:
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
         
+        # Se c'è almeno una partita in corso o giocata, apri subito il turno. Se sono tutte finite, chiudilo.
         if tutte_giocate:
             turno_obj["chiuso"] = True
         elif almeno_una_iniziata:
