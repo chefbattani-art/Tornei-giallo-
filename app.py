@@ -5,11 +5,12 @@ import os
 import re
 import random
 from streamlit_autorefresh import st_autorefresh
+from fpdf import FPDF
 
 # Aggiornamento automatico ogni 5 secondi
 st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 
-st.set_page_config(page_title="Torneo Biliardino Giallo Live", layout="wide")
+st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 
 DB_FILE = "torneo_data.json"
 
@@ -96,8 +97,62 @@ def calcola_partite_giocate(ruolo, nome):
                     giocate += 1
     return giocate, totali
 
+# --- GENERAZIONE PDF SCHEMA PARTITE ---
+def genera_pdf_calendario():
+    pdf = FPDF()
+    pdf.add_page()
+    pdf.set_font("Arial", "B", 16)
+    pdf.cell(0, 10, "Torneo Biliardino 'Giallo' - Schema Partite", 0, 1, "C")
+    pdf.ln(5)
+    
+    num_tavoli = db.get("num_tavoli", 2)
+    
+    for turno_obj in db["turni_partite"]:
+        pdf.set_font("Arial", "B", 12)
+        pdf.cell(0, 8, f"Turno {turno_obj['turno']}", 0, 1, "L")
+        pdf.set_font("Arial", "", 10)
+        
+        for idx, m in enumerate(turno_obj["partite"]):
+            tavolo_num = (idx % num_tavoli) + 1
+            risultato = f"{m['gol1']} - {m['gol2']}" if m.get("giocata", False) else "Da giocare"
+            riga = f"  - Tavolo {tavolo_num}: [Portiere: {m['p1']} | Attaccante: {m['a1']}] VS [Portiere: {m['p2']} | Attaccante: {m['a2']}] -> {risultato}"
+            # Gestione caratteri speciali pulendo eventuali emoji per compatibilità standard con FPDF
+            riga_pulita = riga.encode('latin-1', 'ignore').decode('latin-1')
+            pdf.cell(0, 6, riga_pulita, 0, 1, "L")
+        pdf.ln(3)
+        
+    if db.get("fasi_finali"):
+        pdf.ln(5)
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, "Fasi Finali", 0, 1, "C")
+        for f_turno in db["fasi_finali"]:
+            pdf.set_font("Arial", "B", 12)
+            pdf.cell(0, 8, f"{f_turno['nome']}", 0, 1, "L")
+            pdf.set_font("Arial", "", 10)
+            for idx, m in enumerate(f_turno["partite"]):
+                tavolo_num = (idx % num_tavoli) + 1
+                risultato = f"{m['gol1']} - {m['gol2']}" if m.get("giocata", False) else "Da giocare"
+                riga = f"  - Tavolo {tavolo_num}: [P: {m['p1']} | A: {m['a1']}] VS [P: {m['p2']} | A: {m['a2']}] -> {risultato}"
+                riga_pulita = riga.encode('latin-1', 'ignore').decode('latin-1')
+                pdf.cell(0, 6, riga_pulita, 0, 1, "L")
+            pdf.ln(3)
+            
+    return bytes(pdf.output())
+
 # --- BARRA LATERALE ---
 st.sidebar.header("⚙️ Pannello di Controllo")
+
+if db["stato"] != "setup":
+    pdf_data = genera_pdf_calendario()
+    st.sidebar.download_button(
+        label="📥 Scarica Schema Partite in PDF",
+        data=pdf_data,
+        file_name="schema_torneo_biliardino.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
+    st.sidebar.markdown("---")
+
 modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
 
 is_admin = False
