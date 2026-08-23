@@ -294,7 +294,7 @@ if is_admin and db["stato"] != "setup":
         nuovi_tavoli = st.number_input("N° Biliardini", min_value=1, max_value=10, value=db["num_tavoli"])
         nuovi_turni = st.number_input("N° Turni", min_value=1, max_value=10, value=db["partite_per_giocatore"])
         if st.button("💾 Aggiorna Parametri", use_container_width=True):
-            db["num_tavoli"] = nouveaux_tavoli if 'nouveaux_tavoli' in locals() else nuovi_tavoli
+            db["num_tavoli"] = nuovi_tavoli
             db["partite_per_giocatore"] = nuovi_turni
             salva_dati(db)
             st.sidebar.success("Parametri aggiornati!")
@@ -430,7 +430,7 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # --- SEZIONE IN ALTO: TUE PARTITE SE SELEZIONATO IL NOME (PERMETTE INSERIMENTO RISULTATO ALL'OSPITE) ---
+    # --- SEZIONE IN ALTO: TUE PARTITE SE SELEZIONATO IL NOME ---
     if giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = []
         for t_obj in db["turni_partite"]:
@@ -461,7 +461,6 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
-                # Possibilità per l'utente selezionato di inserire il proprio risultato
                 with st.expander(f"📝 Inserisci/Modifica Risultato - Turno {item['turno']} (Biliardino {item['tavolo']})"):
                     ug1 = st.radio("Gol Squadra 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"user_rg1_{match_id}")
                     ug2 = st.radio("Gol Squadra 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"user_rg2_{match_id}")
@@ -478,7 +477,7 @@ if db["stato"] == "gironi":
             st.html('</div>')
         st.markdown("---")
 
-    # --- SEZIONE IN ALTO: PARTITE IN CORSO ORDINATE PER BILIARDINO ---
+    # --- SEZIONE IN ALTO: PARTITE IN CORSO (SFONDO GIALLO QUASI MARCATO) ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -505,12 +504,13 @@ if db["stato"] == "gironi":
             m, turno_num = partite_per_tavolo[b_num]
             match_id = m['id']
             
+            # Sfondo giallo quasi marcato (#fff176) con bordo ambra scuro (#fbc02d)
             st.html(f"""
-                <div style="background-color: #fffde7; border: 2px solid #ffe082; border-radius: 8px; padding: 12px; margin-bottom: 6px;">
-                    <div style="font-weight: bold; color: #d32f2f; margin-bottom: 4px; font-size: 0.95rem;">
+                <div style="background-color: #fff176; border: 2px solid #fbc02d; border-radius: 8px; padding: 12px; margin-bottom: 6px;">
+                    <div style="font-weight: bold; color: #5d4037; margin-bottom: 4px; font-size: 0.95rem;">
                         🏟️ Biliardino {b_num} (Turno {turno_num})
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; background-color: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #ffe082;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background-color: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #fbc02d;">
                         <div style="width: 45%; font-weight: 500;">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
                         <div style="width: 10%; text-align: center; font-weight: bold; color: #d32f2f;">VS</div>
                         <div style="width: 45%; text-align: right; font-weight: 500;">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
@@ -518,7 +518,6 @@ if db["stato"] == "gironi":
                 </div>
             """)
 
-            # Pannello di gestione e inserimento gol visibile all'admin direttamente qui
             if is_admin:
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
@@ -549,8 +548,9 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- SEZIONE PROSSIMI IN CODA ---
-    st.markdown("### 📢 PROSSIMI IN CODA (Preparatevi):")
+    # --- SEZIONE PROSSIMI IN CODA (SFONDO VERDE MARCATO) ---
+    num_partite_in_corso = len(partite_per_tavolo)
+    st.markdown(f"### 📢 PROSSIMI IN CODA ({num_partite_in_corso} in attesa):")
     
     partite_in_coda = []
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
@@ -560,12 +560,13 @@ if db["stato"] == "gironi":
             if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                 partite_in_coda.append((t_obj['turno'], m))
 
-    if partite_in_coda:
-        st.html('<div style="border: 1px solid #c8e6c9; border-radius: 8px; padding: 10px; background-color: #f1f8e9; margin-bottom: 10px;">')
-        for turno_num, m in partite_in_coda[:4]:
+    if partite_in_coda and num_partite_in_corso > 0:
+        # Sfondo verde marcato per l'intero box di coda (#a5d6a7) con bordo scuro (#388e3c)
+        st.html('<div style="border: 2px solid #388e3c; border-radius: 8px; padding: 10px; background-color: #a5d6a7; margin-bottom: 10px;">')
+        for turno_num, m in partite_in_coda[:num_partite_in_corso]:
             st.html(f"""
-                <div style="background-color: #ffffff; border: 1px solid #dcedc8; border-radius: 6px; padding: 8px; margin-bottom: 6px;">
-                    <div style="font-size: 0.8rem; color: #2e7d32; font-weight: bold; margin-bottom: 2px;">👉 In Coda (Turno {turno_num})</div>
+                <div style="background-color: #ffffff; border: 1px solid #81c784; border-radius: 6px; padding: 8px; margin-bottom: 6px;">
+                    <div style="font-size: 0.8rem; color: #1b5e20; font-weight: bold; margin-bottom: 2px;">👉 In Coda (Turno {turno_num})</div>
                     <div style="display: flex; justify-content: space-between; align-items: center;">
                         <div style="width: 48%;">🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}</div>
                         <div style="width: 48%; text-align: right;">🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}</div>
@@ -661,7 +662,6 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
-                # Pulsanti di controllo per admin su ogni singola partita dell'archivio
                 if is_admin:
                     col_adm1, col_adm2 = st.columns(2)
                     with col_adm1:
