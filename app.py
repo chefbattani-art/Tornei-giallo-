@@ -26,11 +26,46 @@ st.markdown("""
         .stMarkdown { margin-bottom: 0px !important; }
         hr { margin: 0.8rem 0px !important; }
         
-        /* Stile per l'effetto scorrimento automatico delle classifiche ingrandito a 400px */
+        /* Stili per i quadranti unici e le classifiche */
         @keyframes scrollUp {
             0% { transform: translateY(0); }
             50% { transform: translateY(-100px); }
             100% { transform: translateY(0); }
+        }
+        .ranking-box {
+            border: 2px solid #90caf9;
+            border-radius: 8px;
+            padding: 10px;
+            background-color: #ffffff;
+            margin-bottom: 10px;
+        }
+        .container-yellow {
+            border: 2px solid #ffd54f;
+            border-radius: 8px;
+            padding: 12px;
+            background-color: #fffde7;
+            margin-bottom: 15px;
+        }
+        .container-green {
+            border: 2px solid #81c784;
+            border-radius: 8px;
+            padding: 12px;
+            background-color: #e8f5e9;
+            margin-bottom: 15px;
+        }
+        .sub-card-green {
+            padding: 10px;
+            background-color: #d4edda;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+        .sub-card-lightgreen {
+            padding: 10px;
+            background-color: #f1f8e9;
+            border: 1px solid #c8e6c9;
+            border-radius: 6px;
+            margin-bottom: 8px;
         }
         .scrolling-wrapper {
             overflow: hidden;
@@ -332,55 +367,44 @@ if db["stato"] == "gironi":
     num_da_mostrare = len(partite_in_corso)
     partite_in_coda = rimanenti[:num_da_mostrare]
 
-    # 1. SEZIONE PARTITE IN CORSO IN ALTO
+    # 1. QUADRANTE UNICO GIALLO: PARTITE IN CORSO
     if partite_in_corso:
-        st.markdown(
-            """
-            <div style="padding: 10px; background-color: #fffde7; border: 2px solid #ffd54f; border-radius: 6px; margin-bottom: 10px;">
-                <h4 style="margin: 0; color: #f57f17;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 10px 0; color: #f57f17;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
         for item in partite_in_corso:
             m = item["m"]
-            st.markdown(f"""
-                <div style="padding: 8px; background-color: #d4edda; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
+            html_corso += f"""
+                <div class="sub-card-green">
                     <b>📍 Biliardino {item['tavolo']} (Turno {item['turno']})</b><br>
                     🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
                     🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
                     <div style="text-align: center; margin-top: 4px; font-size: 13px;">🔥 <b>PARTITA IN CORSO</b></div>
                 </div>
-            """, unsafe_allow_html=True)
-
-    # 2. SEZIONE PARTITE IN CODA IN ALTO
-    if partite_in_coda:
-        st.markdown(
             """
-            <div style="padding: 10px; background-color: #e8f5e9; border: 2px solid #81c784; border-radius: 6px; margin-bottom: 10px;">
-                <h4 style="margin: 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>
-            </div>
-            """,
-            unsafe_allow_html=True
-        )
+        html_corso += '</div>'
+        st.markdown(html_corso, unsafe_allow_html=True)
+
+    # 2. QUADRANTE UNICO VERDE: PROSSIMI IN CODA
+    if partite_in_coda:
+        html_coda = '<div class="container-green"><h4 style="margin: 0 0 10px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
         for item in partite_in_coda:
             m = item["m"]
-            st.markdown(f"""
-                <div style="padding: 8px; background-color: #f1f8e9; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 8px;">
+            html_coda += f"""
+                <div class="sub-card-lightgreen">
                     <b>👉 In Coda (Turno {item['turno']})</b><br>
                     🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
                     🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
                 </div>
-            """, unsafe_allow_html=True)
+            """
+        html_coda += '</div>'
+        st.markdown(html_coda, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO INGREDITO A 400PX
+    # 3. CLASSIFICHE IN TEMPO REALE CON SCORRIMENTO AUTOMATICO, INCORNICIATE E SENZA INDICE
     st.markdown("### 🏆 Classifiche in Tempo Reale")
     col_c1, col_c2 = st.columns(2)
 
     def colora_posizioni(row):
-        # Prime 8 posizioni (indice 0 a 7): verde chiaro. Dalla 9° posizione in poi (indice >= 8): rosso chiaro.
         if row.name < 8:
             return ['background-color: #e6f2e6' for _ in row]
         else:
@@ -395,8 +419,16 @@ if db["stato"] == "gironi":
             data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
         df_p = pd.DataFrame(data_p)
         
-        html_table_p = df_p.style.apply(colora_posizioni, axis=1).to_html()
-        st.markdown(f'<div class="scrolling-wrapper"><div class="scrolling-content">{html_table_p}</div></div>', unsafe_allow_html=True)
+        html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
+        st.markdown(f"""
+            <div class="ranking-box">
+                <div class="scrolling-wrapper">
+                    <div class="scrolling-content">
+                        {html_table_p}
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     with col_c2:
         st.markdown("#### ⚽ Attaccanti")
@@ -407,8 +439,16 @@ if db["stato"] == "gironi":
             data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
         df_a = pd.DataFrame(data_a)
         
-        html_table_a = df_a.style.apply(colora_posizioni, axis=1).to_html()
-        st.markdown(f'<div class="scrolling-wrapper"><div class="scrolling-content">{html_table_a}</div></div>', unsafe_allow_html=True)
+        html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
+        st.markdown(f"""
+            <div class="ranking-box">
+                <div class="scrolling-wrapper">
+                    <div class="scrolling-content">
+                        {html_table_a}
+                    </div>
+                </div>
+            </div>
+        """, unsafe_allow_html=True)
 
     st.markdown("---")
 
