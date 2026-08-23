@@ -396,13 +396,7 @@ if db["stato"] == "gironi":
         df_p = pd.DataFrame(data_p)
         
         html_table_p = df_p.style.apply(colora_posizioni, axis=1).to_html()
-        st.markdown(f"""
-            <div class="scrolling-wrapper">
-                <div class="scrolling-content">
-                    {html_table_p}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="scrolling-wrapper"><div class="scrolling-content">{html_table_p}</div></div>', unsafe_allow_html=True)
 
     with col_c2:
         st.markdown("#### ⚽ Attaccanti")
@@ -414,13 +408,7 @@ if db["stato"] == "gironi":
         df_a = pd.DataFrame(data_a)
         
         html_table_a = df_a.style.apply(colora_posizioni, axis=1).to_html()
-        st.markdown(f"""
-            <div class="scrolling-wrapper">
-                <div class="scrolling-content">
-                    {html_table_a}
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f'<div class="scrolling-wrapper"><div class="scrolling-content">{html_table_a}</div></div>', unsafe_allow_html=True)
 
     st.markdown("---")
 
