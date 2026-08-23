@@ -486,7 +486,7 @@ if db["stato"] == "gironi":
 
     partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
 
-    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME, EVIDENZIAMOLO IN GRASSETTO E STAMPATELLO
+    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME, MOSTRAPIU' IL BOX DEDICATO PER LUI
     if giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = [
             item for item in partite_in_corso_con_tavolo 
@@ -500,14 +500,8 @@ if db["stato"] == "gironi":
                 m = item["m"]
                 match_id = m['id']
                 
-                # Formattazione in GRASSETTO e STAMPATELLO per il giocatore selezionato o la sua squadra
-                p1_str = f"<b>{m['p1'].upper()}</b>" if m['p1'] == giocatore_selezionato else m['p1']
-                a1_str = f"<b>{m['a1'].upper()}</b>" if m['a1'] == giocatore_selezionato else m['a1']
-                p2_str = f"<b>{m['p2'].upper()}</b>" if m['p2'] == giocatore_selezionato else m['p2']
-                a2_str = f"<b>{m['a2'].upper()}</b>" if m['a2'] == giocatore_selezionato else m['a2']
-
-                squadra1_nome = f"{p1_str} & {a1_str}"
-                squadra2_nome = f"{p2_str} & {a2_str}"
+                squadra1_nome = f"{m['p1']} & {m['a1']}"
+                squadra2_nome = f"{m['p2']} & {m['a2']}"
                 
                 st.html(f"""
                     <div class="match-card-box">
@@ -522,14 +516,14 @@ if db["stato"] == "gironi":
                 if not m.get("giocata", False):
                     st.html(f"""
                         <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
-                            ⚽ Gol S1
+                            ⚽ Gol S1 ({squadra1_nome})
                         </div>
                     """)
                     g1_input = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}", label_visibility="collapsed")
                     
                     st.html(f"""
                         <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 12px; margin-bottom: 4px;">
-                            ⚽ Gol S2
+                            ⚽ Gol S2 ({squadra2_nome})
                         </div>
                     """)
                     g2_input = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}", label_visibility="collapsed")
@@ -560,22 +554,58 @@ if db["stato"] == "gironi":
         
         st.markdown("---")
 
-    # VISTA STANDARD (Senza pulsanti gol, visibile a tutti)
+    # VISTA DELLE PARTITE IN CORSO (Con inserimento gol integrato se sei ADMIN)
     if partite_in_corso_con_tavolo:
         st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso_con_tavolo:
             m = item["m"]
+            match_id = m['id']
             squadra1_nome = f"{m['p1']} & {m['a1']}"
             squadra2_nome = f"{m['p2']} & {m['a2']}"
             
             st.html(f"""
-                <div style="padding: 8px; background-color: #fffdf5; border: 2px solid #ffa726; border-radius: 8px; margin-bottom: 8px;">
+                <div style="padding: 10px; background-color: #fffdf5; border: 2px solid #ffa726; border-radius: 8px; margin-bottom: 10px;">
                     🏟️ <b>Biliardino {item['tavolo']}</b> (Turno {item['turno']})<br>
-                    <div style="text-align: center; font-size: 1.05rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 6px; border-radius: 5px; margin-top: 4px;">
+                    <div style="text-align: center; font-size: 1.1rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 6px; border-radius: 5px; margin-top: 4px; margin-bottom: 6px;">
                         {squadra1_nome} vs {squadra2_nome}
                     </div>
                 </div>
             """)
+
+            # SE SEI ADMIN, PUOI INSERIRE IL RISULTATO DIRETTAMENTE QUI DALLE PARTITE IN CORSO!
+            if is_admin:
+                with st.expander(f"⚙️ Inserisci/Modifica Risultato Biliardino {item['tavolo']} (Admin)", expanded=False):
+                    st.html(f"""
+                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
+                            ⚽ Gol: {squadra1_nome}
+                        </div>
+                    """)
+                    adm_g1 = st.radio("Gol S1 Admin", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"adm_live_g1_{match_id}", label_visibility="collapsed")
+                    
+                    st.html(f"""
+                        <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
+                            ⚽ Gol: {squadra2_nome}
+                        </div>
+                    """)
+                    adm_g2 = st.radio("Gol S2 Admin", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"adm_live_g2_{match_id}", label_visibility="collapsed")
+                    
+                    st.html("<div style='margin-top: 8px;'></div>")
+                    if st.button(f"💾 Salva Risultato Biliardino {item['tavolo']} (Admin)", key=f"adm_live_save_{match_id}", use_container_width=True):
+                        m['gol1'] = adm_g1
+                        m['gol2'] = adm_g2
+                        m['giocata'] = True
+                        m['in_corso'] = False
+                        
+                        for t_obj in db["turni_partite"]:
+                            if t_obj["turno"] == item["turno"]:
+                                if all(pt.get("giocata", False) for pt in t_obj["partite"]):
+                                    t_obj["chiuso"] = True
+
+                        ricalcola_classifiche()
+                        salva_dati(db)
+                        st.success(f"Risultato salvato dal pannello Admin per il tavolo {item['tavolo']}!")
+                        st.rerun()
+
         st.html('</div>')
 
     if partite_in_coda:
@@ -961,7 +991,7 @@ if db["stato"] == "eliminatorie":
                         sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
                         finali_partite = [
                             {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
                         db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
                         salva_dati(db)
