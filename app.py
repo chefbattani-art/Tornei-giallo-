@@ -4,6 +4,7 @@ import json
 import os
 import re
 import random
+from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh
 from base64 import b64encode
 from fpdf import FPDF
@@ -28,7 +29,9 @@ def carica_dati():
         "punti_attaccanti": {},
         "dr_portieri": {},
         "dr_attaccanti": {},
-        "fasi_finali": []
+        "fasi_finali": [],
+        "orario_primo_risultato": None,
+        "storico_orari_completamento": []
     }
     if os.path.exists(DB_FILE):
         try:
@@ -252,6 +255,58 @@ def calcola_partite_giocate(ruolo, nome):
                     giocate += 1
     return giocate, totali
 
+def calcola_orario_stimato_fine():
+    if db["stato"] != "gironi":
+        return None
+        
+    num_tavoli = db.get("num_tavoli", 3)
+    
+    # Conta totale partite e partite giocate
+    totale_partite = 0
+    partite_giocate = 0
+    for turno_obj in db["turni_partite"]:
+        for m in turno_obj["partite"]:
+            totale_partite += 1
+            if m.get("giocata", False):
+                partite_giocate += 1
+                
+    if partite_giocate == 0 or not db.get("orario_primo_risultato"):
+        return "In attesa di dati..."
+        
+    if partite_giocate >= totale_partite:
+        return "Completato ✅"
+        
+    try:
+        t_inizio = datetime.fromisoformat(db["orario_primo_risultato"])
+        t_attuale = datetime.now()
+        
+        # Tempo trascorso dal primo risultato
+        tempo_trascorso = (t_attuale - t_inizio).total_seconds()
+        
+        if tempo_trascorso <= 0:
+            return "Calcolo in corso..."
+            
+        # Durata media per singola partita (inclusi i cambi)
+        durata_media_sec = tempo_trascorso / partite_giocate
+        
+        # Partite mancanti
+        partite_mancanti = totale_partite - partite_giocate
+        
+        # Gestione del parallelismo (più tavoli)
+        # Più tavoli giocano in contemporanea, quindi il tempo stimato residuo si divide per il numero di tavoli
+        giri_rimanenti = partite_mancanti / num_tavoli
+        tempo_rimanente_sec = giri_rimanenti * durata_media_sec
+        
+        orario_stimato = t_attuale + timedelta(seconds=tempo_rimanente_sec)
+        return orario_stimato.strftime("%H:%M")
+    except Exception:
+        return "Non disponibile"
+
+def registra_completamento_partita():
+    ora_attuale_iso = datetime.now().isoformat()
+    if not db.get("orario_primo_risultato"):
+        db["orario_primo_risultato"] = ora_attuale_iso
+
 def genera_pdf_calendario():
     pdf = FPDF()
     pdf.add_page()
@@ -341,6 +396,18 @@ st.html(
     """
 )
 
+# BOX ORARIO STIMATO FINE GIRONI
+if db["stato"] == "gironi":
+    orario_stimato_str = calcola_orario_stimato_fine()
+    st.html(
+        f"""
+        <div style="background-color: #e8f5e9; border: 2px solid #81c784; border-radius: 6px; padding: 6px; text-align: center; margin-top: 6px; margin-bottom: 8px;">
+            <span style="font-size: 0.9rem; color: #2e7d32; font-weight: bold;">⏱️ Orario stimato fine girone: </span>
+            <span style="font-size: 1.1rem; color: #1b5e20; font-weight: bold;">{orario_stimato_str}</span>
+        </div>
+        """
+    )
+
 # SELETTORE RAPIDO GIOCATORE
 if db["stato"] != "setup":
     tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
@@ -400,6 +467,7 @@ if db["stato"] == "setup":
                 db["dr_attaccanti"] = {a: 0 for a in attaccanti}
                 db["stato"] = "gironi"
                 db["fasi_finali"] = []
+                db["orario_primo_risultato"] = None
                 
                 db["turni_partite"] = []
                 for t in range(1, db["partite_per_giocatore"] + 1):
@@ -469,6 +537,7 @@ if db["stato"] == "gironi":
                         m['gol1'] = ug1
                         m['gol2'] = ug2
                         m['giocata'] = True
+                        registra_completamento_partita()
                         ricalcola_classifiche()
                         salva_dati(db)
                         st.success("Risultato salvato con successo!")
@@ -521,6 +590,7 @@ if db["stato"] == "gironi":
                         m['gol1'] = rg1
                         m['gol2'] = rg2
                         m['giocata'] = True
+                        registra_completamento_partita()
                         ricalcola_classifiche()
                         salva_dati(db)
                         st.success("Salvato!")
@@ -699,6 +769,7 @@ if db["stato"] == "gironi":
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
+                            registra_completamento_partita()
                             ricalcola_classifiche()
                             salva_dati(db)
                             st.success("Salvato!")
@@ -878,7 +949,7 @@ if db["stato"] == "eliminatorie":
                         sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
                         finali_partite = [
                             {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["a"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["p"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
                         db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
                         salva_dati(db)
