@@ -12,80 +12,177 @@ st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 
 st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 
+DB_FILE = "torneo_data.json"
+LOGO_FILE = "logo_uisp.png"
+
+def carica_dati():
+    dati_default = {
+        "stato": "setup",
+        "portieri": [],
+        "attaccanti": [],
+        "num_tavoli": 3,
+        "partite_per_giocatore": 6,
+        "admin_pin": "0000",
+        "turni_partite": [], 
+        "punti_portieri": {},
+        "punti_attaccanti": {},
+        "dr_portieri": {},
+        "dr_attaccanti": {},
+        "fasi_finali": []
+    }
+    if os.path.exists(DB_FILE):
+        try:
+            with open(DB_FILE, "r") as f:
+                dati_salvati = json.load(f)
+                for k, v in dati_default.items():
+                    if k not in dati_salvati:
+                        dati_salvati[k] = v
+                return dati_salvati
+        except:
+            pass
+    return dati_default
+
+def salva_dati(data):
+    with open(DB_FILE, "w") as f:
+        json.dump(data, f, indent=4)
+
+if "db" not in st.session_state:
+    st.session_state.db = carica_dati()
+
+db = st.session_state.db
+
+# --- BARRA LATERALE PER VERIFICA ADMIN (PRIMA DEL CSS) ---
+st.sidebar.header("⚙️ Pannello Admin")
+modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
+
+is_admin = False
+if modalita_admin:
+    pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
+    if pin_inserito == db["admin_pin"]:
+        is_admin = True
+        st.sidebar.success("Accesso Admin OK ✅")
+    else:
+        st.sidebar.error("PIN errato.")
+
+# --- CSS DINAMICO: COMPATTO PER ADMIN, STANDARD PER OSPITI ---
+if is_admin:
+    st.markdown("""
+        <style>
+            .block-container {
+                padding-top: 0.2rem !important;
+                padding-bottom: 0.2rem !important;
+                padding-left: 0.5rem !important;
+                padding-right: 0.5rem !important;
+            }
+            h1 { margin-bottom: 0px; font-size: 1.4rem; }
+            h3 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.1rem; }
+            h4 { margin-top: 0rem; margin-bottom: 0rem; font-size: 0.95rem; }
+            .stMarkdown { margin-bottom: 0px !important; }
+            hr { margin: 0.2rem 0px !important; }
+            
+            .ranking-box {
+                border: 1px solid #90caf9;
+                border-radius: 6px;
+                padding: 4px;
+                background-color: #ffffff;
+                margin-bottom: 2px;
+                margin-top: 1px;
+            }
+            .ranking-box table {
+                width: 100% !important;
+                table-layout: fixed !important;
+                margin: 0 auto;
+            }
+            .ranking-box th, .ranking-box td {
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                padding: 2px 1px !important;
+                font-size: 0.78rem;
+            }
+            .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) { width: 10% !important; text-align: center !important; }
+            .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) { width: 42% !important; text-align: left !important; }
+            .ranking-box th:nth-child(3), .ranking-box td:nth-child(3) { width: 16% !important; text-align: center !important; }
+            .ranking-box th:nth-child(4), .ranking-box td:nth-child(4) { width: 16% !important; text-align: center !important; }
+            .ranking-box th:nth-child(5), .ranking-box td:nth-child(5) { width: 16% !important; text-align: center !important; }
+
+            .container-yellow {
+                border: 2px solid #f57f17;
+                border-radius: 6px;
+                padding: 6px;
+                background-color: #ffe082;
+                margin-bottom: 6px;
+            }
+            .container-green {
+                border: 1px solid #81c784;
+                border-radius: 6px;
+                padding: 6px;
+                background-color: #e8f5e9;
+                margin-bottom: 6px;
+            }
+            .match-card-box {
+                border: 2px solid #ffa726;
+                border-radius: 6px;
+                padding: 6px;
+                background-color: #fffdf5;
+                margin-bottom: 6px;
+                box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
+            }
+            .sub-card-lightgreen {
+                padding: 4px;
+                background-color: #f1f8e9;
+                border: 1px solid #c8e6c9;
+                border-radius: 4px;
+                margin-bottom: 4px;
+                font-size: 0.85rem;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+else:
+    # Stile standard / largo per gli ospiti
+    st.markdown("""
+        <style>
+            .ranking-box {
+                border: 1px solid #90caf9;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #ffffff;
+                margin-bottom: 10px;
+            }
+            .container-yellow {
+                border: 2px solid #f57f17;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #ffe082;
+                margin-bottom: 10px;
+            }
+            .container-green {
+                border: 1px solid #81c784;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #e8f5e9;
+                margin-bottom: 10px;
+            }
+            .match-card-box {
+                border: 2px solid #ffa726;
+                border-radius: 8px;
+                padding: 10px;
+                background-color: #fffdf5;
+                margin-bottom: 10px;
+            }
+            .sub-card-lightgreen {
+                padding: 8px;
+                background-color: #f1f8e9;
+                border: 1px solid #c8e6c9;
+                border-radius: 6px;
+                margin-bottom: 6px;
+            }
+        </style>
+    """, unsafe_allow_html=True)
+
+# Stili comuni per il podio e animazioni
 st.markdown("""
     <style>
-        .block-container {
-            padding-top: 0.2rem !important;
-            padding-bottom: 0.2rem !important;
-            padding-left: 0.5rem !important;
-            padding-right: 0.5rem !important;
-        }
-        h1 { margin-bottom: 0px; font-size: 1.4rem; }
-        h3 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.1rem; }
-        h4 { margin-top: 0rem; margin-bottom: 0rem; font-size: 0.95rem; }
-        .stMarkdown { margin-bottom: 0px !important; }
-        hr { margin: 0.2rem 0px !important; }
-        
-        .ranking-box {
-            border: 1px solid #90caf9;
-            border-radius: 6px;
-            padding: 4px;
-            background-color: #ffffff;
-            margin-bottom: 2px;
-            margin-top: 1px;
-        }
-        
-        .ranking-box table {
-            width: 100% !important;
-            table-layout: fixed !important;
-            margin: 0 auto;
-        }
-        .ranking-box th, .ranking-box td {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            padding: 2px 1px !important;
-            font-size: 0.78rem;
-        }
-        .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) { width: 10% !important; text-align: center !important; }
-        .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) { width: 42% !important; text-align: left !important; }
-        .ranking-box th:nth-child(3), .ranking-box td:nth-child(3) { width: 16% !important; text-align: center !important; }
-        .ranking-box th:nth-child(4), .ranking-box td:nth-child(4) { width: 16% !important; text-align: center !important; }
-        .ranking-box th:nth-child(5), .ranking-box td:nth-child(5) { width: 16% !important; text-align: center !important; }
-
-        .container-yellow {
-            border: 2px solid #f57f17;
-            border-radius: 6px;
-            padding: 6px;
-            background-color: #ffe082;
-            margin-bottom: 6px;
-        }
-        .container-green {
-            border: 1px solid #81c784;
-            border-radius: 6px;
-            padding: 6px;
-            background-color: #e8f5e9;
-            margin-bottom: 6px;
-        }
-        
-        .match-card-box {
-            border: 2px solid #ffa726;
-            border-radius: 6px;
-            padding: 6px;
-            background-color: #fffdf5;
-            margin-bottom: 6px;
-            box-shadow: 0px 1px 3px rgba(0,0,0,0.05);
-        }
-
-        .sub-card-lightgreen {
-            padding: 4px;
-            background-color: #f1f8e9;
-            border: 1px solid #c8e6c9;
-            border-radius: 4px;
-            margin-bottom: 4px;
-            font-size: 0.85rem;
-        }
-
         @keyframes riseUp {
             0% { transform: translateY(30px); opacity: 0; }
             100% { transform: translateY(0); opacity: 1; }
@@ -141,45 +238,6 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
-
-DB_FILE = "torneo_data.json"
-LOGO_FILE = "logo_uisp.png"
-
-def carica_dati():
-    dati_default = {
-        "stato": "setup",
-        "portieri": [],
-        "attaccanti": [],
-        "num_tavoli": 3,
-        "partite_per_giocatore": 6,
-        "admin_pin": "0000",
-        "turni_partite": [], 
-        "punti_portieri": {},
-        "punti_attaccanti": {},
-        "dr_portieri": {},
-        "dr_attaccanti": {},
-        "fasi_finali": []
-    }
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                dati_salvati = json.load(f)
-                for k, v in dati_default.items():
-                    if k not in dati_salvati:
-                        dati_salvati[k] = v
-                return dati_salvati
-        except:
-            pass
-    return dati_default
-
-def salva_dati(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=4)
-
-if "db" not in st.session_state:
-    st.session_state.db = carica_dati()
-
-db = st.session_state.db
 
 def pulisci_nome(testo):
     testo = testo.replace("🥅", "").replace("🚪", "").replace("⚽", "")
@@ -281,19 +339,7 @@ def genera_pdf_calendario():
             
     return bytes(pdf.output())
 
-# --- BARRA LATERALE ---
-st.sidebar.header("⚙️ Pannello Admin")
-modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
-
-is_admin = False
-if modalita_admin:
-    pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
-    if pin_inserito == db["admin_pin"]:
-        is_admin = True
-        st.sidebar.success("Accesso Admin OK ✅")
-    else:
-        st.sidebar.error("PIN errato.")
-
+# --- GESTIONE OPZIONI ADMIN IN SIDEBAR ---
 if is_admin:
     st.sidebar.markdown("---")
     st.sidebar.subheader("🗑️ Reset Totale")
@@ -351,9 +397,9 @@ st.html(
     f"""
     <div style="text-align: center; margin-bottom: 2px;">
         {logo_html}
-        <div style="padding: 4px; background-color: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px;">
-            <h2 style="margin: 0; color: #1565c0; font-size: 1.1rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-            <p style="margin: 1px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 10px;">Regolamento Uisp 3 tocchi</p>
+        <div style="padding: 6px; background-color: #e3f2fd; border: 1px solid #90caf9; border-radius: 6px;">
+            <h2 style="margin: 0; color: #1565c0; font-size: 1.2rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+            <p style="margin: 2px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 11px;">Regolamento Uisp 3 tocchi</p>
         </div>
     </div>
     """
@@ -372,8 +418,8 @@ else:
 
 st.html(
     """
-    <div style="padding: 2px; background-color: #f0f2f6; border-radius: 4px; text-align: center; margin-bottom: 4px;">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 10px;">
+    <div style="padding: 4px; background-color: #f0f2f6; border-radius: 4px; text-align: center; margin-bottom: 6px;">
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 11px;">
             Ricarica la pagina del browser per aggiornare l'andamento in tempo reale
         </a>
     </div>
@@ -503,19 +549,19 @@ if db["stato"] == "gironi":
                 
                 st.html(f"""
                     <div class="match-card-box">
-                        <div style="font-weight: bold; color: #b71c1c; margin-bottom: 4px; font-size: 0.95rem;">
+                        <div style="font-weight: bold; color: #b71c1c; margin-bottom: 4px; font-size: 1.0rem;">
                             🏟️ Biliardino {item['tavolo']} (Turno {item['turno']})
                         </div>
-                        <div style="text-align: center; font-size: 1.0rem; color: #1a237e; background-color: #e8eaf6; padding: 4px; border-radius: 4px; margin-bottom: 6px;">
-                            {squadra1_nome} <span style="color: #d32f2f; font-size: 0.85rem;">vs</span> {squadra2_nome}
+                        <div style="text-align: center; font-size: 1.05rem; color: #1a237e; background-color: #e8eaf6; padding: 6px; border-radius: 4px; margin-bottom: 6px;">
+                            {squadra1_nome} <span style="color: #d32f2f;">vs</span> {squadra2_nome}
                         </div>
                 """)
                 
                 if not m.get("giocata", False):
-                    st.html(f'<div style="font-size: 0.85rem; font-weight: bold; margin-bottom: 2px;">Gol S1 ({squadra1_nome})</div>')
+                    st.html(f'<div style="font-size: 0.9rem; font-weight: bold; margin-bottom: 2px;">Gol S1 ({squadra1_nome})</div>')
                     g1_input = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}", label_visibility="collapsed")
                     
-                    st.html(f'<div style="font-size: 0.85rem; font-weight: bold; margin-top: 4px; margin-bottom: 2px;">Gol S2 ({squadra2_nome})</div>')
+                    st.html(f'<div style="font-size: 0.9rem; font-weight: bold; margin-top: 4px; margin-bottom: 2px;">Gol S2 ({squadra2_nome})</div>')
                     g2_input = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}", label_visibility="collapsed")
                     
                     if st.button(f"💾 Salva e Libera Tavolo {item['tavolo']}", key=f"live_save_{match_id}", use_container_width=True):
@@ -553,9 +599,9 @@ if db["stato"] == "gironi":
             squadra2_nome = f"{m['p2']} & {m['a2']}"
             
             st.html(f"""
-                <div style="padding: 6px; background-color: #fffdf5; border: 1px solid #ffa726; border-radius: 6px; margin-bottom: 6px;">
+                <div style="padding: 8px; background-color: #fffdf5; border: 1px solid #ffa726; border-radius: 6px; margin-bottom: 6px;">
                     🏟️ <b>Biliardino {item['tavolo']}</b> (Turno {item['turno']})<br>
-                    <div style="text-align: center; font-size: 0.95rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 4px; border-radius: 4px; margin-top: 2px; margin-bottom: 4px;">
+                    <div style="text-align: center; font-size: 1.0rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 6px; border-radius: 4px; margin-top: 4px; margin-bottom: 4px;">
                         {squadra1_nome} vs {squadra2_nome}
                     </div>
                 </div>
@@ -589,7 +635,7 @@ if db["stato"] == "gironi":
         st.html('</div>')
 
     if partite_in_coda:
-        html_coda = '<div class="container-green"><h4 style="margin: 0 0 2px 0; color: #2e7d32;">📢 PROSSIMI IN CODA:</h4>'
+        html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA:</h4>'
         for item in partite_in_coda:
             m = item["m"]
             html_coda += f"""
@@ -602,7 +648,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    st.html("<h3 style='text-align: center; margin: 0 0 2px 0;'>🏆 Classifiche in Tempo Reale</h3>")
+    st.html("<h3 style='text-align: center; margin: 0 0 6px 0;'>🏆 Classifiche in Tempo Reale</h3>")
     col_c1, col_c2 = st.columns(2)
 
     def colora_posizioni(row):
@@ -612,7 +658,7 @@ if db["stato"] == "gironi":
             return ['background-color: #fde8e8' for _ in row]
 
     with col_c1:
-        st.html("<h4 style='text-align: center; margin: 0 0 1px 0;'>🥅 Portieri</h4>")
+        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
@@ -626,7 +672,7 @@ if db["stato"] == "gironi":
         st.html(f'<div class="ranking-box">{html_table_p}</div>')
 
     with col_c2:
-        st.html("<h4 style='text-align: center; margin: 0 0 1px 0;'>⚽ Attaccanti</h4>")
+        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
@@ -665,8 +711,8 @@ if db["stato"] == "gironi":
 
         st.html(
             f"""
-            <div style="padding: 3px; background-color: {header_bg}; border: 1px solid {header_border}; border-radius: 4px; text-align: center; margin-top: 4px; margin-bottom: 4px;">
-                <h3 style="margin: 0; color: #3e2723; font-size: 0.95rem;">{header_text}</h3>
+            <div style="padding: 6px; background-color: {header_bg}; border: 1px solid {header_border}; border-radius: 6px; text-align: center; margin-top: 6px; margin-bottom: 6px;">
+                <h3 style="margin: 0; color: #3e2723; font-size: 1.0rem;">{header_text}</h3>
             </div>
             """
         )
@@ -700,7 +746,7 @@ if db["stato"] == "gironi":
                     stato_testo = "⏳ <b>Da giocare</b>"
 
                 st.html(f"""
-                    <div style="padding: 4px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 4px; margin-bottom: 4px; font-size: 0.85rem;">
+                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px; font-size: 0.95rem;">
                         <b>📍 Tavolo {tavolo_num}</b> | 🥅 {m['p1']} & ⚽ {m['a1']} <b>vs</b> 🥅 {m['p2']} & ⚽ {m['a2']} 
                         <span style="float: right;">{stato_testo}</span>
                     </div>
@@ -791,8 +837,8 @@ if db["stato"] == "eliminatorie":
 
     if finito_tutto:
         st.html("""
-            <div style="text-align: center; margin-top: 5px; margin-bottom: 10px;">
-                <h1 style="color: #d32f2f; font-size: 1.6rem;">🏆 TORNEO CONCLUSO! 🏆</h1>
+            <div style="text-align: center; margin-top: 10px; margin-bottom: 15px;">
+                <h1 style="color: #d32f2f; font-size: 1.8rem;">🏆 TORNEO CONCLUSO! 🏆</h1>
             </div>
         """)
 
@@ -874,7 +920,7 @@ if db["stato"] == "eliminatorie":
                     stato_testo = "⏳ <b>Da giocare</b>"
 
                 st.html(f"""
-                    <div style="padding: 4px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 4px; margin-bottom: 4px; font-size: 0.85rem;">
+                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px; font-size: 0.95rem;">
                         <b>📍 Tavolo {tavolo_num}</b> | 🥅 {m['p1']} & ⚽ {m['a1']} vs 🥅 {m['p2']} & ⚽ {m['a2']}
                         <span style="float: right;">{stato_testo}</span>
                     </div>
