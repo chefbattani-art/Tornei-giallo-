@@ -15,37 +15,56 @@ st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 st.markdown("""
     <style>
         .block-container {
-            padding-top: 0.8rem;
-            padding-bottom: 0.8rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.5rem;
             padding-left: 1rem;
             padding-right: 1rem;
         }
         h1 { margin-bottom: 0px; font-size: 1.6rem; }
-        h3 { margin-top: 0.3rem; margin-bottom: 0.3rem; font-size: 1.2rem; }
-        h4 { margin-top: 0.2rem; margin-bottom: 0.2rem; font-size: 1.0rem; }
+        h3 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.2rem; }
+        h4 { margin-top: 0rem; margin-bottom: 0rem; font-size: 1.0rem; }
         .stMarkdown { margin-bottom: 0px !important; }
-        hr { margin: 0.5rem 0px !important; }
+        hr { margin: 0.4rem 0px !important; }
         
         .ranking-box {
             border: 2px solid #90caf9;
             border-radius: 8px;
-            padding: 8px;
+            padding: 6px;
             background-color: #ffffff;
-            margin-bottom: 8px;
+            margin-bottom: 4px;
+            margin-top: 2px;
         }
-        /* Tabella estesa al 100% e statica (senza scorrimento) */
+        
+        /* Gestione larghezza colonne tabelle classifiche (Posizione stretta, Nome largo) */
         .ranking-box table {
             width: 100% !important;
             table-layout: fixed !important;
             margin: 0 auto;
         }
         .ranking-box th, .ranking-box td {
-            text-align: center !important;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
-            padding: 4px !important;
+            padding: 3px 2px !important;
+            font-size: 0.9rem;
         }
+        .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) {
+            width: 12% !important;
+            text-align: center !important;
+        }
+        .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) {
+            width: 48% !important;
+            text-align: left !important;
+        }
+        .ranking-box th:nth-child(3), .ranking-box td:nth-child(3) {
+            width: 20% !important;
+            text-align: center !important;
+        }
+        .ranking-box th:nth-child(4), .ranking-box td:nth-child(4) {
+            width: 20% !important;
+            text-align: center !important;
+        }
+
         .container-yellow {
             border: 3px solid #f57f17;
             border-radius: 8px;
@@ -262,11 +281,11 @@ if os.path.exists(LOGO_FILE):
 
 st.html(
     f"""
-    <div style="text-align: center; margin-bottom: 10px;">
+    <div style="text-align: center; margin-bottom: 5px;">
         {logo_html}
-        <div style="padding: 8px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
-            <h2 style="margin: 0; color: #1565c0; font-size: 1.4rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
-            <p style="margin: 3px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 13px;">Regolamento Uisp 3 tocchi</p>
+        <div style="padding: 6px; background-color: #e3f2fd; border: 2px solid #90caf9; border-radius: 8px;">
+            <h2 style="margin: 0; color: #1565c0; font-size: 1.3rem;">🏆 Torneo Biliardino 'Giallo' Live</h2>
+            <p style="margin: 2px 0 0 0; color: #0d47a1; font-weight: bold; font-size: 12px;">Regolamento Uisp 3 tocchi</p>
         </div>
     </div>
     """
@@ -274,8 +293,8 @@ st.html(
 
 st.html(
     """
-    <div style="padding: 4px; background-color: #f0f2f6; border-radius: 6px; text-align: center; margin-bottom: 8px;">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 12px;">
+    <div style="padding: 3px; background-color: #f0f2f6; border-radius: 6px; text-align: center; margin-bottom: 5px;">
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #262730; font-weight: bold; font-size: 11px;">
             Ricarica la pagina del browser per aggiornare l'andamento in tempo reale
         </a>
     </div>
@@ -368,7 +387,7 @@ if db["stato"] == "gironi":
 
     # 1. QUADRANTE UNICO GIALLO SCURO: PARTITE IN CORSO
     if partite_in_corso:
-        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
+        html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
         for item in partite_in_corso:
             m = item["m"]
             html_corso += f"""
@@ -384,7 +403,7 @@ if db["stato"] == "gironi":
 
     # 2. QUADRANTE UNICO VERDE: PROSSIMI IN CODA
     if partite_in_coda:
-        html_coda = '<div class="container-green"><h4 style="margin: 0 0 6px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
+        html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
         for item in partite_in_coda:
             m = item["m"]
             html_coda += f"""
@@ -399,8 +418,8 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE (STATICO, SENZA SCORRIMENTO)
-    st.markdown("### <p align='center'>🏆 Classifiche in Tempo Reale</p>", unsafe_allow_html=True)
+    # 3. CLASSIFICHE IN TEMPO REALE (SENZA SPAZI VUOTI E NOMI COMPLETI)
+    st.html("<h3 style='text-align: center; margin: 0 0 4px 0;'>🏆 Classifiche in Tempo Reale</h3>")
     col_c1, col_c2 = st.columns(2)
 
     def colora_posizioni(row):
@@ -410,7 +429,7 @@ if db["stato"] == "gironi":
             return ['background-color: #fde8e8' for _ in row]
 
     with col_c1:
-        st.markdown("#### <p align='center'>🥅 Portieri</p>", unsafe_allow_html=True)
+        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
         sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
@@ -426,7 +445,7 @@ if db["stato"] == "gironi":
         """)
 
     with col_c2:
-        st.markdown("#### <p align='center'>⚽ Attaccanti</p>", unsafe_allow_html=True)
+        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
         sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
@@ -449,7 +468,7 @@ if db["stato"] == "gironi":
     for turno_obj in db["turni_partite"]:
         st.html(
             f"""
-            <div style="padding: 6px; background-color: #ffd700; border: 2px solid #ffb300; border-radius: 6px; text-align: center; margin-top: 10px; margin-bottom: 8px;">
+            <div style="padding: 5px; background-color: #ffd700; border: 2px solid #ffb300; border-radius: 6px; text-align: center; margin-top: 6px; margin-bottom: 6px;">
                 <h3 style="margin: 0; color: #3e2723; font-size: 1.1rem;">TURNO {turno_obj['turno']}</h3>
             </div>
             """
@@ -470,11 +489,11 @@ if db["stato"] == "gironi":
                 stato_testo = "⏳ <b>Da giocare</b>"
 
             st.html(f"""
-                <div style="padding: 8px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
+                <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
                     <b>📍 Tavolo {tavolo_num}</b><br>
                     🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
                     🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
-                    <div style="text-align: center; margin-top: 4px; font-size: 13px;">
+                    <div style="text-align: center; margin-top: 2px; font-size: 12px;">
                         {stato_testo}
                     </div>
                 </div>
@@ -563,11 +582,11 @@ if db["stato"] == "eliminatorie":
                 stato_testo = "⏳ <b>Da giocare</b>"
 
             st.html(f"""
-                <div style="padding: 8px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
+                <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
                     <b>📍 Biliardino {tavolo_num}</b><br>
                     🥅 <b>{m['p1']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a1']}</b><br>
                     🥅 <b>{m['p2']}</b> &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ <b>{m['a2']}</b><br>
-                    <div style="text-align: center; margin-top: 4px; font-size: 13px;">
+                    <div style="text-align: center; margin-top: 2px; font-size: 12px;">
                         {stato_testo}
                     </div>
                 </div>
