@@ -439,6 +439,18 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
+    # --- AGGIORNAMENTO STATO TURNO IN TEMPO REALE (SPOSTATO ALL'INIZIO) ---
+    for turno_obj in db["turni_partite"]:
+        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
+        
+        if tutte_giocate:
+            turno_obj["chiuso"] = True
+        elif almeno_una_iniziata:
+            turno_obj["chiuso"] = False
+
+    salva_dati(db)
+
     tutte_attive = []
     for turno_obj in db["turni_partite"]:
         for m in turno_obj["partite"]:
@@ -580,19 +592,6 @@ if db["stato"] == "gironi":
     st.markdown("---")
 
     st.markdown("### 📅 Lista Completa Turni")
-
-    # --- AGGIORNAMENTO STATO TURNO IN TEMPO REALE ---
-    for turno_obj in db["turni_partite"]:
-        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
-        
-        # Se c'è almeno una partita in corso o giocata, apri subito il turno. Se sono tutte finite, chiudilo.
-        if tutte_giocate:
-            turno_obj["chiuso"] = True
-        elif almeno_una_iniziata:
-            turno_obj["chiuso"] = False
-
-    salva_dati(db)
 
     # Renderizzazione dei turni con etichette corrette: Da iniziare / In corso / Completato
     for turno_obj in db["turni_partite"]:
