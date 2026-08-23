@@ -64,7 +64,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS PERSONALIZZATO PER CLASSIFICHE CENTRALI E LARGHE ---
+# --- CSS PERSONALIZZATO PER CLASSIFICHE E MATCH CARD ---
 st.markdown("""
     <style>
         .container-yellow {
@@ -439,13 +439,12 @@ if db["stato"] == "gironi":
 
                 st.html(f"""
                     <div style="background-color: #ffffff; border: 1px solid #ffa726; border-radius: 6px; padding: 8px; margin-bottom: 6px;">
-                        <div style="font-size: 0.8rem; color: #d32f2f; font-weight: bold; margin-bottom: 2px;">Turno {item['turno']} | Biliardino {item['tavolo']}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center;">
-                            <div style="width: 45%;">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
-                            <div style="width: 10%; text-align: center; font-weight: bold;">VS</div>
-                            <div style="width: 45%; text-align: right;">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
+                        <div style="font-size: 0.8rem; color: #d32f2f; font-weight: bold; margin-bottom: 4px;">Turno {item['turno']} | Biliardino {item['tavolo']}</div>
+                        <div style="display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                            <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
+                            <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
                         </div>
-                        <div style="text-align: center; margin-top: 4px; font-weight: bold; color: #333;">{center_txt}</div>
+                        <div style="text-align: center; margin-top: 6px; font-weight: bold; color: #333;">{center_txt}</div>
                     </div>
                 """)
 
@@ -464,7 +463,7 @@ if db["stato"] == "gironi":
             st.html('</div>')
         st.markdown("---")
 
-    # --- SEZIONE IN ALTO: PARTITE IN CORSO (SFONDO GIALLO QUASI MARCATO) ---
+    # --- SEZIONE IN ALTO: PARTITE IN CORSO (SFONDO GIALLO) ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -489,13 +488,15 @@ if db["stato"] == "gironi":
             
             st.html(f"""
                 <div style="background-color: #fff176; border: 2px solid #fbc02d; border-radius: 8px; padding: 12px; margin-bottom: 6px;">
-                    <div style="font-weight: bold; color: #5d4037; margin-bottom: 4px; font-size: 0.95rem;">
+                    <div style="font-weight: bold; color: #5d4037; margin-bottom: 6px; font-size: 0.95rem;">
                         🏟️ Biliardino {b_num} (Turno {turno_num})
                     </div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; background-color: #ffffff; padding: 8px 12px; border-radius: 6px; border: 1px solid #fbc02d;">
-                        <div style="width: 45%; font-weight: 500;">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
-                        <div style="width: 10%; text-align: center; font-weight: bold; color: #d32f2f;">VS</div>
-                        <div style="width: 45%; text-align: right; font-weight: 500;">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
+                    <div style="display: flex; align-items: center; background-color: #ffffff; padding: 10px 14px; border-radius: 6px; border: 1px solid #fbc02d;">
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px; font-weight: 500;">
+                            <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
+                            <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
+                        </div>
+                        <div style="width: 50px; text-align: center; font-weight: bold; color: #d32f2f; font-size: 1.1rem;">VS</div>
                     </div>
                 </div>
             """)
@@ -532,11 +533,13 @@ if db["stato"] == "gironi":
         for turno_num, m in partite_in_coda[:num_partite_in_corso]:
             st.html(f"""
                 <div style="background-color: #1b5e20; border: 1px solid #4caf50; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: #ffffff;">
-                    <div style="font-size: 0.85rem; color: #a5d6a7; font-weight: bold; margin-bottom: 3px;">👉 In Coda (Turno {turno_num})</div>
-                    <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
-                        <div style="width: 48%;">🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}</div>
-                        <div style="width: 4px; text-align: center; color: #ffeb3b; font-weight: bold;">VS</div>
-                        <div style="width: 48%; text-align: right;">🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}</div>
+                    <div style="font-size: 0.85rem; color: #a5d6a7; font-weight: bold; margin-bottom: 4px;">👉 In Coda (Turno {turno_num})</div>
+                    <div style="display: flex; align-items: center; font-weight: 500;">
+                        <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                            <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
+                            <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
+                        </div>
+                        <div style="width: 50px; text-align: center; color: #ffeb3b; font-weight: bold; font-size: 1.1rem;">VS</div>
                     </div>
                 </div>
             """)
@@ -549,7 +552,7 @@ if db["stato"] == "gironi":
     # --- CLASSIFICHE IN TEMPO REALE GRANDI E CENTRALI ---
     st.html("<h2 style='text-align: center; color: #1565c0; margin-bottom: 20px;'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
 
-    # TABELLA PORTIERI CENTRALE E LARGA
+    # TABELLA PORTIERI
     sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
     rows_p_html = ""
     for idx, (p, pt) in enumerate(sorted_p):
@@ -588,7 +591,7 @@ if db["stato"] == "gironi":
     """
     st.html(table_p_full)
 
-    # TABELLA ATTACCANTI CENTRALE E LARGA
+    # TABELLA ATTACCANTI
     sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
     rows_a_html = ""
     for idx, (a, pt) in enumerate(sorted_a):
@@ -655,30 +658,27 @@ if db["stato"] == "gironi":
                 match_id = m['id']
                 
                 if m["giocata"]:
-                    # Stile Rosso Marcato per partite giocate
                     box_bg = "#b71c1c"
                     border_color = "#ef5350"
                     text_color = "#ffffff"
-                    center_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>{m['gol1']} - {m['gol2']}</span>"
+                    center_content = f"<span style='color: #ffeb3b; font-size: 1.2rem; font-weight: bold;'>{m['gol1']} <br>—<br> {m['gol2']}</span>"
                     label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
                 else:
-                    # Stile Verde (uguale ai prossimi in coda) per partite da giocare
                     box_bg = "#1b5e20"
                     border_color = "#4caf50"
                     text_color = "#ffffff"
-                    center_content = "<span style='color: #ffeb3b; font-weight: bold;'>VS</span>"
+                    center_content = "<span style='color: #ffeb3b; font-weight: bold; font-size: 1.1rem;'>VS</span>"
                     label_stato = f"Biliardino {tavolo_num}"
-
-                team1_str = f"🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}"
-                team2_str = f"🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}"
 
                 st.html(f"""
                     <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
-                        <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 3px;">{label_stato}</div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
-                            <div style="width: 48%;">{team1_str}</div>
-                            <div style="width: 4px; text-align: center;">{center_content}</div>
-                            <div style="width: 48%; text-align: right;">{team2_str}</div>
+                        <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 4px;">{label_stato}</div>
+                        <div style="display: flex; align-items: center; font-weight: 500;">
+                            <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                                <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
+                                <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
+                            </div>
+                            <div style="width: 50px; text-align: center;">{center_content}</div>
                         </div>
                     </div>
                 """)
@@ -822,25 +822,24 @@ if db["stato"] == "eliminatorie":
                         box_bg = "#b71c1c"
                         border_color = "#ef5350"
                         text_color = "#ffffff"
-                        center_content = f"<span style='color: #ffeb3b; font-size: 1.1rem; font-weight: bold;'>{m['gol1']} - {m['gol2']}</span>"
+                        center_content = f"<span style='color: #ffeb3b; font-size: 1.2rem; font-weight: bold;'>{m['gol1']} <br>—<br> {m['gol2']}</span>"
                         label_stato = f"✅ Giocata (Biliardino {tavolo_num})"
                     else:
                         box_bg = "#1b5e20"
                         border_color = "#4caf50"
                         text_color = "#ffffff"
-                        center_content = "<span style='color: #ffeb3b; font-weight: bold;'>VS</span>"
+                        center_content = "<span style='color: #ffeb3b; font-weight: bold; font-size: 1.1rem;'>VS</span>"
                         label_stato = f"Biliardino {tavolo_num}"
-
-                    team1_str = f"🥅 {m['p1']} &nbsp;|&nbsp; ⚽ {m['a1']}"
-                    team2_str = f"🥅 {m['p2']} &nbsp;|&nbsp; ⚽ {m['a2']}"
 
                     st.html(f"""
                         <div style="background-color: {box_bg}; border: 1px solid {border_color}; border-radius: 6px; padding: 10px; margin-bottom: 6px; color: {text_color};">
-                            <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 3px;">{label_stato}</div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 500;">
-                                <div style="width: 48%;">{team1_str}</div>
-                                <div style="width: 4px; text-align: center;">{center_content}</div>
-                                <div style="width: 48%; text-align: right;">{team2_str}</div>
+                            <div style="font-size: 0.85rem; color: #ffccbc; font-weight: bold; margin-bottom: 4px;">{label_stato}</div>
+                            <div style="display: flex; align-items: center; font-weight: 500;">
+                                <div style="flex-grow: 1; display: flex; flex-direction: column; gap: 4px;">
+                                    <div>🥅 {m['p1']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a1']}</div>
+                                    <div>🥅 {m['p2']} &nbsp;&nbsp;&nbsp;&nbsp; ⚽ {m['a2']}</div>
+                                </div>
+                                <div style="width: 50px; text-align: center;">{center_content}</div>
                             </div>
                         </div>
                     """)
