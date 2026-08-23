@@ -261,7 +261,6 @@ def calcola_orario_stimato_fine():
         
     num_tavoli = db.get("num_tavoli", 3)
     
-    # Conta totale partite e partite giocate
     totale_partite = 0
     partite_giocate = 0
     for turno_obj in db["turni_partite"]:
@@ -270,37 +269,33 @@ def calcola_orario_stimato_fine():
             if m.get("giocata", False):
                 partite_giocate += 1
                 
-    if partite_giocate == 0 or not db.get("orario_primo_risultato"):
+    if partite_giocate == 0:
         return "In attesa di dati..."
         
     if partite_giocate >= totale_partite:
         return "Completato ✅"
         
+    partite_mancanti = totale_partite - partite_giocate
+    t_attuale = datetime.now()
+    
     try:
         t_inizio = datetime.fromisoformat(db["orario_primo_risultato"])
-        t_attuale = datetime.now()
+        tempo_trascorso_sec = (t_attuale - t_inizio).total_seconds()
         
-        # Tempo trascorso dal primo risultato
-        tempo_trascorso = (t_attuale - t_inizio).total_seconds()
-        
-        if tempo_trascorso <= 0:
-            return "Calcolo in corso..."
-            
-        # Durata media per singola partita (inclusi i cambi)
-        durata_media_sec = tempo_trascorso / partite_giocate
-        
-        # Partite mancanti
-        partite_mancanti = totale_partite - partite_giocate
-        
-        # Gestione del parallelismo (più tavoli)
-        # Più tavoli giocano in contemporanea, quindi il tempo stimato residuo si divide per il numero di tavoli
-        giri_rimanenti = partite_mancanti / num_tavoli
-        tempo_rimanente_sec = giri_rimanenti * durata_media_sec
-        
-        orario_stimato = t_attuale + timedelta(seconds=tempo_rimanente_sec)
-        return orario_stimato.strftime("%H:%M")
-    except Exception:
-        return "Non disponibile"
+        if tempo_trascorso_sec > 30 and partite_giocate > 0:
+            durata_media_sec = tempo_trascorso_sec / partite_giocate
+            # Range flessibile protetto tra 3 minuti (180s) e 12 minuti (720s)
+            durata_media_sec = max(180, min(durata_media_sec, 720))
+        else:
+            durata_media_sec = 300 # 5 minuti di default iniziale
+    except:
+        durata_media_sec = 300
+
+    giri_rimanenti = partite_mancanti / num_tavoli
+    tempo_rimanente_sec = giri_rimanenti * durata_media_sec
+    
+    orario_stimato = t_attuale + timedelta(seconds=tempo_rimanente_sec)
+    return orario_stimato.strftime("%H:%M")
 
 def registra_completamento_partita():
     ora_attuale_iso = datetime.now().isoformat()
