@@ -35,7 +35,7 @@ st.markdown("""
             margin-top: 2px;
         }
         
-        /* Gestione larghezza colonne tabelle classifiche (Posizione stretta, Nome largo) */
+        /* Gestione larghezza colonne tabelle classifiche con DR */
         .ranking-box table {
             width: 100% !important;
             table-layout: fixed !important;
@@ -46,24 +46,13 @@ st.markdown("""
             text-overflow: ellipsis;
             white-space: nowrap;
             padding: 3px 2px !important;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
         }
-        .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) {
-            width: 12% !important;
-            text-align: center !important;
-        }
-        .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) {
-            width: 48% !important;
-            text-align: left !important;
-        }
-        .ranking-box th:nth-child(3), .ranking-box td:nth-child(3) {
-            width: 20% !important;
-            text-align: center !important;
-        }
-        .ranking-box th:nth-child(4), .ranking-box td:nth-child(4) {
-            width: 20% !important;
-            text-align: center !important;
-        }
+        .ranking-box th:nth-child(1), .ranking-box td:nth-child(1) { width: 10% !important; text-align: center !important; }
+        .ranking-box th:nth-child(2), .ranking-box td:nth-child(2) { width: 42% !important; text-align: left !important; }
+        .ranking-box th:nth-child(3), .ranking-box td:nth-child(3) { width: 16% !important; text-align: center !important; }
+        .ranking-box th:nth-child(4), .ranking-box td:nth-child(4) { width: 16% !important; text-align: center !important; }
+        .ranking-box th:nth-child(5), .ranking-box td:nth-child(5) { width: 16% !important; text-align: center !important; }
 
         .container-yellow {
             border: 3px solid #f57f17;
@@ -110,6 +99,8 @@ def carica_dati():
         "turni_partite": [], 
         "punti_portieri": {},
         "punti_attaccanti": {},
+        "dr_portieri": {},
+        "dr_attaccanti": {},
         "fasi_finali": []
     }
     if os.path.exists(DB_FILE):
@@ -140,7 +131,10 @@ def pulisci_nome(testo):
 
 def ricalcola_classifiche():
     p_punti = {p: 0 for p in db["portieri"]}
-    p_att = {a: 0 for a in db["attaccanti"]}
+    p_dr = {p: 0 for p in db["portieri"]}
+    
+    a_punti = {a: 0 for a in db["attaccanti"]}
+    a_dr = {a: 0 for a in db["attaccanti"]}
     
     for turno_obj in db["turni_partite"]:
         for m in turno_obj["partite"]:
@@ -156,13 +150,24 @@ def ricalcola_classifiche():
                 else:
                     pt_s1, pt_s2 = 2, 2
                 
+                # Squadra 1
                 p_punti[m['p1']] = p_punti.get(m['p1'], 0) + pt_s1
-                p_att[m['a1']] = p_att.get(m['a1'], 0) + pt_s1
+                p_dr[m['p1']] = p_dr.get(m['p1'], 0) + (g1 - g2)
+                
+                a_punti[m['a1']] = a_punti.get(m['a1'], 0) + pt_s1
+                a_dr[m['a1']] = a_dr.get(m['a1'], 0) + (g1 - g2)
+                
+                # Squadra 2
                 p_punti[m['p2']] = p_punti.get(m['p2'], 0) + pt_s2
-                p_att[m['a2']] = p_att.get(m['a2'], 0) + pt_s2
+                p_dr[m['p2']] = p_dr.get(m['p2'], 0) + (g2 - g1)
+                
+                a_punti[m['a2']] = a_punti.get(m['a2'], 0) + pt_s2
+                a_dr[m['a2']] = a_dr.get(m['a2'], 0) + (g2 - g1)
                 
     db["punti_portieri"] = p_punti
-    db["punti_attaccanti"] = p_att
+    db["dr_portieri"] = p_dr
+    db["punti_attaccanti"] = a_punti
+    db["dr_attaccanti"] = a_dr
 
 def calcola_partite_giocate(ruolo, nome):
     giocate = 0
@@ -334,7 +339,9 @@ if db["stato"] == "setup":
                 db["portieri"] = portieri
                 db["attaccanti"] = attaccanti
                 db["punti_portieri"] = {p: 0 for p in portieri}
+                db["dr_portieri"] = {p: 0 for p in portieri}
                 db["punti_attaccanti"] = {a: 0 for a in attaccanti}
+                db["dr_attaccanti"] = {a: 0 for a in attaccanti}
                 db["stato"] = "gironi"
                 db["fasi_finali"] = []
                 
@@ -385,7 +392,6 @@ if db["stato"] == "gironi":
     num_da_mostrare = len(partite_in_corso)
     partite_in_coda = rimanenti[:num_da_mostrare]
 
-    # 1. QUADRANTE UNICO GIALLO SCURO: PARTITE IN CORSO
     if partite_in_corso:
         html_corso = '<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>'
         for item in partite_in_corso:
@@ -401,7 +407,6 @@ if db["stato"] == "gironi":
         html_corso += '</div>'
         st.html(html_corso)
 
-    # 2. QUADRANTE UNICO VERDE: PROSSIMI IN CODA
     if partite_in_coda:
         html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
         for item in partite_in_coda:
@@ -418,7 +423,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 3. CLASSIFICHE IN TEMPO REALE (SENZA SPAZI VUOTI E NOMI COMPLETI)
     st.html("<h3 style='text-align: center; margin: 0 0 4px 0;'>🏆 Classifiche in Tempo Reale</h3>")
     col_c1, col_c2 = st.columns(2)
 
@@ -430,11 +434,13 @@ if db["stato"] == "gironi":
 
     with col_c1:
         st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
-        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)
+        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
         data_p = []
         for idx, (p, pt) in enumerate(sorted_p):
+            dr = db["dr_portieri"].get(p, 0)
+            dr_str = f"+{dr}" if dr > 0 else str(dr)
             gioc, tot = calcola_partite_giocate('portiere', p)
-            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
         df_p = pd.DataFrame(data_p)
         
         html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
@@ -446,11 +452,13 @@ if db["stato"] == "gironi":
 
     with col_c2:
         st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
-        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)
+        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
         data_a = []
         for idx, (a, pt) in enumerate(sorted_a):
+            dr = db["dr_attaccanti"].get(a, 0)
+            dr_str = f"+{dr}" if dr > 0 else str(dr)
             gioc, tot = calcola_partite_giocate('attaccante', a)
-            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "Giocate": f"{gioc}/{tot}"})
+            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
         df_a = pd.DataFrame(data_a)
         
         html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
@@ -462,7 +470,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # 4. LISTA COMPLETA TURNI APERTI
     st.markdown("### 📅 Lista Completa Turni")
 
     for turno_obj in db["turni_partite"]:
@@ -530,8 +537,11 @@ if db["stato"] == "gironi":
     if is_admin:
         st.markdown("---")
         if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
-            top_p = [p[0] for p in sorted(db["punti_portieri"].items(), key=lambda x: x[1], reverse=True)[:8]]
-            top_a = [a[0] for a in sorted(db["punti_attaccanti"].items(), key=lambda x: x[1], reverse=True)[:8]]
+            sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+            sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+            
+            top_p = [p[0] for p in sorted_p_list[:8]]
+            top_a = [a[0] for a in sorted_a_list[:8]]
             
             quarti_partite = [
                 {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
