@@ -360,6 +360,17 @@ st.html(
     """
 )
 
+# --- SELETTORE RAPIDO GIOCATORE PER EVITARE ERRORI ---
+if db["stato"] != "setup":
+    tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
+    giocatore_selezionato = st.selectbox(
+        "🔍 SELEZIONA IL TUO NOME PER TROVARE LA TUA PARTITA:",
+        ["-- Mostra tutto (Vista Generale) --"] + tutti_i_giocatori
+    )
+    st.markdown("---")
+else:
+    giocatore_selezionato = "-- Mostra tutto (Vista Generale) --"
+
 st.html(
     """
     <div style="padding: 3px; background-color: #f0f2f6; border-radius: 6px; text-align: center; margin-bottom: 5px;">
@@ -475,8 +486,16 @@ if db["stato"] == "gironi":
 
     partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
 
+    # FILTRO SE UN UTENTE HA SELEZIONATO IL PROPRIO NOME
+    if giocatore_selezionato != "-- Mostra tutto (Vista Generale) --":
+        partite_in_corso_con_tavolo = [
+            item for item in partite_in_corso_con_tavolo 
+            if item["m"]["p1"] == giocatore_selezionato or item["m"]["a1"] == giocatore_selezionato or 
+               item["m"]["p2"] == giocatore_selezionato or item["m"]["a2"] == giocatore_selezionato
+        ]
+
     if partite_in_corso_con_tavolo:
-        st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
+        st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 LA TUA PARTITA IN CORSO:</h4>' if giocatore_selezionato != "-- Mostra tutto (Vista Generale) --" else '<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso_con_tavolo:
             m = item["m"]
             match_id = m['id']
@@ -493,7 +512,6 @@ if db["stato"] == "gironi":
                     </div>
             """)
             
-            # BLOCCO: SE LA PARTITA NON È GIOCATA SI POSSONO INSERIRE I GOL, ALTRIMENTI SPARISCONO I COMANDI
             if not m.get("giocata", False):
                 st.html(f"""
                     <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
@@ -530,205 +548,209 @@ if db["stato"] == "gironi":
 
             st.html('</div>')
         st.html('</div>')
+    elif giocatore_selezionato != "-- Mostra tutto (Vista Generale) --":
+        st.info(f"ℹ️ Al momento non ci sono partite in corso per {giocatore_selezionato}. Controlla la lista dei turni sotto per vedere quando giochi!")
 
-    if partite_in_coda:
-        html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
-        for item in partite_in_coda:
-            m = item["m"]
-            html_coda += f"""
-                <div class="sub-card-lightgreen">
-                    <b>👉 In Coda (Turno {item['turno']})</b><br>
-                    🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
-                    🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
-                </div>
-            """
-        html_coda += '</div>'
-        st.html(html_coda)
-
-    st.markdown("---")
-
-    st.html("<h3 style='text-align: center; margin: 0 0 4px 0;'>🏆 Classifiche in Tempo Reale</h3>")
-    col_c1, col_c2 = st.columns(2)
-
-    def colora_posizioni(row):
-        if row.name < 8:
-            return ['background-color: #e6f2e6' for _ in row]
-        else:
-            return ['background-color: #fde8e8' for _ in row]
-
-    with col_c1:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
-        sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-        data_p = []
-        for idx, (p, pt) in enumerate(sorted_p):
-            dr = db["dr_portieri"].get(p, 0)
-            dr_str = f"+{dr}" if dr > 0 else str(dr)
-            gioc, tot = calcola_partite_giocate('portiere', p)
-            data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
-        df_p = pd.DataFrame(data_p)
-        
-        html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f"""
-            <div class="ranking-box">
-                {html_table_p}
-            </div>
-        """)
-
-    with col_c2:
-        st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
-        sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-        data_a = []
-        for idx, (a, pt) in enumerate(sorted_a):
-            dr = db["dr_attaccanti"].get(a, 0)
-            dr_str = f"+{dr}" if dr > 0 else str(dr)
-            gioc, tot = calcola_partite_giocate('attaccante', a)
-            data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
-        df_a = pd.DataFrame(data_a)
-        
-        html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
-        st.html(f"""
-            <div class="ranking-box">
-                {html_table_a}
-            </div>
-        """)
-
-    st.markdown("---")
-
-    st.markdown("### 📅 Lista Completa Turni")
-
-    for turno_obj in db["turni_partite"]:
-        turno_num = turno_obj['turno']
-        is_chiuso = turno_obj.get("chiuso", True)
-        
-        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
-
-        if tutte_giocate:
-            header_bg = "#b0bec5"
-            header_border = "#78909c"
-            header_text = f"TURNO {turno_num} (Completato ✅)"
-        elif almeno_una_iniziata:
-            header_bg = "#ffd700"
-            header_border = "#ffb300"
-            header_text = f"TURNO {turno_num} (In corso 🔥)"
-        else:
-            header_bg = "#e0f7fa"
-            header_border = "#b2ebf2"
-            header_text = f"TURNO {turno_num} (Da iniziare ⏳)"
-
-        st.html(
-            f"""
-            <div style="padding: 5px; background-color: {header_bg}; border: 2px solid {header_border}; border-radius: 6px; text-align: center; margin-top: 6px; margin-bottom: 6px;">
-                <h3 style="margin: 0; color: #3e2723; font-size: 1.1rem;">{header_text}</h3>
-            </div>
-            """
-        )
-
-        if is_chiuso and is_admin:
-            if st.button(f"🔓 Riapri Turno {turno_num} per modifiche", key=f"riapri_t_{turno_num}", use_container_width=True):
-                turno_obj["chiuso"] = False
-                salva_dati(db)
-                st.success(f"Turno {turno_num} riaperto!")
-                st.rerun()
-
-        with st.expander(f"👁️ Visualizza partite Turno {turno_num}", expanded=not is_chiuso):
-            for idx, m in enumerate(turno_obj["partite"]):
-                tavolo_num = (idx % num_tavoli) + 1
-                match_id = m['id']
-                squadra1_nome = f"{m['p1']} & {m['a1']}"
-                squadra2_nome = f"{m['p2']} & {m['a2']}"
-                
-                edit_flag_key = f"edit_mode_{match_id}"
-                if edit_flag_key not in st.session_state:
-                    st.session_state[edit_flag_key] = False
-
-                if m["giocata"]:
-                    bg_color = "#ffebee"
-                    stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
-                elif m.get("in_corso", False):
-                    bg_color = "#d4edda"
-                    stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
-                else:
-                    bg_color = "#f1f8e9"
-                    stato_testo = "⏳ <b>Da giocare</b>"
-
-                st.html(f"""
-                    <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
-                        <b>📍 Tavolo {tavolo_num}</b><br>
+    # Se l'utente ha selezionato il proprio nome, mostriamo solo la sua partita e saltiamo il resto della bacheca generale (per pulizia e velocità)
+    if giocatore_selezionato == "-- Mostra tutto (Vista Generale) --":
+        if partite_in_coda:
+            html_coda = '<div class="container-green"><h4 style="margin: 0 0 4px 0; color: #2e7d32;">📢 PROSSIMI IN CODA (Preparatevi):</h4>'
+            for item in partite_in_coda:
+                m = item["m"]
+                html_coda += f"""
+                    <div class="sub-card-lightgreen">
+                        <b>👉 In Coda (Turno {item['turno']})</b><br>
                         🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
-                        🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
-                        <div style="text-align: center; margin-top: 2px; font-size: 12px;">
-                            {stato_testo}
-                        </div>
+                        🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}
                     </div>
-                """)
+                """
+            html_coda += '</div>'
+            st.html(html_coda)
 
-                col_l1, col_l2 = st.columns(2)
-                with col_l1:
-                    if is_admin and not m["giocata"]:
-                        if m.get("in_corso", False):
-                            if st.button("⏹️ Ferma", key=f"list_stop_{match_id}", use_container_width=True):
-                                m["in_corso"] = False
-                                salva_dati(db)
-                                st.rerun()
-                        else:
-                            if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
-                                m["in_corso"] = True
-                                turno_obj["chiuso"] = False
-                                salva_dati(db)
-                                st.rerun()
-                with col_l2:
-                    if is_admin:
-                        with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
-                            st.html(f"""
-                                <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
-                                    ⚽ Gol: {squadra1_nome}
-                                </div>
-                            """)
-                            rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"list_rg1_{match_id}", label_visibility="collapsed")
-                            
-                            st.html(f"""
-                                <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
-                                    ⚽ Gol: {squadra2_nome}
-                                </div>
-                            """)
-                            rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}", label_visibility="collapsed")
-                            
-                            st.html("<div style='margin-top: 8px;'></div>")
-                            if st.button("💾 Salva Risultato (Admin)", key=f"list_save_{match_id}", use_container_width=True):
-                                m['gol1'] = rg1
-                                m['gol2'] = rg2
-                                m['giocata'] = True
-                                m['in_corso'] = False
-                                
-                                if all(pt.get("giocata", False) for pt in turno_obj["partite"]):
-                                    turno_obj["chiuso"] = True
-
-                                ricalcola_classifiche()
-                                salva_dati(db)
-                                st.session_state[edit_flag_key] = False
-                                st.rerun()
-                st.markdown("---")
-
-    if is_admin:
         st.markdown("---")
-        if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
-            sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-            sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+
+        st.html("<h3 style='text-align: center; margin: 0 0 4px 0;'>🏆 Classifiche in Tempo Reale</h3>")
+        col_c1, col_c2 = st.columns(2)
+
+        def colora_posizioni(row):
+            if row.name < 8:
+                return ['background-color: #e6f2e6' for _ in row]
+            else:
+                return ['background-color: #fde8e8' for _ in row]
+
+        with col_c1:
+            st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>🥅 Portieri</h4>")
+            sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+            data_p = []
+            for idx, (p, pt) in enumerate(sorted_p):
+                dr = db["dr_portieri"].get(p, 0)
+                dr_str = f"+{dr}" if dr > 0 else str(dr)
+                gioc, tot = calcola_partite_giocate('portiere', p)
+                data_p.append({"Pos": f"{idx+1}°", "Portiere": f"🥅 {p}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
+            df_p = pd.DataFrame(data_p)
             
-            top_p = [p[0] for p in sorted_p_list[:8]]
-            top_a = [a[0] for a in sorted_a_list[:8]]
+            html_table_p = df_p.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
+            st.html(f"""
+                <div class="ranking-box">
+                    {html_table_p}
+                </div>
+            """)
+
+        with col_c2:
+            st.html("<h4 style='text-align: center; margin: 0 0 2px 0;'>⚽ Attaccanti</h4>")
+            sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+            data_a = []
+            for idx, (a, pt) in enumerate(sorted_a):
+                dr = db["dr_attaccanti"].get(a, 0)
+                dr_str = f"+{dr}" if dr > 0 else str(dr)
+                gioc, tot = calcola_partite_giocate('attaccante', a)
+                data_a.append({"Pos": f"{idx+1}°", "Attaccante": f"⚽ {a}", "Punti": pt, "DR": dr_str, "Giocate": f"{gioc}/{tot}"})
+            df_a = pd.DataFrame(data_a)
             
-            quarti_partite = [
-                {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-            ]
-            db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
-            db["stato"] = "eliminatorie"
-            salva_dati(db)
-            st.rerun()
+            html_table_a = df_a.style.apply(colora_posizioni, axis=1).hide(axis="index").to_html()
+            st.html(f"""
+                <div class="ranking-box">
+                    {html_table_a}
+                </div>
+            """)
+
+        st.markdown("---")
+
+        st.markdown("### 📅 Lista Completa Turni")
+
+        for turno_obj in db["turni_partite"]:
+            turno_num = turno_obj['turno']
+            is_chiuso = turno_obj.get("chiuso", True)
+            
+            tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+            almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
+
+            if tutte_giocate:
+                header_bg = "#b0bec5"
+                header_border = "#78909c"
+                header_text = f"TURNO {turno_num} (Completato ✅)"
+            elif almeno_una_iniziata:
+                header_bg = "#ffd700"
+                header_border = "#ffb300"
+                header_text = f"TURNO {turno_num} (In corso 🔥)"
+            else:
+                header_bg = "#e0f7fa"
+                header_border = "#b2ebf2"
+                header_text = f"TURNO {turno_num} (Da iniziare ⏳)"
+
+            st.html(
+                f"""
+                <div style="padding: 5px; background-color: {header_bg}; border: 2px solid {header_border}; border-radius: 6px; text-align: center; margin-top: 6px; margin-bottom: 6px;">
+                    <h3 style="margin: 0; color: #3e2723; font-size: 1.1rem;">{header_text}</h3>
+                </div>
+                """
+            )
+
+            if is_chiuso and is_admin:
+                if st.button(f"🔓 Riapri Turno {turno_num} per modifiche", key=f"riapri_t_{turno_num}", use_container_width=True):
+                    turno_obj["chiuso"] = False
+                    salva_dati(db)
+                    st.success(f"Turno {turno_num} riaperto!")
+                    st.rerun()
+
+            with st.expander(f"👁️ Visualizza partite Turno {turno_num}", expanded=not is_chiuso):
+                for idx, m in enumerate(turno_obj["partite"]):
+                    tavolo_num = (idx % num_tavoli) + 1
+                    match_id = m['id']
+                    squadra1_nome = f"{m['p1']} & {m['a1']}"
+                    squadra2_nome = f"{m['p2']} & {m['a2']}"
+                    
+                    edit_flag_key = f"edit_mode_{match_id}"
+                    if edit_flag_key not in st.session_state:
+                        st.session_state[edit_flag_key] = False
+
+                    if m["giocata"]:
+                        bg_color = "#ffebee"
+                        stato_testo = f"🛑 <b>{m['gol1']} - {m['gol2']}</b> (✅ Giocata)"
+                    elif m.get("in_corso", False):
+                        bg_color = "#d4edda"
+                        stato_testo = "🔥 <b>PARTITA IN CORSO</b>"
+                    else:
+                        bg_color = "#f1f8e9"
+                        stato_testo = "⏳ <b>Da giocare</b>"
+
+                    st.html(f"""
+                        <div style="padding: 6px; background-color: {bg_color}; border: 1px solid #c8e6c9; border-radius: 6px; margin-bottom: 6px;">
+                            <b>📍 Tavolo {tavolo_num}</b><br>
+                            🥅 {m['p1']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a1']}<br>
+                            🥅 {m['p2']} &nbsp;&nbsp;|&nbsp;&nbsp; ⚽ {m['a2']}<br>
+                            <div style="text-align: center; margin-top: 2px; font-size: 12px;">
+                                {stato_testo}
+                            </div>
+                        </div>
+                    """)
+
+                    col_l1, col_l2 = st.columns(2)
+                    with col_l1:
+                        if is_admin and not m["giocata"]:
+                            if m.get("in_corso", False):
+                                if st.button("⏹️ Ferma", key=f"list_stop_{match_id}", use_container_width=True):
+                                    m["in_corso"] = False
+                                    salva_dati(db)
+                                    st.rerun()
+                            else:
+                                if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
+                                    m["in_corso"] = True
+                                    turno_obj["chiuso"] = False
+                                    salva_dati(db)
+                                    st.rerun()
+                    with col_l2:
+                        if is_admin:
+                            with st.expander("⚙️ Gestisci Risultato (Admin)", expanded=st.session_state[edit_flag_key]):
+                                st.html(f"""
+                                    <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 4px; margin-bottom: 2px;">
+                                        ⚽ Gol: {squadra1_nome}
+                                    </div>
+                                """)
+                                rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"list_rg1_{match_id}", label_visibility="collapsed")
+                                
+                                st.html(f"""
+                                    <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.0rem; color: #2c3e50; background-color: #fcf8e3; padding: 5px; border-radius: 4px; margin-top: 8px; margin-bottom: 2px;">
+                                        ⚽ Gol: {squadra2_nome}
+                                    </div>
+                                """)
+                                rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"list_rg2_{match_id}", label_visibility="collapsed")
+                                
+                                st.html("<div style='margin-top: 8px;'></div>")
+                                if st.button("💾 Salva Risultato (Admin)", key=f"list_save_{match_id}", use_container_width=True):
+                                    m['gol1'] = rg1
+                                    m['gol2'] = rg2
+                                    m['giocata'] = True
+                                    m['in_corso'] = False
+                                    
+                                    if all(pt.get("giocata", False) for pt in turno_obj["partite"]):
+                                        turno_obj["chiuso"] = True
+
+                                    ricalcola_classifiche()
+                                    salva_dati(db)
+                                    st.session_state[edit_flag_key] = False
+                                    st.rerun()
+                    st.markdown("---")
+
+        if is_admin:
+            st.markdown("---")
+            if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
+                sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+                sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+                
+                top_p = [p[0] for p in sorted_p_list[:8]]
+                top_a = [a[0] for a in sorted_a_list[:8]]
+                
+                quarti_partite = [
+                    {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                    {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                    {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                    {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+                ]
+                db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
+                db["stato"] = "eliminatorie"
+                salva_dati(db)
+                st.rerun()
 
 # 3. ELIMINATORIE
 if db["stato"] == "eliminatorie":
