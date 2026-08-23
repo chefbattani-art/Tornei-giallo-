@@ -7,6 +7,8 @@ import random
 from streamlit_autorefresh import st_autorefresh
 from base64 import b64encode
 from fpdf import FPDF
+import qrcode
+from io import BytesIO
 
 st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 
@@ -326,8 +328,25 @@ if db["stato"] != "setup":
         use_container_width=True
     )
 
+# --- LINK SPETTATORE & QR CODE IN SIDEBAR ---
 st.sidebar.markdown("---")
-st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
+st.sidebar.subheader("📱 Condividi Torneo")
+link_torneo = st.sidebar.text_input("Link Spettatore (Copia qui):", value="https://")
+
+# Generazione QR Code
+if link_torneo and link_torneo != "https://":
+    try:
+        qr = qrcode.QRCode(version=1, box_size=5, border=2)
+        qr.add_data(link_torneo)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        buffered = BytesIO()
+        img.save(buffered, format="PNG")
+        st.sidebar.image(buffered.getvalue(), caption="Inquadra per aprire il torneo", use_column_width=True)
+    except Exception as e:
+        st.sidebar.error("Errore generazione QR code")
+
+st.sidebar.info("💡 **Suggerimento:** Inserisci l'URL pubblico della tua app nel campo sopra per far generare il QR code da far scansionare ai giocatori.")
 
 # --- INTERFACCIA PRINCIPALE ---
 logo_html = ""
@@ -616,7 +635,6 @@ if db["stato"] == "eliminatorie":
     num_tavoli = db.get("num_tavoli", 3)
     fasi = db["fasi_finali"]
     
-    # Controlliamo se siamo arrivati alle finali e se sono concluse
     finito_tutto = False
     p1_1, a1_1, p2_1, a2_1, p3_1, a3_1 = "", "", "", "", "", ""
     
@@ -626,20 +644,17 @@ if db["stato"] == "eliminatorie":
             if len(fin_partite) >= 2 and fin_partite[0].get("giocata", False) and fin_partite[1].get("giocata", False):
                 finito_tutto = True
                 m1, m2 = fin_partite[0], fin_partite[1]
-                # 1°-2° posto
                 if m1["gol1"] >= m1["gol2"]:
                     p1_1, a1_1 = m1["p1"], m1["a1"]
                     p2_1, a2_1 = m1["p2"], m1["a2"]
                 else:
                     p1_1, a1_1 = m1["p2"], m1["a2"]
                     p2_1, a2_1 = m1["p1"], m1["a1"]
-                # 3°-4° posto
                 if m2["gol1"] >= m2["gol2"]:
                     p3_1, a3_1 = m2["p1"], m2["a1"]
                 else:
                     p3_1, a3_1 = m2["p2"], m2["a2"]
 
-    # SE IL TORNEO È CONCLUSO, MOSTRAR LA SCHERMATA FINALE DEDICATA
     if finito_tutto:
         st.html("""
             <div style="text-align: center; margin-top: 10px; margin-bottom: 15px;">
@@ -684,13 +699,11 @@ if db["stato"] == "eliminatorie":
             )
             if is_admin:
                 if st.button("⬅️ Torna alla gestione eliminatorie", use_container_width=True):
-                    # Trucco per sbloccare temporaneamente la visualizzazione se l'admin vuole correggere
                     fin_partite[0]["giocata"] = False
                     salva_dati(db)
                     st.rerun()
                     
     else:
-        # VISUALIZZAZIONE NORMALE DURANTE LE ELIMINATORIE
         st.subheader("🏆 Fase a Eliminazione Diretta")
         
         for f_idx, f_turno in enumerate(fasi):
