@@ -1,2 +1,3 @@
 streamlit-autorefresh
 fpdf2
+qrcode[pil]
