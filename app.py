@@ -486,7 +486,7 @@ if db["stato"] == "gironi":
 
     partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
 
-    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME, MOSTRHIAMO LA SUA PARTITA CON I PULSANTI GOL
+    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME, EVIDENZIAMOLO IN GRASSETTO E STAMPATELLO
     if giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = [
             item for item in partite_in_corso_con_tavolo 
@@ -499,15 +499,22 @@ if db["stato"] == "gironi":
             for item in partite_filtrate:
                 m = item["m"]
                 match_id = m['id']
-                squadra1_nome = f"{m['p1']} & {m['a1']}"
-                squadra2_nome = f"{m['p2']} & {m['a2']}"
+                
+                # Formattazione in GRASSETTO e STAMPATELLO per il giocatore selezionato o la sua squadra
+                p1_str = f"<b>{m['p1'].upper()}</b>" if m['p1'] == giocatore_selezionato else m['p1']
+                a1_str = f"<b>{m['a1'].upper()}</b>" if m['a1'] == giocatore_selezionato else m['a1']
+                p2_str = f"<b>{m['p2'].upper()}</b>" if m['p2'] == giocatore_selezionato else m['p2']
+                a2_str = f"<b>{m['a2'].upper()}</b>" if m['a2'] == giocatore_selezionato else m['a2']
+
+                squadra1_nome = f"{p1_str} & {a1_str}"
+                squadra2_nome = f"{p2_str} & {a2_str}"
                 
                 st.html(f"""
                     <div class="match-card-box">
                         <div style="font-weight: bold; color: #b71c1c; margin-bottom: 6px; font-size: 1.05rem;">
                             🏟️ Biliardino {item['tavolo']} (Turno {item['turno']})
                         </div>
-                        <div style="text-align: center; font-size: 1.15rem; font-weight: bold; color: #1a237e; background-color: #e8eaf6; padding: 8px; border-radius: 6px; width: 100%; margin-bottom: 10px;">
+                        <div style="text-align: center; font-size: 1.15rem; color: #1a237e; background-color: #e8eaf6; padding: 8px; border-radius: 6px; width: 100%; margin-bottom: 10px;">
                             {squadra1_nome} <span style="color: #d32f2f; font-size: 0.95rem; font-weight: normal;">vs</span> {squadra2_nome}
                         </div>
                 """)
@@ -515,14 +522,14 @@ if db["stato"] == "gironi":
                 if not m.get("giocata", False):
                     st.html(f"""
                         <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 8px; margin-bottom: 4px;">
-                            ⚽ Gol: {squadra1_nome}
+                            ⚽ Gol S1
                         </div>
                     """)
                     g1_input = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"live_g1_{match_id}", label_visibility="collapsed")
                     
                     st.html(f"""
                         <div style="text-align: center; width: 100%; font-weight: bold; font-size: 1.05rem; color: #2c3e50; background-color: #fcf8e3; padding: 6px; border-radius: 5px; margin-top: 12px; margin-bottom: 4px;">
-                            ⚽ Gol: {squadra2_nome}
+                            ⚽ Gol S2
                         </div>
                     """)
                     g2_input = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"live_g2_{match_id}", label_visibility="collapsed")
@@ -549,7 +556,7 @@ if db["stato"] == "gironi":
                 st.html('</div>')
             st.html('</div>')
         else:
-            st.info(f"ℹ️ Al momento non ci sono partite in corso per {giocatore_selezionato}. Controlla la lista dei turni sotto per vedere quando giochi!")
+            st.info(f"ℹ️ Al momento non ci sono partite in corso per {giocatore_selezionato.upper()}. Controlla la lista dei turni sotto per vedere quando giochi!")
         
         st.markdown("---")
 
