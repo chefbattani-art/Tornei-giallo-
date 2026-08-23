@@ -430,7 +430,7 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME
+    # --- SEZIONE IN ALTO: PARTITE IN CORSO E TUE PARTITE ---
     if not is_admin and giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = []
         for t_obj in db["turni_partite"]:
@@ -462,9 +462,51 @@ if db["stato"] == "gironi":
                     </div>
                 """)
             st.html('</div>')
-        else:
-            st.info(f"Nessuna partita trovata per {giocatore_selezionato}.")
         st.markdown("---")
+
+    # PARTITE IN CORSO IN EVIDENZA (SPECIALMENTE PER ADMIN O PANORAMICA VELOCE)
+    st.markdown("### 🔥 Partite in Corso sui Biliardini")
+    esiste_in_corso = False
+    for t_obj in db["turni_partite"]:
+        for idx, m in enumerate(t_obj["partite"]):
+            if m.get("in_corso", False) and not m.get("giocata", False):
+                esiste_in_corso = True
+                tavolo_num = (idx % num_tavoli) + 1
+                match_id = m['id']
+                
+                st.html(f"""
+                    <div class="match-row-yellow">
+                        <div class="team-left">🥅 {m['p1']} &amp; ⚽ {m['a1']}</div>
+                        <div class="match-center">🔥 Biliardino {tavolo_num} (Turno {t_obj['turno']})</div>
+                        <div class="team-right">🥅 {m['p2']} &amp; ⚽ {m['a2']}</div>
+                    </div>
+                """)
+                
+                if is_admin:
+                    col_ic1, col_ic2 = st.columns(2)
+                    with col_ic1:
+                        if st.button(f"⏹️ Ferma Biliardino {tavolo_num}", key=f"top_stop_{match_id}", use_container_width=True):
+                            m["in_corso"] = False
+                            salva_dati(db)
+                            st.rerun()
+                    with col_ic2:
+                        with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num}", expanded=True):
+                            rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"top_rg1_{match_id}")
+                            rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"top_rg2_{match_id}")
+                            if st.button("💾 Salva Risultato", key=f"top_save_{match_id}", use_container_width=True):
+                                m['gol1'] = rg1
+                                m['gol2'] = rg2
+                                m['giocata'] = True
+                                m['in_corso'] = False
+                                ricalcola_classifiche()
+                                salva_dati(db)
+                                st.success("Salvato!")
+                                st.rerun()
+
+    if not esiste_in_corso:
+        st.info("Nessuna partita attualmente in corso. Gli amministratori possono avviarle dai turni sottostanti.")
+
+    st.markdown("---")
 
     # CLASSIFICHE IN TEMPO REALE
     st.html("<h3 style='text-align: center; margin: 0 0 6px 0;'>🏆 Classifiche in Tempo Reale</h3>")
@@ -513,18 +555,16 @@ if db["stato"] == "gironi":
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         almeno_una_iniziata = any(m.get("in_corso", False) for m in turno_obj["partite"])
 
-        # Determina l'etichetta e lo stato di apertura della finestra (expander)
         if tutte_giocate:
             header_text = f"Turno {turno_num} (Completato ✅)"
-            espanso_default = False  # Chiuso quando completato
+            espanso_default = False
         elif almeno_una_iniziata:
             header_text = f"Turno {turno_num} (In corso 🔥)"
-            espanso_default = True   # Aperto automaticamente quando in corso
+            espanso_default = True
         else:
             header_text = f"Turno {turno_num} (Chiuso ⏳)"
-            espanso_default = False  # Chiuso se deve ancora iniziare
+            espanso_default = False
 
-        # Finestra a tendina (expander) per il turno
         with st.expander(header_text, expanded=espanso_default):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
@@ -551,7 +591,6 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
-                # Sezione Admin per avviare/fermare o modificare il risultato
                 if is_admin:
                     col_adm1, col_adm2 = st.columns(2)
                     with col_adm1:
@@ -686,7 +725,6 @@ if db["stato"] == "eliminatorie":
                 else:
                     tutti_giocati = False
 
-            # Espander per le fasi finali
             almeno_una_ef_corso = any(m.get("in_corso", False) for m in f_turno["partite"])
             ef_chiuse = tutti_giocati
             
