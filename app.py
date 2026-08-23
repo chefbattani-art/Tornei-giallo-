@@ -428,7 +428,8 @@ if db["stato"] == "setup":
                             "gol1": 0, "gol2": 0
                         })
                         i += 2
-                    db["turni_partite"].append({"turno": t, "chiuso": False, "partite": partite_turno})
+                    # Tutti i turni partono chiusi (chiuso = True)
+                    db["turni_partite"].append({"turno": t, "chiuso": True, "partite": partite_turno})
 
                 salva_dati(db)
                 st.success("Calendario generato!")
@@ -503,7 +504,7 @@ if db["stato"] == "gironi":
                     m['giocata'] = True
                     m['in_corso'] = False
                     
-                    # Verifica automatica chiusura turno
+                    # Chiusura automatica del turno se tutte le partite sono state giocate
                     for t_obj in db["turni_partite"]:
                         if t_obj["turno"] == item["turno"]:
                             if all(pt.get("giocata", False) for pt in t_obj["partite"]):
@@ -582,26 +583,24 @@ if db["stato"] == "gironi":
 
     st.markdown("### 📅 Lista Completa Turni")
 
-    # Aggiornamento automatico dello stato di chiusura di ogni turno
+    # Gestione automatica apertura/chiusura in base allo stato delle partite
     for turno_obj in db["turni_partite"]:
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+        almeno_una_iniziata = any(m.get("in_corso", False) or m.get("giocata", False) for m in turno_obj["partite"])
+        
         if tutte_giocate:
+            # Se tutte le partite sono finite, chiudi automaticamente il turno
             turno_obj["chiuso"] = True
-
-    # Trova automaticamente il primo turno non ancora completato da tenere aperto in automatico
-    primo_turno_aperto_trovato = False
-    for turno_obj in db["turni_partite"]:
-        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        if not tutte_giocate and not primo_turno_aperto_trovato:
+        elif almeno_una_iniziata:
+            # Se almeno una partita è iniziata o in corso, apri automaticamente il turno
             turno_obj["chiuso"] = False
-            primo_turno_aperto_trovato = True
 
     salva_dati(db)
 
-    # Renderizzazione dei turni con apertura automatica per quello in corso
+    # Renderizzazione dei turni
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
-        is_chiuso = turno_obj.get("chiuso", False)
+        is_chiuso = turno_obj.get("chiuso", True)
 
         header_bg = "#b0bec5" if is_chiuso else "#ffd700"
         header_border = "#78909c" if is_chiuso else "#ffb300"
@@ -622,7 +621,7 @@ if db["stato"] == "gironi":
                 st.success(f"Turno {turno_num} riaperto!")
                 st.rerun()
 
-        # Espande in automatico se NON è chiuso (cioè il turno corrente/attivo)
+        # L'espansore si apre in automatico solo se il turno è in corso (is_chiuso = False)
         with st.expander(f"👁️ Visualizza partite Turno {turno_num}", expanded=not is_chiuso):
             for idx, m in enumerate(turno_obj["partite"]):
                 tavolo_num = (idx % num_tavoli) + 1
@@ -667,6 +666,7 @@ if db["stato"] == "gironi":
                             else:
                                 if st.button("▶️ Avvia", key=f"list_start_{match_id}", use_container_width=True):
                                     m["in_corso"] = True
+                                    turno_obj["chiuso"] = False  # Apre automaticamente il turno all'avvio della partita
                                     salva_dati(db)
                                     st.rerun()
                     with col_l2:
