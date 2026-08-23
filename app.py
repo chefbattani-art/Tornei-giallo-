@@ -204,14 +204,16 @@ if db["stato"] != "setup":
     )
 
 st.sidebar.markdown("---")
-st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel # --- INTERFACCIA PRINCIPALE ---
+st.sidebar.info("📱 **WhatsApp:** Copia l'indirizzo della pagina dal browser e incollalo nel gruppo.")
+
+# --- INTERFACCIA PRINCIPALE ---
 logo_html = ""
 if os.path.exists(LOGO_FILE):
     with open(LOGO_FILE, "rb") as f:
         logo_b64 = b64encode(f.read()).decode("utf-8")
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 240px; width: 100%; height: auto; margin-bottom: 10px;" /><br>'
 
-st.html(
+st.markdown(
     f"""
     <div style="text-align: center; margin-bottom: 15px;">
         {logo_html}
@@ -219,9 +221,7 @@ st.html(
             <h2 style="margin: 0; color: #1565c0;">🏆 Torneo Biliardino 'Giallo' Live</h2>
         </div>
     </div>
-    """
-)
-
+    """,
     unsafe_allow_html=True
 )
 
