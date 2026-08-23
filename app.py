@@ -360,8 +360,8 @@ st.html(
     """
 )
 
-# --- SELETTORE RAPIDO GIOCATORE PER INSERIRE I GOL ---
-if db["stato"] != "setup":
+# --- SELETTORE RAPIDO GIOCATORE (VISIBILE SOLO SE NON SEI ADMIN) ---
+if db["stato"] != "setup" and not is_admin:
     tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
     giocatore_selezionato = st.selectbox(
         "🔍 SELEZIONA IL TUO NOME PER INSERIRE IL RISULTATO DELLA TUA PARTITA:",
@@ -486,8 +486,8 @@ if db["stato"] == "gironi":
 
     partite_in_corso_con_tavolo = sorted(partite_in_corso_con_tavolo, key=lambda x: x["tavolo"])
 
-    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME, MOSTRAPIU' IL BOX DEDICATO PER LUI
-    if giocatore_selezionato != "-- Seleziona il tuo nome --":
+    # SE L'UTENTE HA SELEZIONATO IL PROPRIO NOME (E NON È ADMIN), MOSTRA IL BOX DEDICATO PER LUI
+    if not is_admin and giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = [
             item for item in partite_in_corso_con_tavolo 
             if item["m"]["p1"] == giocatore_selezionato or item["m"]["a1"] == giocatore_selezionato or 
@@ -554,7 +554,7 @@ if db["stato"] == "gironi":
         
         st.markdown("---")
 
-    # VISTA DELLE PARTITE IN CORSO (Con inserimento gol integrato se sei ADMIN)
+    # VISTA DELLE PARTITE IN CORSO
     if partite_in_corso_con_tavolo:
         st.html('<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c;">🔥 PARTITE IN CORSO (Sui biliardini):</h4>')
         for item in partite_in_corso_con_tavolo:
