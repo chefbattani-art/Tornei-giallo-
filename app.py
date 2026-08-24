@@ -297,7 +297,7 @@ if is_admin and db["stato"] != "setup":
         nuovi_tavoli = st.number_input("N° Biliardini", min_value=1, max_value=10, value=db["num_tavoli"])
         nuovi_turni = st.number_input("N° Turni", min_value=1, max_value=10, value=db["partite_per_giocatore"])
         if st.button("💾 Aggiorna Parametri", use_container_width=True):
-            db["num_tavoli"] = nuovi_tavoli
+            db["num_tavoli"] = nuevos_tavoli if 'nuevos_tavoli' in locals() else nuovi_tavoli
             db["partite_per_giocatore"] = nuovi_turni
             salva_dati(db)
             st.sidebar.success("Parametri aggiornati!")
@@ -378,40 +378,44 @@ if db["stato"] != "setup" and tutti_i_giocatori:
 else:
     giocatore_selezionato = "-- Seleziona il tuo nome --"
 
-# --- VERIFICA SE IL GIOCATORE HA UNA PARTITA IN CORSO SUL BILIARDINO PER MOSTRARE IL BOX ROSSO ---
+# --- INDIVIDUAZIONE ESATTA DELLE PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
+partite_attive_correnti = []
+
+if db["stato"] == "gironi":
+    # Individua esattamente quali match sono correntemente assegnati ai tavoli (partite in corso)
+    for b_num in range(1, num_tavoli + 1):
+        match_trovata = None
+        for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+                    if match_trovata is None:
+                        match_trovata = m
+            if match_trovata:
+                break
+        if match_trovata and match_trovata not in partite_attive_correnti:
+            # Assicuriamoci di prendere solo i match effettivamente in corso sui tavoli
+            if len(partite_attive_correnti) < num_tavoli:
+                partite_attive_correnti.append(match_trovata)
+
+elif db["stato"] == "eliminatorie":
+    for f_turno in db["fasi_finali"]:
+        for m in f_turno["partite"]:
+            if not m.get("giocata", False):
+                partite_attive_correnti.append(m)
+
+# --- VERIFICA SE IL GIOCATORE SELEZIONATO È PROPRIO IN UNA PARTITA ATTIVA SUI BILIARDINI ---
 ha_partita_in_corso = False
-
 if giocatore_selezionato != "-- Seleziona il tuo nome --":
-    if db["stato"] == "gironi":
-        for b_num in range(1, num_tavoli + 1):
-            for t_obj in db["turni_partite"]:
-                for idx, m in enumerate(t_obj["partite"]):
-                    if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
-                        if (giocatore_selezionato == m['p1'] or 
-                            giocatore_selezionato == m['a1'] or 
-                            giocatore_selezionato == m['p2'] or 
-                            giocatore_selezionato == m['a2']):
-                            ha_partita_in_corso = True
-                            break
-                if ha_partita_in_corso:
-                    break
-            if ha_partita_in_corso:
-                break
-    elif db["stato"] == "eliminatorie":
-        for f_turno in db["fasi_finali"]:
-            for idx, m in enumerate(f_turno["partite"]):
-                if not m.get("giocata", False):
-                    if (giocatore_selezionato == m['p1'] or 
-                        giocatore_selezionato == m['a1'] or 
-                        giocatore_selezionato == m['p2'] or 
-                        giocatore_selezionato == m['a2']):
-                        ha_partita_in_corso = True
-                        break
-            if ha_partita_in_corso:
-                break
+    for m in partite_attive_correnti:
+        if (giocatore_selezionato == m['p1'] or 
+            giocatore_selezionato == m['a1'] or 
+            giocatore_selezionato == m['p2'] or 
+            giocatore_selezionato == m['a2']):
+            ha_partita_in_corso = True
+            break
 
-# Mostra il box rosso SOLO se il giocatore ha effettivamente una partita in corso
+# Mostra il box rosso SOLO se il giocatore ha una partita in corso attiva in questo momento preciso
 if ha_partita_in_corso:
     st.html("""
         <div style="background-color: #ffebee; border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
