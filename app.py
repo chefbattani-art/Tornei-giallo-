@@ -286,6 +286,7 @@ if is_admin:
             os.remove(DB_FILE)
         for key in list(st.session_state.keys()):
             del st.session_state[key]
+        st.query_params.clear()
         st.sidebar.success("Torneo azzerato con successo!")
         st.rerun()
 
@@ -342,14 +343,19 @@ st.html(
     """
 )
 
-# --- GESTIONE SELEZIONE NOME OBBLIGATORIA INIZIALE ---
+# --- GESTIONE SELEZIONE NOME PERSISTENTE (TRAMITE URL) ---
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
 if db["stato"] != "setup" and tutti_i_giocatori:
-    if "giocator_loggato" not in st.session_state:
-        st.session_state.giocator_loggato = "-- Seleziona il tuo nome --"
+    # Legge il nome direttamente dai parametri URL se presenti
+    giocatore_url = st.query_params.get("giocatore", "")
 
-    if st.session_state.giocator_loggato == "-- Seleziona il tuo nome --":
+    if giocatore_url in tutti_i_giocatori:
+        giocatore_selezionato = giocatore_url
+    else:
+        giocatore_selezionato = "-- Seleziona il tuo nome --"
+
+    if giocatore_selezionato == "-- Seleziona il tuo nome --":
         st.markdown("---")
         st.markdown("### 🔍 Benvenuto! Seleziona il tuo nome per accedere al torneo:")
         scelta_utente = st.selectbox(
@@ -358,20 +364,20 @@ if db["stato"] != "setup" and tutti_i_giocatori:
             index=0
         )
         if scelta_utente != "-- Seleziona il tuo nome --":
-            st.session_state.giocator_loggato = scelta_utente
+            st.query_params["giocatore"] = scelta_utente
             st.rerun()
         st.stop()  
     else:
         col_n1, col_n2 = st.columns([3, 1])
         with col_n1:
-            st.markdown(f"👤 Stai visualizzando come: **{st.session_state.giocator_loggato}**")
+            st.markdown(f"👤 Stai visualizzando come: **{giocatore_selezionato}**")
         with col_n2:
             if st.button("🔄 Cambia Nome", use_container_width=True):
-                st.session_state.giocator_loggato = "-- Seleziona il tuo nome --"
+                st.query_params.clear()
                 st.rerun()
         st.markdown("---")
-
-giocatore_selezionato = st.session_state.get("giocator_loggato", "-- Seleziona il tuo nome --")
+else:
+    giocatore_selezionato = "-- Seleziona il tuo nome --"
 
 st.html(
     """
