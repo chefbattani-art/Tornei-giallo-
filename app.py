@@ -382,11 +382,26 @@ else:
 num_tavoli = db.get("num_tavoli", 3)
 ha_partita_in_corso = False
 
-if db["stato"] == "gironi":
-    for b_num in range(1, num_tavoli + 1):
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+if giocatore_selezionato != "-- Seleziona il tuo nome --":
+    if db["stato"] == "gironi":
+        for b_num in range(1, num_tavoli + 1):
+            for t_obj in db["turni_partite"]:
+                for idx, m in enumerate(t_obj["partite"]):
+                    if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+                        if (giocatore_selezionato == m['p1'] or 
+                            giocatore_selezionato == m['a1'] or 
+                            giocatore_selezionato == m['p2'] or 
+                            giocatore_selezionato == m['a2']):
+                            ha_partita_in_corso = True
+                            break
+                if ha_partita_in_corso:
+                    break
+            if ha_partita_in_corso:
+                break
+    elif db["stato"] == "eliminatorie":
+        for f_turno in db["fasi_finali"]:
+            for idx, m in enumerate(f_turno["partite"]):
+                if not m.get("giocata", False):
                     if (giocatore_selezionato == m['p1'] or 
                         giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or 
@@ -395,23 +410,9 @@ if db["stato"] == "gironi":
                         break
             if ha_partita_in_corso:
                 break
-        if ha_partita_in_corso:
-            break
-elif db["stato"] == "eliminatorie":
-    for f_turno in db["fasi_finali"]:
-        for idx, m in enumerate(f_turno["partite"]):
-            if not m.get("giocata", False):
-                if (giocatore_selezionato == m['p1'] or 
-                    giocatore_selezionato == m['a1'] or 
-                    giocatore_selezionato == m['p2'] or 
-                    giocatore_selezionato == m['a2']):
-                    ha_partita_in_corso = True
-                    break
-        if ha_partita_in_corso:
-            break
 
-# Se il giocatore ha una partita in corso, mostra il box rosso con il testo richiesto
-if ha_partita_in_corso and giocatore_selezionato != "-- Seleziona il tuo nome --":
+# Mostra il box rosso SOLO se il giocatore ha effettivamente una partita in corso
+if ha_partita_in_corso:
     st.html("""
         <div style="background-color: #ffebee; border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
             <h4 style="margin: 0; color: #b71c1c; font-size: 1.0rem;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
