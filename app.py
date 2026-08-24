@@ -390,7 +390,10 @@ st.html(
 # --- GESTIONE SELEZIONE NOME PERSISTENTE (TRAMITE URL) ---
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
-if db["stato"] != "setup" and tutti_i_giocatori:
+# Se l'utente è amministratore, saltiamo la schermata di selezione del nome
+if is_admin:
+    giocatore_selezionato = "Admin"
+elif db["stato"] != "setup" and tutti_i_giocatori:
     giocatore_url = st.query_params.get("giocatore", "")
 
     if giocatore_url in tutti_i_giocatori:
@@ -452,7 +455,7 @@ elif db["stato"] == "eliminatorie":
 
 # --- VERIFICA SE IL GIOCATORE SELEZIONATO È PROPRIO IN UNA PARTITA ATTIVA SUI BILIARDINI ---
 ha_partita_in_corso = False
-if giocatore_selezionato != "-- Seleziona il tuo nome --":
+if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin:
     for m in partite_attive_correnti:
         if (giocatore_selezionato == m['p1'] or 
             giocatore_selezionato == m['a1'] or 
