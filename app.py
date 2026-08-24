@@ -488,7 +488,6 @@ if db["stato"] == "gironi":
                 </div>
             """)
 
-            # Controllo se il giocatore loggato partecipa a questa partita in corso (può inserire il risultato SOLO se è in corso)
             partecipa = (
                 giocatore_selezionato == m['p1'] or 
                 giocatore_selezionato == m['a1'] or 
@@ -499,8 +498,12 @@ if db["stato"] == "gironi":
             if partecipa or is_admin:
                 titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
                 with st.expander(titolo_box):
-                    rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"top_rg1_{b_num}_{match_id}")
-                    rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"top_rg2_{b_num}_{match_id}")
+                    st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
+                    rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"top_rg1_{b_num}_{match_id}")
+                    
+                    st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
+                    rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"top_rg2_{b_num}_{match_id}")
+                    
                     if st.button("💾 Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
                         m['gol1'] = rg1
                         m['gol2'] = rg2
@@ -674,11 +677,14 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
-                # Qui SOLO l'admin può modificare le partite archiviate/passate
                 if is_admin:
                     with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                        rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
-                        rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
+                        st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
+                        rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
+                        
+                        st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
+                        rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
+                        
                         if st.button(f"💾 Salva Modifica", key=f"save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
@@ -690,7 +696,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- SEZIONE IN FONDO: LE PARTITE PERSONALI DEL GIOCATORE LOGGATO (SOLO CONSULTAZIONE / NO MODIFICA) ---
+    # --- SEZIONE IN FONDO: LE PARTITE PERSONALI DEL GIOCATORE LOGGATO ---
     if giocatore_selezionato != "-- Seleziona il tuo nome --":
         partite_filtrate = []
         for t_obj in db["turni_partite"]:
@@ -869,8 +875,12 @@ if db["stato"] == "eliminatorie":
 
                     if is_admin:
                         with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                            rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
-                            rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
+                            st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
+                            rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
+                            
+                            st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
+                            rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
+                            
                             if st.button("💾 Salva Modifica", key=f"ef_save_{match_id}", use_container_width=True):
                                 m['gol1'] = rg1
                                 m['gol2'] = rg2
