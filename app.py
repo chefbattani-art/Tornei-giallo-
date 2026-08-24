@@ -347,7 +347,6 @@ st.html(
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
 if db["stato"] != "setup" and tutti_i_giocatori:
-    # Legge il nome direttamente dai parametri URL se presenti
     giocatore_url = st.query_params.get("giocatore", "")
 
     if giocatore_url in tutti_i_giocatori:
@@ -378,6 +377,50 @@ if db["stato"] != "setup" and tutti_i_giocatori:
         st.markdown("---")
 else:
     giocatore_selezionato = "-- Seleziona il tuo nome --"
+
+# --- VERIFICA SE IL GIOCATORE HA UNA PARTITA IN CORSO SUL BILIARDINO PER MOSTRARE IL BOX ROSSO ---
+num_tavoli = db.get("num_tavoli", 3)
+ha_partita_in_corso = False
+
+if db["stato"] == "gironi":
+    # Cerca tra le partite in corso nei tavoli
+    for b_num in range(1, num_tavoli + 1):
+        for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+                    if (giocatore_selezionato == m['p1'] or 
+                        giocatore_selezionato == m['a1'] or 
+                        giocatore_selezionato == m['p2'] or 
+                        giocatore_selezionato == m['a2']):
+                        ha_partita_in_corso = True
+                        break
+            if ha_partita_in_corso:
+                break
+        if ha_partita_in_corso:
+            break
+elif db["stato"] == "eliminatorie":
+    for f_turno in db["fasi_finali"]:
+        for idx, m in enumerate(f_turno["partite"]):
+            if not m.get("giocata", False):
+                if (giocatore_selezionato == m['p1'] or 
+                    giocatore_selezionato == m['a1'] or 
+                    giocatore_selezionato == m['p2'] or 
+                    giocatore_selezionato == m['a2']):
+                    ha_partita_in_corso = True
+                    break
+        if ha_partita_in_corso:
+            break
+
+# Se il giocatore ha una partita in corso, mostra il box rosso di avviso in alto
+if ha_partita_in_corso and giocatore_selezionato != "-- Seleziona il tuo nome --":
+    st.html("""
+        <div style="background-color: #ffebee; border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
+            <h4 style="margin: 0; color: #b71c1c; font-size: 1.0rem;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
+            <p style="margin: 4px 0 0 0; color: #c62828; font-size: 0.9rem; font-weight: bold;">
+                Uno dei due giocatori deve inserire il risultato della partita e cliccare su "Salva Risultato" per confermarla!
+            </p>
+        </div>
+    """)
 
 st.html(
     """
