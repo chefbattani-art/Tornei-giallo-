@@ -29,9 +29,7 @@ def carica_dati():
         "punti_attaccanti": {},
         "dr_portieri": {},
         "dr_attaccanti": {},
-        "fasi_finali": [],
-        "orario_primo_risultato": None,
-        "storico_orari_completamento": []
+        "fasi_finali": []
     }
     if os.path.exists(DB_FILE):
         try:
@@ -255,11 +253,6 @@ def calcola_partite_giocate(ruolo, nome):
                     giocate += 1
     return giocate, totali
 
-def registra_completamento_partita():
-    ora_attuale_iso = datetime.now().isoformat()
-    if not db.get("orario_primo_risultato"):
-        db["orario_primo_risultato"] = ora_attuale_iso
-
 def genera_pdf_calendario():
     pdf = FPDF()
     pdf.add_page()
@@ -330,7 +323,7 @@ if link_torneo and link_torneo != "https://":
     qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
     st.sidebar.image(qr_api_url, caption="Inquadra per aprire", use_container_width=True)
 
-# --- INTERFACCIA PRINCIPALE ---
+# --- LOGO E HEADER COMUNE ---
 logo_html = ""
 if os.path.exists(LOGO_FILE):
     with open(LOGO_FILE, "rb") as f:
@@ -349,16 +342,36 @@ st.html(
     """
 )
 
-# SELETTORE RAPIDO GIOCATORE
-if db["stato"] != "setup":
-    tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
-    giocatore_selezionato = st.selectbox(
-        "🔍 SELEZIONA IL TUO NOME:",
-        ["-- Seleziona il tuo nome --"] + tutti_i_giocatori
-    )
-    st.markdown("---")
-else:
-    giocatore_selezionato = "-- Seleziona il tuo nome --"
+# --- GESTIONE SELEZIONE NOME OBBLIGATORIA INIZIALE ---
+tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
+
+if db["stato"] != "setup" and tutti_i_giocatori:
+    if "giocator_loggato" not in st.session_state:
+        st.session_state.giocator_loggato = "-- Seleziona il tuo nome --"
+
+    if st.session_state.giocator_loggato == "-- Seleziona il tuo nome --":
+        st.markdown("---")
+        st.markdown("### 🔍 Benvenuto! Seleziona il tuo nome per accedere al torneo:")
+        scelta_utente = st.selectbox(
+            "Il tuo nome:",
+            ["-- Seleziona il tuo nome --"] + tutti_i_giocatori,
+            index=0
+        )
+        if scelta_utente != "-- Seleziona il tuo nome --":
+            st.session_state.giocator_loggato = scelta_utente
+            st.rerun()
+        st.stop()  
+    else:
+        col_n1, col_n2 = st.columns([3, 1])
+        with col_n1:
+            st.markdown(f"👤 Stai visualizzando come: **{st.session_state.giocator_loggato}**")
+        with col_n2:
+            if st.button("🔄 Cambia Nome", use_container_width=True):
+                st.session_state.giocator_loggato = "-- Seleziona il tuo nome --"
+                st.rerun()
+        st.markdown("---")
+
+giocatore_selezionato = st.session_state.get("giocator_loggato", "-- Seleziona il tuo nome --")
 
 st.html(
     """
@@ -408,7 +421,6 @@ if db["stato"] == "setup":
                 db["dr_attaccanti"] = {a: 0 for a in attaccanti}
                 db["stato"] = "gironi"
                 db["fasi_finali"] = []
-                db["orario_primo_risultato"] = None
                 
                 db["turni_partite"] = []
                 for t in range(1, db["partite_per_giocatore"] + 1):
@@ -440,54 +452,7 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # --- SEZIONE IN ALTO: TUE PARTITE SE SELEZIONATO IL NOME ---
-    if giocatore_selezionato != "-- Seleziona il tuo nome --":
-        partite_filtrate = []
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if m['p1'] == giocatore_selezionato or m['a1'] == giocatore_selezionato or m['p2'] == giocatore_selezionato or m['a2'] == giocatore_selezionato:
-                    tavolo_num = (idx % num_tavoli) + 1
-                    partite_filtrate.append({"turno": t_obj["turno"], "tavolo": tavolo_num, "m": m})
-
-        if partite_filtrate:
-            st.html(f'<div class="container-yellow"><h4 style="margin: 0 0 4px 0; color: #b71c1c; font-size: 0.95rem;">🔥 LE PARTITE DI {giocatore_selezionato.upper()}:</h4>')
-            for item in partite_filtrate:
-                m = item["m"]
-                match_id = m['id']
-                if m.get("giocata", False):
-                    center_txt = f"<b>Risultato: {m['gol1']} - {m['gol2']} (Giocata ✅)</b>"
-                else:
-                    center_txt = f"⏳ Biliardino {item['tavolo']} (Da giocare)"
-
-                st.html(f"""
-                    <div style="background-color: #ffffff; border: 1px solid #ffa726; border-radius: 4px; padding: 4px 6px; margin-bottom: 4px;">
-                        <div style="font-size: 0.75rem; color: #d32f2f; font-weight: bold; margin-bottom: 1px;">Turno {item['turno']} | Biliardino {item['tavolo']}</div>
-                        <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 500; font-size: 0.85rem;">
-                            <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
-                            <span style="font-weight: bold; color: #e65100;">VS</span>
-                            <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
-                        </div>
-                        <div style="text-align: center; margin-top: 2px; font-weight: bold; color: #333; font-size: 0.8rem;">{center_txt}</div>
-                    </div>
-                """)
-
-                with st.expander(f"📝 Inserisci/Modifica Risultato - Turno {item['turno']} (Biliardino {item['tavolo']})"):
-                    ug1 = st.radio("Gol Squadra 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"user_rg1_{match_id}")
-                    ug2 = st.radio("Gol Squadra 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"user_rg2_{match_id}")
-                    if st.button("💾 Salva il mio risultato", key=f"user_save_{match_id}", use_container_width=True):
-                        m['gol1'] = ug1
-                        m['gol2'] = ug2
-                        m['giocata'] = True
-                        registra_completamento_partita()
-                        ricalcola_classifiche()
-                        salva_dati(db)
-                        st.success("Risultato salvato con successo!")
-                        st.rerun()
-
-            st.html('</div>')
-        st.markdown("---")
-
-    # --- PARTITE IN CORSO (COMPATTE/BASSE) ---
+    # --- PARTITE IN CORSO (SUI BILIARDINI) CON INSERIMENTO RISULTATO PER GIOCATORE COINVOLTO ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -523,23 +488,31 @@ if db["stato"] == "gironi":
                 </div>
             """)
 
-            if is_admin:
-                with st.expander(f"⚙️ Inserisci/Modifica Gol Biliardino {b_num} (Admin)"):
+            # Controllo se il giocatore loggato partecipa a questa partita in corso (può inserire il risultato SOLO se è in corso)
+            partecipa = (
+                giocatore_selezionato == m['p1'] or 
+                giocatore_selezionato == m['a1'] or 
+                giocatore_selezionato == m['p2'] or 
+                giocatore_selezionato == m['a2']
+            )
+
+            if partecipa or is_admin:
+                titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
+                with st.expander(titolo_box):
                     rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"top_rg1_{b_num}_{match_id}")
                     rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"top_rg2_{b_num}_{match_id}")
-                    if st.button("💾 Salva Risultato", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
+                    if st.button("💾 Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
                         m['gol1'] = rg1
                         m['gol2'] = rg2
                         m['giocata'] = True
-                        registra_completamento_partita()
                         ricalcola_classifiche()
                         salva_dati(db)
-                        st.success("Salvato!")
+                        st.success("Risultato salvato con successo!")
                         st.rerun()
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA (COMPATTI/BASSI) ---
+    # --- PROSSIMI IN CODA ---
     num_partite_in_corso = len(partite_per_tavolo)
     st.markdown(f"### 📢 PROSSIMI IN CODA ({num_partite_in_corso} in attesa):")
     
@@ -653,14 +626,13 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (STILE GRANDE ORIGINALE) ---
+    # --- LISTA COMPLETA TURNI (ARCHIVIO) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
         turno_num = turno_obj['turno']
         tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
         alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
-
         in_corso = alcuna_giocata and not tutte_giocate
 
         if tutte_giocate:
@@ -702,19 +674,52 @@ if db["stato"] == "gironi":
                     </div>
                 """)
 
+                # Qui SOLO l'admin può modificare le partite archiviate/passate
                 if is_admin:
-                    with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num}", expanded=False):
+                    with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
                         rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
                         rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
-                        if st.button(f"💾 Salva Risultato", key=f"save_{match_id}", use_container_width=True):
+                        if st.button(f"💾 Salva Modifica", key=f"save_{match_id}", use_container_width=True):
                             m['gol1'] = rg1
                             m['gol2'] = rg2
                             m['giocata'] = True
-                            registra_completamento_partita()
                             ricalcola_classifiche()
                             salva_dati(db)
                             st.success("Salvato!")
                             st.rerun()
+
+    st.markdown("---")
+
+    # --- SEZIONE IN FONDO: LE PARTITE PERSONALI DEL GIOCATORE LOGGATO (SOLO CONSULTAZIONE / NO MODIFICA) ---
+    if giocatore_selezionato != "-- Seleziona il tuo nome --":
+        partite_filtrate = []
+        for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+                if m['p1'] == giocatore_selezionato or m['a1'] == giocatore_selezionato or m['p2'] == giocatore_selezionato or m['a2'] == giocatore_selezionato:
+                    tavolo_num = (idx % num_tavoli) + 1
+                    partite_filtrate.append({"turno": t_obj["turno"], "tavolo": tavolo_num, "m": m})
+
+        if partite_filtrate:
+            st.html(f'<div class="container-yellow"><h4 style="margin: 0 0 6px 0; color: #b71c1c; font-size: 1rem;">🔥 LE PARTITE DI {giocatore_selezionato.upper()}:</h4>')
+            for item in partite_filtrate:
+                m = item["m"]
+                if m.get("giocata", False):
+                    center_txt = f"<b>Risultato: {m['gol1']} - {m['gol2']} (Giocata ✅)</b>"
+                else:
+                    center_txt = f"⏳ Biliardino {item['tavolo']} (Da giocare)"
+
+                st.html(f"""
+                    <div style="background-color: #ffffff; border: 1px solid #ffa726; border-radius: 4px; padding: 6px 8px; margin-bottom: 6px;">
+                        <div style="font-size: 0.8rem; color: #d32f2f; font-weight: bold; margin-bottom: 2px;">Turno {item['turno']} | Biliardino {item['tavolo']}</div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 500; font-size: 0.9rem;">
+                            <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
+                            <span style="font-weight: bold; color: #e65100;">VS</span>
+                            <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
+                        </div>
+                        <div style="text-align: center; margin-top: 4px; font-weight: bold; color: #333; font-size: 0.85rem;">{center_txt}</div>
+                    </div>
+                """)
+            st.html('</div>')
 
     if is_admin:
         st.markdown("---")
@@ -863,10 +868,10 @@ if db["stato"] == "eliminatorie":
                     """)
 
                     if is_admin:
-                        with st.expander(f"⚙️ Risultato Biliardino {tavolo_num}", expanded=False):
+                        with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
                             rg1 = st.radio("Gol S1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
                             rg2 = st.radio("Gol S2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
-                            if st.button("💾 Salva", key=f"ef_save_{match_id}", use_container_width=True):
+                            if st.button("💾 Salva Modifica", key=f"ef_save_{match_id}", use_container_width=True):
                                 m['gol1'] = rg1
                                 m['gol2'] = rg2
                                 m['giocata'] = True
