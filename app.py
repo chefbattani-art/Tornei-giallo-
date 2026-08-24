@@ -383,7 +383,6 @@ num_tavoli = db.get("num_tavoli", 3)
 ha_partita_in_corso = False
 
 if db["stato"] == "gironi":
-    # Cerca tra le partite in corso nei tavoli
     for b_num in range(1, num_tavoli + 1):
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
@@ -411,13 +410,13 @@ elif db["stato"] == "eliminatorie":
         if ha_partita_in_corso:
             break
 
-# Se il giocatore ha una partita in corso, mostra il box rosso di avviso in alto
+# Se il giocatore ha una partita in corso, mostra il box rosso con il testo richiesto
 if ha_partita_in_corso and giocatore_selezionato != "-- Seleziona il tuo nome --":
     st.html("""
         <div style="background-color: #ffebee; border: 2px solid #d32f2f; border-radius: 8px; padding: 10px; margin-bottom: 12px; text-align: center;">
             <h4 style="margin: 0; color: #b71c1c; font-size: 1.0rem;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
             <p style="margin: 4px 0 0 0; color: #c62828; font-size: 0.9rem; font-weight: bold;">
-                Uno dei due giocatori deve inserire il risultato della partita e cliccare su "Salva Risultato" per confermarla!
+                la coppia vincente uno dei due giocatori deve mettere il risultato finale e confermare
             </p>
         </div>
     """)
