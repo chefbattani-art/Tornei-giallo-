@@ -65,12 +65,11 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS FORZATURA DARK MODE DI DEFAULT + PULSANTI SCURI ---
+# --- CSS PERSONALIZZATO (DARK MODE & SELETTORI GOL) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
-        /* FORZATURA GLOBALE DARK MODE ALL'APERTURA */
         :root {
             color-scheme: dark;
         }
@@ -86,7 +85,6 @@ st.markdown("""
             font-size: 1.05rem;
         }
 
-        /* Sfondo generale Dark Gaming */
         .block-container {
             padding-top: 1.2rem !important;
             padding-bottom: 2rem !important;
@@ -98,17 +96,6 @@ st.markdown("""
                 radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
         }
 
-        /* ========================================================
-           FORZATURA TOTALE TESTI BIANCHI E PULSANTI DARK
-           ======================================================== */
-        div[role="radiogroup"] label div,
-        div[data-baseweb="radio"] div,
-        div[data-testid="stRadio"] label,
-        div[data-testid="stRadio"] p,
-        .stMarkdown p,
-        label,
-        label p,
-        div[data-baseweb="select"] *,
         div[data-testid="stExpander"] summary,
         div[data-testid="stExpander"] summary p,
         div[data-testid="stExpander"] p,
@@ -117,7 +104,6 @@ st.markdown("""
             font-weight: 600 !important;
         }
 
-        /* FORZATURA PULSANTI STREAMLIT (Incluso 'Cambia Nome') */
         button[data-testid="stBaseButton-secondary"], 
         button[data-testid="stBaseButton-primary"],
         div.stButton > button {
@@ -135,7 +121,6 @@ st.markdown("""
             color: #38bdf8 !important;
         }
 
-        /* FORZATURA CAMPI INPUT E TEXT AREA */
         input, textarea, div[data-baseweb="select"] > div {
             background-color: #1f2937 !important;
             color: #ffffff !important;
@@ -143,27 +128,10 @@ st.markdown("""
             font-size: 1.05rem !important;
         }
 
-        div[data-baseweb="input"] {
-            background-color: #1f2937 !important;
-            border-color: #4b5563 !important;
-            border-radius: 8px !important;
-        }
-
-        /* EXPANDER BORDERS */
         [data-testid="stExpander"] {
             background-color: #111827 !important;
             border: 1px solid #4b5563 !important;
             border-radius: 12px !important;
-        }
-
-        /* Card Moderni / Neon */
-        .modern-card {
-            background: #111827;
-            border: 1px solid #374151;
-            border-radius: 16px;
-            padding: 18px;
-            box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
-            margin-bottom: 16px;
         }
 
         .ranking-card {
@@ -185,7 +153,6 @@ st.markdown("""
             text-shadow: 0 0 10px rgba(56, 189, 248, 0.5);
         }
 
-        /* Tabelle Custom Neon */
         table.styled-table {
             width: 100%;
             border-collapse: separate;
@@ -203,7 +170,6 @@ st.markdown("""
             text-transform: uppercase;
             font-size: 0.95rem;
             letter-spacing: 0.5px;
-            text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
         }
         table.styled-table td {
             padding: 10px 12px;
@@ -217,15 +183,12 @@ st.markdown("""
             background-color: rgba(6, 78, 59, 0.4);
             color: #4ade80 !important;
             font-weight: 700;
-            border-bottom: 1px solid #065f46;
         }
         table.styled-table tr.eliminato td {
             background-color: rgba(127, 29, 29, 0.3);
             color: #f87171 !important;
-            border-bottom: 1px solid #7f1d1d;
         }
 
-        /* Box Partita in Corso (Live Biliardini) */
         .live-match-box {
             background: linear-gradient(135deg, #1e1b4b, #311033);
             border: 2px solid #f59e0b;
@@ -235,7 +198,6 @@ st.markdown("""
             box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
         }
 
-        /* Box Coda */
         .queue-match-box {
             background: linear-gradient(135deg, #022c22, #064e3b);
             border: 1px solid #10b981;
@@ -246,7 +208,6 @@ st.markdown("""
             box-shadow: 0 0 10px rgba(16, 185, 129, 0.2);
         }
 
-        /* Alert Rosso Pulsante Neon */
         .alert-active-game {
             background: linear-gradient(135deg, #450a0a, #7f1d1d);
             border: 2px solid #ef4444;
@@ -255,65 +216,6 @@ st.markdown("""
             margin-bottom: 16px;
             text-align: center;
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-        }
-    </style>
-""", unsafe_allow_html=True)
-
-# Stili podio e animazioni
-st.markdown("""
-    <style>
-        @keyframes riseUp {
-            0% { transform: translateY(30px); opacity: 0; }
-            100% { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes floatTrophy {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-6px); }
-            100% { transform: translateY(0px); }
-        }
-        .podium-container {
-            display: flex;
-            justify-content: center;
-            align-items: flex-end;
-            gap: 12px;
-            margin: 20px 0;
-            animation: riseUp 0.8s ease-out;
-        }
-        .podium-step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            border-radius: 12px 12px 0 0;
-            padding: 10px;
-            font-weight: bold;
-            box-shadow: 0 10px 20px rgba(0,0,0,0.3);
-        }
-        .podium-1 {
-            background: linear-gradient(135deg, #fde047, #eab308);
-            color: #422006;
-            width: 36%;
-            height: 160px;
-            border: 2px solid #ca8a04;
-        }
-        .podium-2 {
-            background: linear-gradient(135deg, #e2e8f0, #cbd5e1);
-            color: #1e293b;
-            width: 30%;
-            height: 125px;
-            border: 2px solid #94a3b8;
-        }
-        .podium-3 {
-            background: linear-gradient(135deg, #fed7aa, #fdba74);
-            color: #7c2d12;
-            width: 30%;
-            height: 100px;
-            border: 2px solid #f97316;
-        }
-        .trophy-icon {
-            font-size: 2.2rem;
-            animation: floatTrophy 2s ease-in-out infinite;
-            margin-bottom: 4px;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -678,15 +580,35 @@ if db["stato"] == "gironi":
             if partecipa or is_admin:
                 titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
                 with st.expander(titolo_box):
-                    st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
-                    rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"top_rg1_{b_num}_{match_id}")
                     
-                    st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
-                    rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"top_rg2_{b_num}_{match_id}")
-                    
-                    if st.button("💾 Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
-                        m['gol1'] = rg1
-                        m['gol2'] = rg2
+                    # --- NUOVA INTERFACCIA GOL GRANDE E PULSANTI AFFIANCATI ---
+                    st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+                    g1_cols = st.columns(8)
+                    current_g1 = int(m.get('gol1', 0))
+                    for g_val in range(8):
+                        with g1_cols[g_val]:
+                            is_selected_1 = (current_g1 == g_val)
+                            btn_label = f"✨ {g_val}" if is_selected_1 else str(g_val)
+                            if st.button(btn_label, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                                m['gol1'] = g_val
+                                salva_dati(db)
+                                st.rerun()
+
+                    st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
+                    st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+                    g2_cols = st.columns(8)
+                    current_g2 = int(m.get('gol2', 0))
+                    for g_val in range(8):
+                        with g2_cols[g_val]:
+                            is_selected_2 = (current_g2 == g_val)
+                            btn_label = f"✨ {g_val}" if is_selected_2 else str(g_val)
+                            if st.button(btn_label, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                                m['gol2'] = g_val
+                                salva_dati(db)
+                                st.rerun()
+
+                    st.markdown("<div style='margin: 12px 0;'></div>", unsafe_allow_html=True)
+                    if st.button("💾 Conferma e Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
                         m['giocata'] = True
                         ricalcola_classifiche()
                         salva_dati(db)
@@ -857,15 +779,33 @@ if db["stato"] == "gironi":
 
                 if is_admin:
                     with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                        st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
-                        rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"rg1_{match_id}")
-                        
-                        st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
-                        rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"rg2_{match_id}")
-                        
+                        st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+                        cols_m1 = st.columns(8)
+                        curr_m1 = int(m.get('gol1', 0))
+                        for g_val in range(8):
+                            with cols_m1[g_val]:
+                                sel_m1 = (curr_m1 == g_val)
+                                lbl_m1 = f"✨ {g_val}" if sel_m1 else str(g_val)
+                                if st.button(lbl_m1, key=f"adm_g1_{match_id}_{g_val}", use_container_width=True):
+                                    m['gol1'] = g_val
+                                    salva_dati(db)
+                                    st.rerun()
+
+                        st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
+                        st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+                        cols_m2 = st.columns(8)
+                        curr_m2 = int(m.get('gol2', 0))
+                        for g_val in range(8):
+                            with cols_m2[g_val]:
+                                sel_m2 = (curr_m2 == g_val)
+                                lbl_m2 = f"✨ {g_val}" if sel_m2 else str(g_val)
+                                if st.button(lbl_m2, key=f"adm_g2_{match_id}_{g_val}", use_container_width=True):
+                                    m['gol2'] = g_val
+                                    salva_dati(db)
+                                    st.rerun()
+
+                        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
                         if st.button(f"💾 Salva Modifica", key=f"save_{match_id}", use_container_width=True):
-                            m['gol1'] = rg1
-                            m['gol2'] = rg2
                             m['giocata'] = True
                             ricalcola_classifiche()
                             salva_dati(db)
@@ -1056,15 +996,33 @@ if db["stato"] == "eliminatorie":
 
                     if is_admin:
                         with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                            st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']}**")
-                            rg1 = st.radio("Gol Coppia 1", list(range(8)), index=min(int(m.get('gol1', 0)), 7), horizontal=True, key=f"ef_rg1_{match_id}")
-                            
-                            st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']}**")
-                            rg2 = st.radio("Gol Coppia 2", list(range(8)), index=min(int(m.get('gol2', 0)), 7), horizontal=True, key=f"ef_rg2_{match_id}")
-                            
+                            st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+                            cols_ef1 = st.columns(8)
+                            curr_ef1 = int(m.get('gol1', 0))
+                            for g_val in range(8):
+                                with cols_ef1[g_val]:
+                                    sel_ef1 = (curr_ef1 == g_val)
+                                    lbl_ef1 = f"✨ {g_val}" if sel_ef1 else str(g_val)
+                                    if st.button(lbl_ef1, key=f"ef_adm_g1_{match_id}_{g_val}", use_container_width=True):
+                                        m['gol1'] = g_val
+                                        salva_dati(db)
+                                        st.rerun()
+
+                            st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
+                            st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+                            cols_ef2 = st.columns(8)
+                            curr_ef2 = int(m.get('gol2', 0))
+                            for g_val in range(8):
+                                with cols_ef2[g_val]:
+                                    sel_ef2 = (curr_ef2 == g_val)
+                                    lbl_ef2 = f"✨ {g_val}" if sel_ef2 else str(g_val)
+                                    if st.button(lbl_ef2, key=f"ef_adm_g2_{match_id}_{g_val}", use_container_width=True):
+                                        m['gol2'] = g_val
+                                        salva_dati(db)
+                                        st.rerun()
+
+                            st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
                             if st.button("💾 Salva Modifica", key=f"ef_save_{match_id}", use_container_width=True):
-                                m['gol1'] = rg1
-                                m['gol2'] = rg2
                                 m['giocata'] = True
                                 salva_dati(db)
                                 st.rerun()
