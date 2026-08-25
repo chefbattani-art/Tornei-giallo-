@@ -65,7 +65,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS FORZATURA DARK MODE DI DEFAULT + TESTI BIANCHI ---
+# --- CSS FORZATURA DARK MODE DI DEFAULT + PULSANTI SCURI ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -99,7 +99,7 @@ st.markdown("""
         }
 
         /* ========================================================
-           FORZATURA TOTALE TESTI BIANCHI (Rimuove tutti i grigi) 
+           FORZATURA TOTALE TESTI BIANCHI E PULSANTI DARK
            ======================================================== */
         div[role="radiogroup"] label div,
         div[data-baseweb="radio"] div,
@@ -115,6 +115,24 @@ st.markdown("""
         small {
             color: #ffffff !important;
             font-weight: 600 !important;
+        }
+
+        /* FORZATURA PULSANTI STREAMLIT (Incluso 'Cambia Nome') */
+        button[data-testid="stBaseButton-secondary"], 
+        button[data-testid="stBaseButton-primary"],
+        div.stButton > button {
+            background-color: #1f2937 !important;
+            color: #ffffff !important;
+            border: 1px solid #4b5563 !important;
+            border-radius: 8px !important;
+            font-weight: 600 !important;
+        }
+        
+        button[data-testid="stBaseButton-secondary"]:hover,
+        div.stButton > button:hover {
+            background-color: #374151 !important;
+            border-color: #38bdf8 !important;
+            color: #38bdf8 !important;
         }
 
         /* FORZATURA CAMPI INPUT E TEXT AREA */
