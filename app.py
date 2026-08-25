@@ -65,7 +65,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS GAMING DARK & NEON + FORZATURA TEMA SCURO SU INPUT E TEXT AREA ---
+# --- CSS GAMING DARK & NEON + TESTI PIÙ LUMINOSI E GRANDI ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -73,6 +73,7 @@ st.markdown("""
         html, body, [class*="css"] {
             font-family: 'Outfit', sans-serif;
             color: #f8fafc;
+            font-size: 1.05rem; /* Leggermente ingrandito */
         }
 
         /* Sfondo generale Dark Gaming */
@@ -87,17 +88,31 @@ st.markdown("""
                 radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
         }
 
-        /* FORZATURA CAMPI INPUT E TEXT AREA IN STILE DARK (Evita sfondi bianchi) */
+        /* FORZATURA CAMPI INPUT E TEXT AREA IN STILE DARK */
         input, textarea, div[data-baseweb="select"] > div {
             background-color: #1f2937 !important;
-            color: #f8fafc !important;
-            border-color: #374151 !important;
+            color: #ffffff !important;
+            border-color: #4b5563 !important;
+            font-size: 1.05rem !important;
         }
 
         div[data-baseweb="input"] {
             background-color: #1f2937 !important;
-            border-color: #374151 !important;
+            border-color: #4b5563 !important;
             border-radius: 8px !important;
+        }
+
+        /* LUMINOSITÀ E DIMENSIONE DEI TESTI NEGLI EXPANDER (Risolve il testo scuro) */
+        .streamlit-expanderHeader, [data-testid="stExpander"] summary {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+            font-size: 1.1rem !important;
+        }
+        
+        [data-testid="stExpander"] {
+            background-color: #111827 !important;
+            border: 1px solid #4b5563 !important;
+            border-radius: 12px !important;
         }
 
         /* Card Moderni / Neon */
@@ -108,7 +123,6 @@ st.markdown("""
             padding: 18px;
             box-shadow: 0 0 15px rgba(0, 0, 0, 0.5);
             margin-bottom: 16px;
-            transition: transform 0.2s ease;
         }
 
         .ranking-card {
@@ -135,7 +149,7 @@ st.markdown("""
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            font-size: 0.95rem;
+            font-size: 1.02rem;
             border-radius: 12px;
             overflow: hidden;
         }
@@ -146,7 +160,7 @@ st.markdown("""
             padding: 12px;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.85rem;
+            font-size: 0.9rem;
             letter-spacing: 0.5px;
             text-shadow: 0 0 5px rgba(255, 255, 255, 0.4);
         }
@@ -155,7 +169,7 @@ st.markdown("""
             text-align: center;
             border-bottom: 1px solid #1e293b;
             background-color: #111827;
-            color: #e2e8f0;
+            color: #f1f5f9;
         }
         table.styled-table tr.qualificato td {
             background-color: rgba(6, 78, 59, 0.4);
@@ -169,7 +183,7 @@ st.markdown("""
             border-bottom: 1px solid #7f1d1d;
         }
 
-        /* Box Partita in Corso (Live Biliardini) - Effetto Neon Ambra/Arancio */
+        /* Box Partita in Corso (Live Biliardini) */
         .live-match-box {
             background: linear-gradient(135deg, #1e1b4b, #311033);
             border: 2px solid #f59e0b;
@@ -179,7 +193,7 @@ st.markdown("""
             box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
         }
 
-        /* Box Coda - Effetto Neon Verde */
+        /* Box Coda */
         .queue-match-box {
             background: linear-gradient(135deg, #022c22, #064e3b);
             border: 1px solid #10b981;
@@ -199,12 +213,6 @@ st.markdown("""
             margin-bottom: 16px;
             text-align: center;
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
-        }
-
-        .stExpander {
-            background-color: #111827 !important;
-            border: 1px solid #374151 !important;
-            border-radius: 12px !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -404,14 +412,14 @@ logo_html = ""
 if os.path.exists(LOGO_FILE):
     with open(LOGO_FILE, "rb") as f:
         logo_b64 = b64encode(f.read()).decode("utf-8")
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 110px; width: 100%; height: auto; margin-bottom: 6px;" /><br>'
+    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 120px; width: 100%; height: auto; margin-bottom: 8px;" /><br>'
 
 st.html(
     f"""
-    <div style="text-align: center; margin-bottom: 12px; background: #111827; padding: 16px; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 1px solid #374151;">
+    <div style="text-align: center; margin-bottom: 14px; background: #111827; padding: 18px; border-radius: 20px; box-shadow: 0 0 20px rgba(0,0,0,0.5); border: 1px solid #374151;">
         {logo_html}
-        <h1 style="margin: 0; color: #38bdf8; font-size: 1.5rem; font-weight: 700; text-shadow: 0 0 10px rgba(56,189,248,0.4);">🏆 Torneo Biliardino 'Giallo' Live</h1>
-        <span style="display: inline-block; margin-top: 6px; background-color: rgba(30, 58, 138, 0.6); color: #93c5fd; padding: 4px 12px; border-radius: 20px; font-weight: 600; font-size: 0.8rem; border: 1px solid #3b82f6;">Regolamento Uisp 3 tocchi</span>
+        <h1 style="margin: 0; color: #38bdf8; font-size: 1.7rem; font-weight: 700; text-shadow: 0 0 10px rgba(56,189,248,0.4);">🏆 Torneo Biliardino 'Giallo' Live</h1>
+        <span style="display: inline-block; margin-top: 8px; background-color: rgba(30, 58, 138, 0.6); color: #93c5fd; padding: 5px 14px; border-radius: 20px; font-weight: 600; font-size: 0.9rem; border: 1px solid #3b82f6;">Regolamento Uisp 3 tocchi</span>
     </div>
     """
 )
@@ -445,7 +453,7 @@ elif db["stato"] != "setup" and tutti_i_giocatori:
         col_n1, col_n2 = st.columns([3, 1])
         with col_n1:
             st.markdown(f"""
-                <div style="background: #111827; padding: 10px 16px; border-radius: 12px; border: 1px solid #374151; font-weight: 600; color: #f8fafc;">
+                <div style="background: #111827; padding: 12px 18px; border-radius: 12px; border: 1px solid #374151; font-weight: 600; color: #f8fafc; font-size: 1.05rem;">
                     👤 Stai visualizzando come: <span style="color: #38bdf8;">{giocatore_selezionato}</span>
                 </div>
             """, unsafe_allow_html=True)
@@ -495,8 +503,8 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin:
 if ha_partita_in_corso:
     st.html("""
         <div class="alert-active-game">
-            <h4 style="margin: 0; color: #f87171; font-size: 1.1rem; font-weight: 700;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
-            <p style="margin: 6px 0 0 0; color: #fca5a5; font-size: 0.9rem; font-weight: 600;">
+            <h4 style="margin: 0; color: #f87171; font-size: 1.15rem; font-weight: 700;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
+            <p style="margin: 6px 0 0 0; color: #fca5a5; font-size: 1rem; font-weight: 600;">
                 Uno dei due giocatori della coppia vincente deve inserire il risultato finale e confermare.
             </p>
         </div>
@@ -504,8 +512,8 @@ if ha_partita_in_corso:
 
 st.html(
     """
-    <div style="padding: 6px; background-color: #111827; border-radius: 8px; text-align: center; margin-bottom: 12px; border: 1px solid #374151;">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #38bdf8; font-weight: 600; font-size: 0.85rem;">
+    <div style="padding: 8px; background-color: #111827; border-radius: 8px; text-align: center; margin-bottom: 12px; border: 1px solid #374151;">
+        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #38bdf8; font-weight: 600; font-size: 0.95rem;">
             Ricarica la pagina del browser per aggiornare in tempo reale
         </a>
     </div>
@@ -606,13 +614,13 @@ if db["stato"] == "gironi":
             
             st.html(f"""
                 <div class="live-match-box">
-                    <div style="font-weight: 700; color: #fbbf24; margin-bottom: 4px; font-size: 0.85rem; display: flex; justify-content: space-between;">
+                    <div style="font-weight: 700; color: #fbbf24; margin-bottom: 6px; font-size: 0.95rem; display: flex; justify-content: space-between;">
                         <span>🏟️ BILIARDINO {b_num}</span>
                         <span>TURNO {turno_num}</span>
                     </div>
-                    <div style="background-color: #111827; padding: 8px 12px; border-radius: 10px; border: 1px solid #f59e0b; display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 0.95rem; color: #f8fafc;">
+                    <div style="background-color: #111827; padding: 10px 14px; border-radius: 10px; border: 1px solid #f59e0b; display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 1.05rem; color: #ffffff;">
                         <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
-                        <span style="font-weight: 800; color: #f87171; font-size: 1.1rem; text-shadow: 0 0 8px rgba(248,113,113,0.5);">VS</span>
+                        <span style="font-weight: 800; color: #f87171; font-size: 1.2rem; text-shadow: 0 0 8px rgba(248,113,113,0.5);">VS</span>
                         <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
                     </div>
                 </div>
@@ -661,8 +669,8 @@ if db["stato"] == "gironi":
         for turno_num, m in partite_in_coda[:num_partite_in_corso]:
             st.html(f"""
                 <div class="queue-match-box">
-                    <div style="font-size: 0.75rem; color: #34d399; font-weight: 700; margin-bottom: 2px;">👉 IN CODA (Turno {turno_num})</div>
-                    <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 0.9rem;">
+                    <div style="font-size: 0.85rem; color: #34d399; font-weight: 700; margin-bottom: 4px;">👉 IN CODA (Turno {turno_num})</div>
+                    <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 1rem; color: #ffffff;">
                         <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
                         <span style="color: #34d399; font-weight: 800;">VS</span>
                         <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
@@ -784,22 +792,22 @@ if db["stato"] == "gironi":
                 if m["giocata"]:
                     box_bg = "linear-gradient(135deg, #7f1d1d, #450a0a)"
                     border_color = "#ef4444"
-                    text_content = f"<span style='color: #fca5a5; font-size: 1.1rem; font-weight: 700;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
+                    text_content = f"<span style='color: #fca5a5; font-size: 1.15rem; font-weight: 700;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
                     label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
                 else:
                     box_bg = "linear-gradient(135deg, #064e3b, #022c22)"
                     border_color = "#10b981"
-                    text_content = "<span style='color: #6ee7b7; font-size: 1.2rem; font-weight: 800;'>VS</span>"
+                    text_content = "<span style='color: #6ee7b7; font-size: 1.25rem; font-weight: 800;'>VS</span>"
                     label_stato = f"Biliardino {tavolo_num}"
 
                 st.html(f"""
                     <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-                        <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px;">{label_stato}</div>
-                        <div style="margin-bottom: 4px; font-size: 0.95rem; font-weight: 600;">
+                        <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px;">{label_stato}</div>
+                        <div style="margin-bottom: 6px; font-size: 1.05rem; font-weight: 600; color: #ffffff;">
                             🥅 {m['p1']} &nbsp;&nbsp;&nbsp; ⚽ {m['a1']}
                         </div>
                         <div style="margin: 6px 0;">{text_content}</div>
-                        <div style="margin-top: 4px; font-size: 0.95rem; font-weight: 600;">
+                        <div style="margin-top: 6px; font-size: 1.05rem; font-weight: 600; color: #ffffff;">
                             🥅 {m['p2']} &nbsp;&nbsp;&nbsp; ⚽ {m['a2']}
                         </div>
                     </div>
@@ -835,8 +843,8 @@ if db["stato"] == "gironi":
 
         if partite_filtrate:
             st.html(f"""
-                <div style="background: linear-gradient(135deg, #1e1b4b, #311033); border: 2px solid #f59e0b; border-radius: 16px; padding: 16px; margin-bottom: 16px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);">
-                    <h4 style="margin: 0 0 10px 0; color: #fbbf24; font-size: 1.05rem; font-weight: 700;">🔥 LE PARTITE DI {giocatore_selezionato.upper()}:</h4>
+                <div style="background: linear-gradient(135deg, #1e1b4b, #311033); border: 2px solid #f59e0b; border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 0 15px rgba(245, 158, 11, 0.3);">
+                    <h4 style="margin: 0 0 12px 0; color: #fbbf24; font-size: 1.15rem; font-weight: 700;">🔥 LE PARTITE DI {giocatore_selezionato.upper()}:</h4>
             """)
             for item in partite_filtrate:
                 m = item["m"]
@@ -846,14 +854,14 @@ if db["stato"] == "gironi":
                     center_txt = f"<span style='color: #fbbf24; font-weight: 700;'>⏳ Biliardino {item['tavolo']} (Da giocare)</span>"
 
                 st.html(f"""
-                    <div style="background-color: #111827; border: 1px solid #f59e0b; border-radius: 10px; padding: 10px 12px; margin-bottom: 8px; box-shadow: 0 0 8px rgba(245,158,11,0.2);">
-                        <div style="font-size: 0.75rem; color: #fbbf24; font-weight: 700; margin-bottom: 2px;">TURNO {item['turno']} • BILIARDINO {item['tavolo']}</div>
-                        <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 0.9rem; color: #f8fafc;">
+                    <div style="background-color: #111827; border: 1px solid #f59e0b; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 0 8px rgba(245,158,11,0.2);">
+                        <div style="font-size: 0.85rem; color: #fbbf24; font-weight: 700; margin-bottom: 4px;">TURNO {item['turno']} • BILIARDINO {item['tavolo']}</div>
+                        <div style="display: flex; justify-content: space-around; align-items: center; font-weight: 600; font-size: 1.05rem; color: #ffffff;">
                             <span>🥅 {m['p1']} / ⚽ {m['a1']}</span>
                             <span style="font-weight: 800; color: #f87171;">VS</span>
                             <span>🥅 {m['p2']} / ⚽ {m['a2']}</span>
                         </div>
-                        <div style="text-align: center; margin-top: 6px; font-size: 0.85rem;">{center_txt}</div>
+                        <div style="text-align: center; margin-top: 8px; font-size: 0.95rem;">{center_txt}</div>
                     </div>
                 """)
             st.html('</div>')
@@ -906,24 +914,24 @@ if db["stato"] == "eliminatorie":
     if finito_tutto:
         st.html("""
             <div style="text-align: center; margin-top: 10px; margin-bottom: 20px;">
-                <h1 style="color: #38bdf8; font-size: 2rem; font-weight: 800; text-shadow: 0 0 15px rgba(56,189,248,0.5);">🏆 TORNEO CONCLUSO! 🏆</h1>
+                <h1 style="color: #38bdf8; font-size: 2.2rem; font-weight: 800; text-shadow: 0 0 15px rgba(56,189,248,0.5);">🏆 TORNEO CONCLUSO! 🏆</h1>
             </div>
         """)
 
         podio_html = f"""
         <div class="podium-container">
             <div class="podium-step podium-2">
-                <div style="font-size: 0.95rem;">🥈 2° Posto</div>
-                <div style="font-size: 0.8rem; margin-top: 6px; font-weight: 500;">🥅 {p2_1}<br>⚽ {a2_1}</div>
+                <div style="font-size: 1rem;">🥈 2° Posto</div>
+                <div style="font-size: 0.9rem; margin-top: 6px; font-weight: 600;">🥅 {p2_1}<br>⚽ {a2_1}</div>
             </div>
             <div class="podium-step podium-1">
                 <div class="trophy-icon">🏆</div>
-                <div style="font-size: 1.1rem; font-weight: 800;">1° Posto</div>
-                <div style="font-size: 0.85rem; margin-top: 4px; font-weight: 600;">🥅 {p1_1}<br>⚽ {a1_1}</div>
+                <div style="font-size: 1.2rem; font-weight: 800;">1° Posto</div>
+                <div style="font-size: 0.95rem; margin-top: 4px; font-weight: 700;">🥅 {p1_1}<br>⚽ {a1_1}</div>
             </div>
             <div class="podium-step podium-3">
-                <div style="font-size: 0.95rem;">🥉 3° Posto</div>
-                <div style="font-size: 0.8rem; margin-top: 6px; font-weight: 500;">🥅 {p3_1}<br>⚽ {a3_1}</div>
+                <div style="font-size: 1rem;">🥉 3° Posto</div>
+                <div style="font-size: 0.9rem; margin-top: 6px; font-weight: 600;">🥅 {p3_1}<br>⚽ {a3_1}</div>
             </div>
         </div>
         """
@@ -983,22 +991,22 @@ if db["stato"] == "eliminatorie":
                     if m["giocata"]:
                         box_bg = "linear-gradient(135deg, #7f1d1d, #450a0a)"
                         border_color = "#ef4444"
-                        text_content = f"<span style='color: #fca5a5; font-size: 1.1rem; font-weight: 700;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
+                        text_content = f"<span style='color: #fca5a5; font-size: 1.15rem; font-weight: 700;'>Risultato: {m['gol1']} - {m['gol2']}</span>"
                         label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
                     else:
                         box_bg = "linear-gradient(135deg, #064e3b, #022c22)"
                         border_color = "#10b981"
-                        text_content = "<span style='color: #6ee7b7; font-size: 1.2rem; font-weight: 800;'>VS</span>"
+                        text_content = "<span style='color: #6ee7b7; font-size: 1.25rem; font-weight: 800;'>VS</span>"
                         label_stato = f"Biliardino {tavolo_num}"
 
                     st.html(f"""
                         <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 10px rgba(0,0,0,0.3);">
-                            <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.85rem; text-transform: uppercase;">{label_stato}</div>
-                            <div style="margin-bottom: 4px; font-size: 0.95rem; font-weight: 600;">
+                            <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase;">{label_stato}</div>
+                            <div style="margin-bottom: 6px; font-size: 1.05rem; font-weight: 600; color: #ffffff;">
                                 🥅 {m['p1']} &nbsp;&nbsp;&nbsp; ⚽ {m['a1']}
                             </div>
                             <div style="margin: 6px 0;">{text_content}</div>
-                            <div style="margin-top: 4px; font-size: 0.95rem; font-weight: 600;">
+                            <div style="margin-top: 6px; font-size: 1.05rem; font-weight: 600; color: #ffffff;">
                                 🥅 {m['p2']} &nbsp;&nbsp;&nbsp; ⚽ {m['a2']}
                             </div>
                         </div>
