@@ -65,7 +65,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS PERSONALIZZATO (DARK MODE & SELETTORI GOL) ---
+# --- CSS PERSONALIZZATO (DARK MODE & SELETTORI GOL GRANDI) ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -111,7 +111,9 @@ st.markdown("""
             color: #ffffff !important;
             border: 1px solid #4b5563 !important;
             border-radius: 8px !important;
-            font-weight: 600 !important;
+            font-weight: 700 !important;
+            font-size: 1.15rem !important;
+            height: 48px !important;
         }
         
         button[data-testid="stBaseButton-secondary"]:hover,
@@ -581,33 +583,57 @@ if db["stato"] == "gironi":
                 titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
                 with st.expander(titolo_box):
                     
-                    # --- NUOVA INTERFACCIA GOL GRANDE E PULSANTI AFFIANCATI ---
+                    # --- GOL COPPIA 1 (GRIGLIA 4x2 CON PULSANTI GRANDI) ---
                     st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                    g1_cols = st.columns(8)
                     current_g1 = int(m.get('gol1', 0))
-                    for g_val in range(8):
-                        with g1_cols[g_val]:
-                            is_selected_1 = (current_g1 == g_val)
-                            btn_label = f"✨ {g_val}" if is_selected_1 else str(g_val)
-                            if st.button(btn_label, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                    
+                    r1_cols = st.columns(4)
+                    for g_val in range(4):
+                        with r1_cols[g_val]:
+                            is_sel = (current_g1 == g_val)
+                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                            if st.button(lbl, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                                m['gol1'] = g_val
+                                salva_dati(db)
+                                st.rerun()
+                                
+                    r2_cols = st.columns(4)
+                    for g_val in range(4, 8):
+                        with r2_cols[g_val - 4]:
+                            is_sel = (current_g1 == g_val)
+                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                            if st.button(lbl, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
                                 m['gol1'] = g_val
                                 salva_dati(db)
                                 st.rerun()
 
-                    st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
+                    
+                    # --- GOL COPPIA 2 (GRIGLIA 4x2 CON PULSANTI GRANDI) ---
                     st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                    g2_cols = st.columns(8)
                     current_g2 = int(m.get('gol2', 0))
-                    for g_val in range(8):
-                        with g2_cols[g_val]:
-                            is_selected_2 = (current_g2 == g_val)
-                            btn_label = f"✨ {g_val}" if is_selected_2 else str(g_val)
-                            if st.button(btn_label, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                    
+                    r3_cols = st.columns(4)
+                    for g_val in range(4):
+                        with r3_cols[g_val]:
+                            is_sel = (current_g2 == g_val)
+                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                            if st.button(lbl, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
+                                m['gol2'] = g_val
+                                salva_dati(db)
+                                st.rerun()
+                                
+                    r4_cols = st.columns(4)
+                    for g_val in range(4, 8):
+                        with r4_cols[g_val - 4]:
+                            is_sel = (current_g2 == g_val)
+                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                            if st.button(lbl, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
                                 m['gol2'] = g_val
                                 salva_dati(db)
                                 st.rerun()
 
-                    st.markdown("<div style='margin: 12px 0;'></div>", unsafe_allow_html=True)
+                    st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
                     if st.button("💾 Conferma e Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
                         m['giocata'] = True
                         ricalcola_classifiche()
@@ -780,12 +806,22 @@ if db["stato"] == "gironi":
                 if is_admin:
                     with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
                         st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                        cols_m1 = st.columns(8)
                         curr_m1 = int(m.get('gol1', 0))
-                        for g_val in range(8):
-                            with cols_m1[g_val]:
+                        
+                        rc1 = st.columns(4)
+                        for g_val in range(4):
+                            with rc1[g_val]:
                                 sel_m1 = (curr_m1 == g_val)
-                                lbl_m1 = f"✨ {g_val}" if sel_m1 else str(g_val)
+                                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
+                                if st.button(lbl_m1, key=f"adm_g1_{match_id}_{g_val}", use_container_width=True):
+                                    m['gol1'] = g_val
+                                    salva_dati(db)
+                                    st.rerun()
+                        rc2 = st.columns(4)
+                        for g_val in range(4, 8):
+                            with rc2[g_val - 4]:
+                                sel_m1 = (curr_m1 == g_val)
+                                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
                                 if st.button(lbl_m1, key=f"adm_g1_{match_id}_{g_val}", use_container_width=True):
                                     m['gol1'] = g_val
                                     salva_dati(db)
@@ -793,12 +829,22 @@ if db["stato"] == "gironi":
 
                         st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
                         st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                        cols_m2 = st.columns(8)
                         curr_m2 = int(m.get('gol2', 0))
-                        for g_val in range(8):
-                            with cols_m2[g_val]:
+                        
+                        rc3 = st.columns(4)
+                        for g_val in range(4):
+                            with rc3[g_val]:
                                 sel_m2 = (curr_m2 == g_val)
-                                lbl_m2 = f"✨ {g_val}" if sel_m2 else str(g_val)
+                                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
+                                if st.button(lbl_m2, key=f"adm_g2_{match_id}_{g_val}", use_container_width=True):
+                                    m['gol2'] = g_val
+                                    salva_dati(db)
+                                    st.rerun()
+                        rc4 = st.columns(4)
+                        for g_val in range(4, 8):
+                            with rc4[g_val - 4]:
+                                sel_m2 = (curr_m2 == g_val)
+                                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
                                 if st.button(lbl_m2, key=f"adm_g2_{match_id}_{g_val}", use_container_width=True):
                                     m['gol2'] = g_val
                                     salva_dati(db)
@@ -997,12 +1043,22 @@ if db["stato"] == "eliminatorie":
                     if is_admin:
                         with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
                             st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                            cols_ef1 = st.columns(8)
                             curr_ef1 = int(m.get('gol1', 0))
-                            for g_val in range(8):
-                                with cols_ef1[g_val]:
+                            
+                            rc_ef1 = st.columns(4)
+                            for g_val in range(4):
+                                with rc_ef1[g_val]:
                                     sel_ef1 = (curr_ef1 == g_val)
-                                    lbl_ef1 = f"✨ {g_val}" if sel_ef1 else str(g_val)
+                                    lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
+                                    if st.button(lbl_ef1, key=f"ef_adm_g1_{match_id}_{g_val}", use_container_width=True):
+                                        m['gol1'] = g_val
+                                        salva_dati(db)
+                                        st.rerun()
+                            rc_ef2 = st.columns(4)
+                            for g_val in range(4, 8):
+                                with rc_ef2[g_val - 4]:
+                                    sel_ef1 = (curr_ef1 == g_val)
+                                    lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
                                     if st.button(lbl_ef1, key=f"ef_adm_g1_{match_id}_{g_val}", use_container_width=True):
                                         m['gol1'] = g_val
                                         salva_dati(db)
@@ -1010,12 +1066,22 @@ if db["stato"] == "eliminatorie":
 
                             st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
                             st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                            cols_ef2 = st.columns(8)
                             curr_ef2 = int(m.get('gol2', 0))
-                            for g_val in range(8):
-                                with cols_ef2[g_val]:
+                            
+                            rc_ef3 = st.columns(4)
+                            for g_val in range(4):
+                                with rc_ef3[g_val]:
                                     sel_ef2 = (curr_ef2 == g_val)
-                                    lbl_ef2 = f"✨ {g_val}" if sel_ef2 else str(g_val)
+                                    lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
+                                    if st.button(lbl_ef2, key=f"ef_adm_g2_{match_id}_{g_val}", use_container_width=True):
+                                        m['gol2'] = g_val
+                                        salva_dati(db)
+                                        st.rerun()
+                            rc_ef4 = st.columns(4)
+                            for g_val in range(4, 8):
+                                with rc_ef4[g_val - 4]:
+                                    sel_ef2 = (curr_ef2 == g_val)
+                                    lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
                                     if st.button(lbl_ef2, key=f"ef_adm_g2_{match_id}_{g_val}", use_container_width=True):
                                         m['gol2'] = g_val
                                         salva_dati(db)
