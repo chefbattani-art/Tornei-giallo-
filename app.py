@@ -65,7 +65,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS GAMING DARK & NEON + TESTI PIÙ LUMINOSI E GRANDI ---
+# --- CSS GAMING DARK & NEON + RISOLUZIONE VISIBILITÀ TESTI RADIO E INPUT ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -73,7 +73,7 @@ st.markdown("""
         html, body, [class*="css"] {
             font-family: 'Outfit', sans-serif;
             color: #f8fafc;
-            font-size: 1.05rem; /* Leggermente ingrandito */
+            font-size: 1.05rem;
         }
 
         /* Sfondo generale Dark Gaming */
@@ -88,7 +88,13 @@ st.markdown("""
                 radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
         }
 
-        /* FORZATURA CAMPI INPUT E TEXT AREA IN STILE DARK */
+        /* FORZATURA TOTALE TESTI NEI RADIO BUTTON E LABEL (Risolve il problema della visibilità dei punteggi) */
+        div[data-testid="stRadio"] label, div[data-testid="stRadio"] p, div[data-testid="stRadio"] span {
+            color: #ffffff !important;
+            font-weight: 600 !important;
+        }
+
+        /* FORZATURA CAMPI INPUT E TEXT AREA */
         input, textarea, div[data-baseweb="select"] > div {
             background-color: #1f2937 !important;
             color: #ffffff !important;
@@ -102,7 +108,7 @@ st.markdown("""
             border-radius: 8px !important;
         }
 
-        /* LUMINOSITÀ E DIMENSIONE DEI TESTI NEGLI EXPANDER (Risolve il testo scuro) */
+        /* LUMINOSITÀ E DIMENSIONE DEI TESTI NEGLI EXPANDER */
         .streamlit-expanderHeader, [data-testid="stExpander"] summary {
             color: #ffffff !important;
             font-weight: 600 !important;
