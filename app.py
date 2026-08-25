@@ -9,9 +9,9 @@ from streamlit_autorefresh import st_autorefresh
 from base64 import b64encode
 from fpdf import FPDF
 
-st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
-
 st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
+
+st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 
 DB_FILE = "torneo_data.json"
 LOGO_FILE = "logo_uisp.png"
@@ -65,7 +65,7 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS GAMING DARK & NEON ---
+# --- CSS GAMING DARK & NEON + FORZATURA TEMA SCURO SU INPUT E TEXT AREA ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
@@ -85,6 +85,19 @@ st.markdown("""
             background-image: 
                 radial-gradient(at 0% 0%, rgba(14, 165, 233, 0.1) 0px, transparent 50%),
                 radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
+        }
+
+        /* FORZATURA CAMPI INPUT E TEXT AREA IN STILE DARK (Evita sfondi bianchi) */
+        input, textarea, div[data-baseweb="select"] > div {
+            background-color: #1f2937 !important;
+            color: #f8fafc !important;
+            border-color: #374151 !important;
+        }
+
+        div[data-baseweb="input"] {
+            background-color: #1f2937 !important;
+            border-color: #374151 !important;
+            border-radius: 8px !important;
         }
 
         /* Card Moderni / Neon */
@@ -188,7 +201,6 @@ st.markdown("""
             box-shadow: 0 0 20px rgba(239, 68, 68, 0.6);
         }
 
-        /* Modifiche per testi e box informativi generali in stile dark */
         .stExpander {
             background-color: #111827 !important;
             border: 1px solid #374151 !important;
