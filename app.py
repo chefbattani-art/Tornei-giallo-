@@ -331,7 +331,7 @@ if is_admin and db["stato"] != "setup":
         nuovi_turni = st.number_input("N° Turni", min_value=1, max_value=10, value=db["partite_per_giocatore"])
         if st.button("💾 Aggiorna Parametri", use_container_width=True):
             db["num_tavoli"] = nuovi_tavoli
-            db["partite_per_giocatore"] = nouveaux_turni if 'nouveaux_turni' in locals() else nuovi_turni
+            db["partite_per_giocatore"] = nuovi_turni
             salva_dati(db)
             st.sidebar.success("Parametri aggiornati!")
             st.rerun()
@@ -791,7 +791,8 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA (MODIFICATO SENZA BLOCCO RIGIDO) ---
+    # --- PROSSIMI IN CODA (VINCOLATO ESATTAMENTE AL NUMERO DI PARTITE IN CORSO/TAVOLI ATTIVI) ---
+    num_partite_in_corso = len(partite_per_tavolo)
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
     
     partite_in_coda = []
@@ -800,10 +801,10 @@ if db["stato"] == "gironi":
             if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                 partite_in_coda.append((t_obj['turno'], m))
 
-    st.markdown(f"### 📢 PROSSIMI IN CODA ({len(partite_in_coda)} in attesa):")
+    st.markdown(f"### 📢 PROSSIMI IN CODA ({min(len(partite_in_coda), num_partite_in_corso)} in attesa):")
 
-    if partite_in_coda:
-        for turno_num, m in partite_in_coda[:6]:
+    if partite_in_coda and num_partite_in_corso > 0:
+        for turno_num, m in partite_in_coda[:num_partite_in_corso]:
             st.html(f"""
                 <div class="queue-match-box">
                     <div style="font-size: 0.85rem; color: #4ade80; font-weight: 700; margin-bottom: 4px;">👉 IN CODA (Turno {turno_num})</div>
