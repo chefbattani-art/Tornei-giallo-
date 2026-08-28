@@ -476,17 +476,24 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
             break
 
     # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda (nei turni successivi/non attivi)
+    # APPLICHIAMO IL FILTRO RIGOROSO: La partita in coda del giocatore deve rientrare effettivamente nell'elenco delle code consentite (cioè tra le prime `num_partite_in_corso` partite libere)
     if not partita_utente_corrente:
         tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
+        
+        partite_in_coda_totali = []
         for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
-                    if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
-                        giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
-                        partita_utente_in_coda = m
-                        turno_utente_in_coda = t_obj['turno']
-                        break
-            if partita_utente_in_coda:
+            for m in t_obj["partite"]:
+                if not m.get("gi_ocata", False) and not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
+                    partite_in_coda_totali.append((t_obj['turno'], m))
+        
+        num_partite_in_corso_count = len(partite_attive_correnti)
+        partite_in_coda_effettive = partite_in_coda_totali[:num_partite_in_corso_count]
+
+        for turno_num, m in partite_in_coda_effettive:
+            if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
+                giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
+                partita_utente_in_coda = m
+                turno_utente_in_coda = turno_num
                 break
 
 # --- MOSTRA BOX IN ALTO SE IN CORSO O IN CODA ---
@@ -1190,7 +1197,7 @@ if db["stato"] == "eliminatorie":
                             {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
                         db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                        salva_dati(db)
+                        salva_dati_dati(db) if 'salva_dati_dati' in globals() else salva_dati(db)
                         st.rerun()
                 elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
                     if st.button("🏁 Genera Finali", use_container_width=True):
