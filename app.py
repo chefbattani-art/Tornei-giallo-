@@ -1,8 +1,17 @@
-        elif scelta_utente != "-- Seleziona il tuo nome --":
-          st.query_params["giocatore"] = scelta_utente
-          st.rerun()
+    else:
+      giocatore_selezionato = st.selectbox(
+          "Seleziona il tuo nome",
+          ["-- Seleziona il tuo nome --"]
+          + list(db["portieri"])
+          + list(db["attaccanti"]),
+      )
+      
+      if giocatore_selezionato == "-- Seleziona il tuo nome --":
+        st.warning("Per favore, seleziona il tuo nome per continuare.")
         st.stop()
       else:
+        st.query_params["giocatore"] = giocatore_selezionato
+        
         # Aggiunta del collaboratore alla barra utente
         if "collaboratore" not in st.session_state:
           st.session_state.collaboratore = "Gemini"
@@ -69,5 +78,3 @@
             st.query_params.clear()
             st.rerun()
         st.markdown("---")
-    else:
-      giocatore_selezionato = "-- Seleziona il tuo nome --"
