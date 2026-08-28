@@ -415,6 +415,73 @@ elif db["stato"] != "setup" and tutti_i_giocatori:
 else:
     giocatore_selezionato = "-- Seleziona il tuo nome --"
 
+# --- RIQUADRO PERSONALIZZATO STATO GIOCATORE (SE SELEZIONATO E NON ADMIN) ---
+if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] != "setup":
+    ricalcola_classifiche()
+    
+    # Determina se il giocatore è un portiere o attaccante per prenderne i dati corretti
+    ruolo_giocatore = "Portiere" if giocatore_selezionato in db["portieri"] else "Attaccante"
+    if giocatore_selezionato in db["punti_portieri"]:
+        punti_utente = db["punti_portieri"].get(giocatore_selezionato, 0)
+        dr_utente = db["dr_portieri"].get(giocatore_selezionato, 0)
+        # Classifica ordinata portieri per posizione
+        sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+        posizioni_dict = {p[0]: idx + 1 for idx, p in enumerate(sorted_p_list)}
+        posizione = posizioni_dict.get(giocatore_selezionato, 1)
+        totale_punti_girone = sum(db["punti_portieri"].values())
+    else:
+        punti_utente = db["punti_attaccanti"].get(giocatore_selezionato, 0)
+        dr_utente = db["dr_attaccanti"].get(giocatore_selezionato, 0)
+        # Classifica ordinata attaccanti per posizione
+        sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+        posizioni_dict = {a[0]: idx + 1 for idx, a in enumerate(sorted_a_list)}
+        posizione = posizioni_dict.get(giocatore_selezionato, 1)
+        totale_punti_girone = sum(db["punti_attaccanti"].values())
+
+    # Calcolo percentuale di passaggio del turno
+    if totale_punti_girone > 0:
+        percentuale_qualificazione = int((punti_utente / totale_punti_girone) * 100)
+    else:
+        percentuale_qualificazione = 0
+
+    st.markdown(f"""
+        <div style="
+            background-color: #0e1117; 
+            border: 2px solid #00f2fe; 
+            border-radius: 15px; 
+            padding: 20px; 
+            box-shadow: 0px 0px 15px rgba(0, 240, 255, 0.3);
+            color: white;
+            font-family: sans-serif;
+            margin-bottom: 20px;
+        ">
+            <p style="color: #00f2fe; font-size: 12px; font-weight: bold; margin-bottom: 5px;">LA TUA COPPIA & STATO ({ruolo_giocatore.upper()})</p>
+            <h2 style="margin: 0 0 15px 0; color: #ffffff;">🤝 {giocatore_selezionato}</h2>
+            
+            <div style="display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap;">
+                <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px; text-align: center; flex: 1; min-width: 100px;">
+                    <div style="font-size: 10px; color: #8b949e; font-weight: bold;">POSIZIONE</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #3fb950; margin-top: 5px;">{posizione}° POSTO</div>
+                </div>
+                
+                <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px; text-align: center; flex: 1; min-width: 100px;">
+                    <div style="font-size: 10px; color: #8b949e; font-weight: bold;">RUOLO</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #58a6ff; margin-top: 5px;">{ruolo_giocatore}</div>
+                </div>
+                
+                <div style="background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px; text-align: center; flex: 1; min-width: 100px;">
+                    <div style="font-size: 10px; color: #8b949e; font-weight: bold;">PUNTI / DR</div>
+                    <div style="font-size: 18px; font-weight: bold; color: #f0883e; margin-top: 5px;">{punti_utente} PT <span style="font-size: 12px; color: #8b949e;">(DR: {dr_utente:+d})</span></div>
+                </div>
+            </div>
+
+            <div style="margin-top: 15px; background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; text-align: center;">
+                <div style="font-size: 11px; color: #8b949e; font-weight: bold;">CHANCE PASSAGGIO TURNO</div>
+                <div style="font-size: 20px; font-weight: bold; color: #2ea043; margin-top: 3px;">{percentuale_qualificazione}%</div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
+
 # --- INDIVIDUAZIONE ESATTA DELle PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
 partite_attive_correnti = []
@@ -475,15 +542,14 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         if partita_utente_corrente:
             break
 
-    # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda (nei turni successivi/non attivi)
-    # APPLICHIAMO IL FILTRO RIGOROSO: La partita in coda del giocatore deve rientrare effettivamente nell'elenco delle code consentite (cioè tra le prime `num_partite_in_corso` partite libere)
+    # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda
     if not partita_utente_corrente:
         tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
         
         partite_in_coda_totali = []
         for t_obj in db["turni_partite"]:
             for m in t_obj["partite"]:
-                if not m.get("gi_ocata", False) and not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
+                if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                     partite_in_coda_totali.append((t_obj['turno'], m))
         
         num_partite_in_corso_count = len(partite_attive_correnti)
@@ -798,7 +864,7 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA (VINCOLATO ESATTAMENTE AL NUMERO DI PARTITE IN CORSO/TAVOLI ATTIVI) ---
+    # --- PROSSIMI IN CODA ---
     num_partite_in_corso = len(partite_per_tavolo)
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
     
@@ -1197,7 +1263,7 @@ if db["stato"] == "eliminatorie":
                             {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
                         db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                        salva_dati_dati(db) if 'salva_dati_dati' in globals() else salva_dati(db)
+                        salva_dati(db)
                         st.rerun()
                 elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
                     if st.button("🏁 Genera Finali", use_container_width=True):
