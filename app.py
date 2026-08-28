@@ -1,11 +1,13 @@
-# Assicurati che Streamlit e il database siano definiti
-if 'st' in globals() and 'db' in globals() and db and db.get("turni_partite"):
-    if 'num_tavoli' not in locals() and 'num_tavoli' not in globals():
-        num_tavoli = 2
+if 'num_tavoli' not in locals() and 'num_tavoli' not in globals():
+    num_tavoli = 2
 
-    st.markdown("---")
-    st.markdown("### 📅 Partite dei Turni (Archivio)")
+st.markdown("---")
+st.markdown("### 📅 Partite dei Turni (Archivio)")
 
+# Se turni_partite non esiste nel db, lo creiamo vuoto per evitare blocchi
+if not db or "turni_partite" not in db or not db["turni_partite"]:
+    st.info("Nessun turno di partite disponibile al momento.")
+else:
     for turno_obj in db["turni_partite"]:
       turno_num = turno_obj["turno"]
       turno_nome_str = str(turno_num)
