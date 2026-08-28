@@ -961,12 +961,18 @@ if db["stato"] == "setup":
           a_shuff = attaccanti.copy()
 
           if len(p_shuff) % 2 != 0:
-            p_shuff = p_shuff[(t - 1) % len(p_shuff) :] + p_shuff[: (t - 1) % len(p_shuff)]
+            p_shuff = (
+                p_shuff[(t - 1) % len(p_shuff) :]
+                + p_shuff[: (t - 1) % len(p_shuff)]
+            )
           else:
             random.shuffle(p_shuff)
 
           if len(a_shuff) % 2 != 0:
-            a_shuff = a_shuff[(t - 1) % len(a_shuff) :] + a_shuff[: (t - 1) % len(a_shuff)]
+            a_shuff = (
+                a_shuff[(t - 1) % len(a_shuff) :]
+                + a_shuff[: (t - 1) % len(a_shuff)]
+            )
           else:
             random.shuffle(a_shuff)
 
@@ -1362,7 +1368,7 @@ if db["stato"] == "gironi":
       if st.button(
           "🏆 Avvia Fase Eliminazione Diretta (Quarti)",
           use_container_width=True,
-          key="main_start_quarti_footer",  # <--- CHIAVE CORRETTA E UNICA
+          key="main_start_quarti_footer",
       ):
         avvia_quarti()
         st.rerun()
