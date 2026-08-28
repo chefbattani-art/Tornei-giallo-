@@ -433,10 +433,8 @@ def ricalcola_classifiche():
   a_dr = {a: 0 for a in db["attaccanti"]}
 
   for turno_obj in db["turni_partite"]:
-    # Se il turno è di recupero, non contiamo i punti/statistiche dei portieri
-    is_recupero = (
-        isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
-    )
+    turno_nome_str = str(turno_obj["turno"])
+    is_recupero = "Extra" in turno_nome_str or "Recupero" in turno_nome_str
 
     for m in turno_obj["partite"]:
       if m.get("giocata", False):
@@ -451,13 +449,13 @@ def ricalcola_classifiche():
         else:
           pt_s1, pt_s2 = 2, 2
 
-        # Per gli attaccanti i punti e la differenza reti valgono sempre (il recupero serve a loro)
+        # Per gli attaccanti i punti e la differenza reti valgono sempre (il turno extra serve a loro)
         a_punti[m["a1"]] = a_punti.get(m["a1"], 0) + pt_s1
         a_dr[m["a1"]] = a_dr.get(m["a1"], 0) + (g1 - g2)
         a_punti[m["a2"]] = a_punti.get(m["a2"], 0) + pt_s2
         a_dr[m["a2"]] = a_dr.get(m["a2"], 0) + (g2 - g1)
 
-        # Per i portieri, se siamo nel turno di recupero saltiamo l'assegnazione punti
+        # Per i portieri, se siamo nel turno extra/recupero saltiamo l'assegnazione punti
         if not is_recupero:
           p_punti[m["p1"]] = p_punti.get(m["p1"], 0) + pt_s1
           p_dr[m["p1"]] = p_dr.get(m["p1"], 0) + (g1 - g2)
@@ -474,9 +472,9 @@ def calcola_partite_giocate(ruolo, nome):
   giocate = 0
   totali = 0
   for turno_obj in db["turni_partite"]:
-    is_recupero = (
-        isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
-    )
+    turno_nome_str = str(turno_obj["turno"])
+    is_recupero = "Extra" in turno_nome_str or "Recupero" in turno_nome_str
+
     for m in turno_obj["partite"]:
       is_presente = False
       if ruolo == "portiere" and (m["p1"] == nome or m["p2"] == nome):
@@ -485,7 +483,7 @@ def calcola_partite_giocate(ruolo, nome):
         is_presente = True
 
       if is_presente:
-        # Se è portiere e siamo nel recupero, non lo contiamo nel totale ufficiale delle partite valide
+        # Se è portiere e siamo nel turno extra, non lo contiamo nel totale ufficiale delle partite valide
         if ruolo == "portiere" and is_recupero:
           continue
         totali += 1
@@ -963,7 +961,7 @@ if db["stato"] == "setup":
         db["stato"] = "gironi"
         db["fasi_finali"] = []
 
-        # --- GENERAZIONE TURNI STANDARD + RECUPERO AUTOMATICO ---
+        # --- GENERAZIONE TURNI STANDARD + TURNO EXTRA AUTOMATICO ---
         db["turni_partite"] = []
         presenze_attaccanti = {a: 0 for a in attaccanti}
 
@@ -997,7 +995,7 @@ if db["stato"] == "setup":
 
           db["turni_partite"].append({"turno": t, "partite": partite_turno})
 
-        # Controllo se c'è un numero dispari e serve il turno di recupero finale
+        # Controllo se c'è un numero dispari e serve il Turno Extra finale
         max_partite = (
             max(presenze_attaccanti.values()) if presenze_attaccanti else 0
         )
@@ -1021,7 +1019,7 @@ if db["stato"] == "setup":
             p_avversario = portieri[(idx_rec + 1) % len(portieri)]
 
             partite_recupero.append({
-                "id": f"recupero_m{idx_rec}",
+                "id": f"turno_extra_m{idx_rec}",
                 "p1": p_rec,
                 "a1": att_rec,
                 "p2": p_avversario,
@@ -1032,13 +1030,16 @@ if db["stato"] == "setup":
                 "gol2": 0,
             })
 
+          # Chiamato esplicitamente Turno Extra per renderlo evidente
           db["turni_partite"].append({
-              "turno": "Recupero Finale",
+              "turno": "Turno Extra",
               "partite": partite_recupero,
           })
 
         salva_dati(db)
-        st.success("Calendario generato con successo (con recupero automatico)!")
+        st.success(
+            "Calendario generato con successo (con Turno Extra in fondo)!"
+        )
         st.rerun()
 
 # 2. GIRONI
@@ -1278,25 +1279,30 @@ if db["stato"] == "gironi":
 
   for turno_obj in db["turni_partite"]:
     turno_num = turno_obj["turno"]
-    is_recupero = isinstance(turno_num, str) and "Recupero" in turno_num
+    turno_nome_str = str(turno_num)
+    is_extra = "Extra" in turno_nome_str or "Recupero" in turno_nome_str
 
     tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
     alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
     in_corso = alcuna_giocata and not tutte_giocate
 
-    if tutte_giocate:
+    if is_extra:
+      header_text = f"⭐ {turno_num} (TURNO EXTRA FINALE - RECUPERO PRESENZE)"
+      expander_border = "#fbbf24"
+      espanso_default = True  # Messo in evidenza aperto di default in fondo
+    elif tutte_giocate:
       header_text = f"Turno {turno_num} (Completato ✅)"
-      espanso_default = False
+      expander_default = False
     elif in_corso:
       header_text = f"Turno {turno_num} (In corso ⏳)"
-      espanso_default = True
+      expander_default = True
     else:
       header_text = f"Turno {turno_num} (Da giocare ⏳)"
-      espanso_default = False
+      expander_default = False
 
     with st.expander(header_text, expanded=espanso_default):
-      # --- SE È UN TURNO DI RECUPERO, MOSTRIAMO IL RIQUADRO ESPLICATIVO ---
-      if is_recupero:
+      # --- SE È IL TURNO EXTRA, MOSTRATO IN MODO EVIDENTE IN FONDO ---
+      if is_extra:
         portieri_in_rec = set()
         for m_rec in turno_obj["partite"]:
           portieri_in_rec.add(m_rec["p1"])
@@ -1305,11 +1311,11 @@ if db["stato"] == "gironi":
 
         st.html(
             f"""
-                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #fbbf24; border-radius: 12px; padding: 14px; margin-bottom: 14px; color: #f8fafc;">
-                    <div style="color: #fbbf24; font-weight: 800; font-size: 1.05rem; margin-bottom: 6px;">⚠️ PARTITE DI RECUPERO PER GLI ATTACCANTI</div>
-                    <div style="font-size: 0.95rem; margin-bottom: 8px;">Queste partite servono esclusivamente a far recuperare la presenza agli attaccanti per arrivare tutti a pari.</div>
-                    <div style="font-size: 0.92rem; color: #38bdf8; font-weight: 600;">Portieri in campo per supporto (NON prenderanno punti/statistiche in questa partita):</div>
-                    <div style="margin-top: 4px; font-weight: 700; color: #ffffff;">> {str_portieri}</div>
+                <div style="background: linear-gradient(135deg, #451a03, #78350f); border: 2px solid #fbbf24; border-radius: 12px; padding: 16px; margin-bottom: 14px; color: #f8fafc; box-shadow: 0 0 20px rgba(251, 191, 36, 0.4);">
+                    <div style="color: #fbbf24; font-weight: 800; font-size: 1.15rem; margin-bottom: 8px;">⭐ TURNO EXTRA: RECUPERO PARTITE MANCANTI</div>
+                    <div style="font-size: 0.98rem; margin-bottom: 8px;">Questo turno extra è posizionato in fondo alla lista e serve a far pareggiare il numero di incontri a tutti gli attaccanti.</div>
+                    <div style="font-size: 0.92rem; color: #38bdf8; font-weight: 600;">Portieri in campo per supporto (NON prenderanno punti/statistiche in questa specifica sessione):</div>
+                    <div style="margin-top: 6px; font-weight: 700; color: #ffffff;">> {str_portieri}</div>
                 </div>
             """
         )
@@ -1324,8 +1330,12 @@ if db["stato"] == "gironi":
           text_content = f"<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 700; margin: 6px 0;'>Risultato: {m['gol1']} - {m['gol2']}</div>"
           label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
         else:
-          box_bg = "linear-gradient(135deg, #022c22, #064e3b)"
-          border_color = "#22c55e"
+          box_bg = (
+              "linear-gradient(135deg, #451a03, #78350f)"
+              if is_extra
+              else "linear-gradient(135deg, #022c22, #064e3b)"
+          )
+          border_color = "#fbbf24" if is_extra else "#22c55e"
           text_content = "<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 800; margin: 6px 0;'>VS</div>"
           label_stato = f"Biliardino {tavolo_num}"
 
