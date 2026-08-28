@@ -957,11 +957,9 @@ if db["stato"] == "setup":
         num_turni = db["partite_per_giocatore"]
 
         for t in range(1, num_turni + 1):
-          # Per garantire turni equi e rotazione dei riposi in caso di numeri dispari:
           p_shuff = portieri.copy()
           a_shuff = attaccanti.copy()
 
-          # Applichiamo un leggero shift basato sul turno per ruotare chi riposa
           if len(p_shuff) % 2 != 0:
             p_shuff = p_shuff[(t - 1) % len(p_shuff) :] + p_shuff[: (t - 1) % len(p_shuff)]
           else:
@@ -974,7 +972,6 @@ if db["stato"] == "setup":
 
           partite_turno = []
           i = 0
-          # Formiamo coppie finché ci sono almeno 2 portieri e 2 attaccanti disponibili in questo turno
           while i + 1 < len(p_shuff) and i + 1 < len(a_shuff):
             match_id = f"t{t}_m{i//2}"
             p1_val, a1_val = p_shuff[i], a_shuff[i]
@@ -1365,7 +1362,7 @@ if db["stato"] == "gironi":
       if st.button(
           "🏆 Avvia Fase Eliminazione Diretta (Quarti)",
           use_container_width=True,
-          key="main_start_quarti",
+          key="main_start_quarti_footer",  # <--- CHIAVE CORRETTA E UNICA
       ):
         avvia_quarti()
         st.rerun()
