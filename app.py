@@ -1,9 +1,9 @@
-import json
 from base64 import b64encode
+from datetime import datetime, timedelta
+import json
 import os
 import random
 import re
-from datetime import datetime, timedelta
 from fpdf import FPDF
 import pandas as pd
 import streamlit as st
@@ -433,6 +433,9 @@ def ricalcola_classifiche():
   a_dr = {a: 0 for a in db["attaccanti"]}
 
   for turno_obj in db["turni_partite"]:
+    # Se il turno è di recupero, non contiamo i punti/statistiche dei portieri
+    is_recupero = isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
+
     for m in turno_obj["partite"]:
       if m.get("giocata", False):
         g1 = m["gol1"]
@@ -446,15 +449,18 @@ def ricalcola_classifiche():
         else:
           pt_s1, pt_s2 = 2, 2
 
-        p_punti[m["p1"]] = p_punti.get(m["p1"], 0) + pt_s1
-        p_dr[m["p1"]] = p_dr.get(m["p1"], 0) + (g1 - g2)
+        # Per gli attaccanti i punti e la differenza reti valgono sempre (il recupero serve a loro)
         a_punti[m["a1"]] = a_punti.get(m["a1"], 0) + pt_s1
         a_dr[m["a1"]] = a_dr.get(m["a1"], 0) + (g1 - g2)
-
-        p_punti[m["p2"]] = p_punti.get(m["p2"], 0) + pt_s2
-        p_dr[m["p2"]] = p_dr.get(m["p2"], 0) + (g2 - g1)
         a_punti[m["a2"]] = a_punti.get(m["a2"], 0) + pt_s2
         a_dr[m["a2"]] = a_dr.get(m["a2"], 0) + (g2 - g1)
+
+        # Per i portieri, se siamo nel turno di recupero saltiamo l'assegnazione punti
+        if not is_recupero:
+          p_punti[m["p1"]] = p_punti.get(m["p1"], 0) + pt_s1
+          p_dr[m["p1"]] = p_dr.get(m["p1"], 0) + (g1 - g2)
+          p_punti[m["p2"]] = p_punti.get(m["p2"], 0) + pt_s2
+          p_dr[m["p2"]] = p_dr.get(m["p2"], 0) + (g2 - g1)
 
   db["punti_portieri"] = p_punti
   db["dr_portieri"] = p_dr
@@ -466,6 +472,7 @@ def calcola_partite_giocate(ruolo, nome):
   giocate = 0
   totali = 0
   for turno_obj in db["turni_partite"]:
+    is_recupero = isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
     for m in turno_obj["partite"]:
       is_presente = False
       if ruolo == "portiere" and (m["p1"] == nome or m["p2"] == nome):
@@ -474,6 +481,9 @@ def calcola_partite_giocate(ruolo, nome):
         is_presente = True
 
       if is_presente:
+        # Se è portiere e siamo nel recupero, non lo contiamo nel totale ufficiale delle partite valide
+        if ruolo == "portiere" and is_recupero:
+          continue
         totali += 1
         if m.get("giocata", False):
           giocate += 1
@@ -490,8 +500,9 @@ def genera_pdf_calendario():
   num_tavoli = db.get("num_tavoli", 3)
 
   for turno_obj in db["turni_partite"]:
+    t_nome = turno_obj["turno"]
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, f"Turno {turno_obj['turno']}", 0, 1, "L")
+    pdf.cell(0, 8, f"Turno {t_nome}", 0, 1, "L")
     pdf.set_font("Arial", "", 10)
 
     for idx, m in enumerate(turno_obj["partite"]):
@@ -999,14 +1010,11 @@ if db["stato"] == "setup":
 
           for idx_rec, att_rec in enumerate(attaccanti_da_recuperare):
             p_rec = portieri_disponibili[idx_rec % len(portieri_disponibili)]
-            # Scegliamo un secondo attaccante a caso per fare la coppia contro cui giocare o un match singolo
             altri_att = [a for a in attaccanti if a != att_rec]
             a_avversario = (
                 random.choice(altri_att) if altri_att else attaccanti[0]
             )
-            p_avversario = portieri[
-                (idx_rec + 1) % len(portieri)
-            ]  # Altro portiere
+            p_avversario = portieri[(idx_rec + 1) % len(portieri)]
 
             partite_recupero.append({
                 "id": f"recupero_m{idx_rec}",
@@ -1266,6 +1274,8 @@ if db["stato"] == "gironi":
 
   for turno_obj in db["turni_partite"]:
     turno_num = turno_obj["turno"]
+    is_recupero = isinstance(turno_num, str) and "Recupero" in turno_num
+
     tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
     alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
     in_corso = alcuna_giocata and not tutte_giocate
@@ -1281,6 +1291,25 @@ if db["stato"] == "gironi":
       espanso_default = False
 
     with st.expander(header_text, expanded=espanso_default):
+      # --- SE È UN TURNO DI RECUPERO, MOSTRIAMO IL RIQUADRO ESPLICATIVO ---
+      if is_recupero:
+        portieri_in_rec = set()
+        for m_rec in turno_obj["partite"]:
+          portieri_in_rec.add(m_rec["p1"])
+          portieri_in_rec.add(m_rec["p2"])
+        str_portieri = ", ".join(portieri_in_rec)
+
+        st.html(
+            f"""
+                <div style="background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #fbbf24; border-radius: 12px; padding: 14px; margin-bottom: 14px; color: #f8fafc;">
+                    <div style="color: #fbbf24; font-weight: 800; font-size: 1.05rem; margin-bottom: 6px;">⚠️ PARTITE DI RECUPERO PER GLI ATTACCANTI</div>
+                    <div style="font-size: 0.95rem; margin-bottom: 8px;">Queste partite servono esclusivamente a far recuperare la presenza agli attaccanti per arrivare tutti a pari.</div>
+                    <div style="font-size: 0.92rem; color: #38bdf8; font-weight: 600;">Portieri in campo per supporto (NON prenderanno punti/statistiche in questa partita):</div>
+                    <div style="margin-top: 4px; font-weight: 700; color: #ffffff;">> {str_portieri}</div>
+                </div>
+            """
+        )
+
       for idx, m in enumerate(turno_obj["partite"]):
         tavolo_num = (idx % num_tavoli) + 1
         match_id = m["id"]
