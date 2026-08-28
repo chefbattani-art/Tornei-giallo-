@@ -434,7 +434,9 @@ def ricalcola_classifiche():
 
   for turno_obj in db["turni_partite"]:
     # Se il turno è di recupero, non contiamo i punti/statistiche dei portieri
-    is_recupero = isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
+    is_recupero = (
+        isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
+    )
 
     for m in turno_obj["partite"]:
       if m.get("giocata", False):
@@ -472,7 +474,9 @@ def calcola_partite_giocate(ruolo, nome):
   giocate = 0
   totali = 0
   for turno_obj in db["turni_partite"]:
-    is_recupero = isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
+    is_recupero = (
+        isinstance(turno_obj["turno"], str) and "Recupero" in turno_obj["turno"]
+    )
     for m in turno_obj["partite"]:
       is_presente = False
       if ruolo == "portiere" and (m["p1"] == nome or m["p2"] == nome):
