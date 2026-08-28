@@ -671,9 +671,7 @@ elif partita_utente_in_coda:
 st.markdown(
     """
     <div style="padding: 10px; background-color: #080e1e; border-radius: 10px; text-align: center; margin-bottom: 14px; border: 1px solid #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);">
-        🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #4ade80; font-weight: 700; font-size: 0.95rem;">
-            Ricarica la pagina del browser per aggiornare in tempo reale
-        </a>
+        🔄 Ricarica la pagina del browser per aggiornare in tempo reale i dati del torneo.
     </div>
     """,
     unsafe_allow_html=True
