@@ -1,6 +1,10 @@
 st.markdown("---")
 st.markdown("### 📅 Partite dei Turni (Archivio)")
 
+# Controllo di sicurezza per evitare NameError se num_tavoli non è definito prima
+if 'num_tavoli' not in locals() and 'num_tavoli' not in globals():
+    num_tavoli = 2
+
 for turno_obj in db["turni_partite"]:
   turno_num = turno_obj["turno"]
   turno_nome_str = str(turno_num)
