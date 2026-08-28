@@ -791,20 +791,19 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA ---
-    num_partite_in_corso = len(partite_per_tavolo)
-    st.markdown(f"### 📢 PROSSIMI IN CODA ({num_partite_in_corso} in attesa):")
-    
-    partite_in_coda = []
+    # --- PROSSIMI IN CODA (MODIFICATO SENZA BLOCCO RIGIDO) ---
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
     
+    partite_in_coda = []
     for t_obj in db["turni_partite"]:
         for m in t_obj["partite"]:
             if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                 partite_in_coda.append((t_obj['turno'], m))
 
-    if partite_in_coda and num_partite_in_corso > 0:
-        for turno_num, m in partite_in_coda[:num_partite_in_corso]:
+    st.markdown(f"### 📢 PROSSIMI IN CODA ({len(partite_in_coda)} in attesa):")
+
+    if partite_in_coda:
+        for turno_num, m in partite_in_coda[:6]:
             st.html(f"""
                 <div class="queue-match-box">
                     <div style="font-size: 0.85rem; color: #4ade80; font-weight: 700; margin-bottom: 4px;">👉 IN CODA (Turno {turno_num})</div>
