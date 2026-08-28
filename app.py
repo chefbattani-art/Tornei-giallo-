@@ -156,47 +156,33 @@ st.markdown("""
             color: #00f2fe;
             font-size: 1.4rem;
             font-weight: 700;
-            margin-bottom: 14px;
+            margin-bottom: 16px;
             letter-spacing: 0.8px;
             text-shadow: 0 0 12px rgba(0, 242, 254, 0.6);
         }
 
-        table.styled-table {
-            width: 100%;
-            border-collapse: separate;
-            border-spacing: 0;
-            font-size: 1.02rem;
-            border-radius: 12px;
-            overflow: hidden;
+        .player-row-green {
+            background: linear-gradient(135deg, #064e3b, #022c22);
+            border: 2px solid #22c55e;
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.25);
         }
-        table.styled-table th {
-            background: linear-gradient(135deg, #0284c7, #2563eb);
-            color: #ffffff;
-            text-align: center;
-            padding: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            font-size: 0.95rem;
-            letter-spacing: 0.5px;
-            border-bottom: 2px solid #00f2fe;
-        }
-        table.styled-table td {
-            padding: 10px 12px;
-            text-align: center;
-            border-bottom: 1px solid #1e293b;
-            background-color: #0b1329;
-            color: #f8fafc !important;
-            font-weight: 600;
-        }
-        table.styled-table tr.qualificato td {
-            background-color: rgba(6, 78, 59, 0.5);
-            color: #4ade80 !important;
-            font-weight: 700;
-            border-left: 3px solid #22c55e;
-        }
-        table.styled-table tr.eliminato td {
-            background-color: rgba(127, 29, 29, 0.3);
-            color: #f87171 !important;
+
+        .player-row-red {
+            background: linear-gradient(135deg, #7f1d1d, #450a0a);
+            border: 2px solid #ef4444;
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.25);
         }
 
         .live-match-box {
@@ -443,26 +429,152 @@ elif db["stato"] == "eliminatorie":
             if not m.get("giocata", False):
                 partite_attive_correnti.append(m)
 
-# --- VERIFICA SE IL GIOCATORE SELEZIONATO È PROPRIO IN UNA PARTITA ATTIVA SUI BILIARDINI ---
-ha_partita_in_corso = False
-if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin:
-    for m in partite_attive_correnti:
-        if (giocatore_selezionato == m['p1'] or 
-            giocatore_selezionato == m['a1'] or 
-            giocatore_selezionato == m['p2'] or 
-            giocatore_selezionato == m['a2']):
-            ha_partita_in_corso = True
+# --- VERIFICA SE IL GIOCATORE SELEZIONATO HA UNA PARTITA ATTIVA E MOSTRALA IN ALTO ---
+partita_utente_corrente = None
+tavolo_utente_corrente = None
+turno_utente_corrente = None
+
+if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
+    # Controlliamo prima se è in una partita attiva sul biliardino
+    for b_num in range(1, num_tavoli + 1):
+        for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+                    if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
+                        giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
+                        # Verifichiamo se è effettivamente tra quelle in corso attive sui tavoli
+                        match_tavolo_attivo = None
+                        for t_check in db["turni_partite"]:
+                            for idx_c, mc in enumerate(t_check["partite"]):
+                                if ((idx_c % num_tavoli) + 1) == b_num and not mc.get("giocata", False):
+                                    if match_tavolo_attivo is None:
+                                        match_tavolo_attivo = mc
+                            if match_tavolo_attivo:
+                                break
+                        if match_tavolo_attivo and match_tavolo_attivo['id'] == m['id']:
+                            partita_utente_corrente = m
+                            tavolo_utente_corrente = b_num
+                            turno_utente_corrente = t_obj['turno']
+                            break
+            if partita_utente_corrente:
+                break
+        if partita_utente_corrente:
             break
 
-if ha_partita_in_corso:
+    # Se non è attiva sul tavolo, controlliamo se è in coda
+    if not partita_utente_corrente:
+        tavoli_occupati_ids = []
+        for b_num in range(1, num_tavoli + 1):
+            for t_obj in db["turni_partite"]:
+                for idx, m in enumerate(t_obj["partite"]):
+                    if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+                        tavoli_occupati_ids.append(m['id'])
+                        break
+                if tavoli_occupati_ids and tavoli_occupati_ids[-1] == m.get('id'):
+                    break
+
+        for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+                if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
+                    if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
+                        giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
+                        partita_utente_corrente = m
+                        tavolo_utente_corrente = (idx % num_tavoli) + 1
+                        turno_utente_corrente = t_obj['turno']
+                        break
+            if partita_utente_corrente:
+                break
+
+if partita_utente_corrente:
     st.html("""
         <div class="alert-active-game">
-            <h4 style="margin: 0; color: #ffffff; font-size: 1.15rem; font-weight: 700;">🚨 ATTENZIONE: HAI UNA PARTITA IN CORSO!</h4>
+            <h4 style="margin: 0; color: #ffffff; font-size: 1.15rem; font-weight: 700;">🚨 ATTENZIONE: LA TUA PARTITA È IN CORSO!</h4>
             <p style="margin: 6px 0 0 0; color: #f8fafc; font-size: 1rem; font-weight: 600;">
-                Uno dei due giocatori della coppia vincente deve inserire il risultato finale e confermare.
+                Inserisci qui sotto il risultato finale e conferma.
             </p>
         </div>
     """)
+    
+    m_up = partita_utente_corrente
+    b_num_up = tavolo_utente_corrente
+    turno_up = turno_utente_corrente
+    match_id_up = m_up['id']
+
+    st.html(f"""
+        <div class="live-match-box">
+            <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; text-shadow: 0 0 8px rgba(251,191,36,0.5);">
+                <span>🏟️ BILIARDINO {b_num_up} (IL TUO MATCH)</span>
+                <span>TURNO {turno_up}</span>
+            </div>
+            <div style="background-color: #030712; padding: 12px 14px; border-radius: 10px; border: 1.5px solid #00f2fe; text-align: center; box-shadow: inset 0 0 10px rgba(0,242,254,0.15);">
+                <div style="font-weight: 600; font-size: 1.02rem; color: #f8fafc; margin-bottom: 4px;">
+                    🥅 {m_up['p1']} / ⚽ {m_up['a1']}
+                </div>
+                <div style="font-weight: 800; color: #fbbf24; font-size: 1.1rem; margin: 4px 0; text-shadow: 0 0 10px rgba(251,191,36,0.6);">VS</div>
+                <div style="font-weight: 600; font-size: 1.02rem; color: #f8fafc; margin-top: 4px;">
+                    🥅 {m_up['p2']} / ⚽ {m_up['a2']}
+                </div>
+            </div>
+        </div>
+    """)
+
+    with st.expander(f"⚡ Inserisci Risultato Biliardino {b_num_up}", expanded=True):
+        st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
+        current_g1 = int(m_up.get('gol1', 0))
+        
+        r1_cols = st.columns(4)
+        for g_val in range(4):
+            with r1_cols[g_val]:
+                is_sel = (current_g1 == g_val)
+                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                if st.button(lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True):
+                    m_up['gol1'] = g_val
+                    salva_dati(db)
+                    st.rerun()
+                    
+        r2_cols = st.columns(4)
+        for g_val in range(4, 8):
+            with r2_cols[g_val - 4]:
+                is_sel = (current_g1 == g_val)
+                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                if st.button(lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True):
+                    m_up['gol1'] = g_val
+                    salva_dati(db)
+                    st.rerun()
+
+        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
+        
+        st.markdown(f"**🥅 {m_up['p2']} / ⚽ {m_up['a2']} (Gol Coppia 2)**")
+        current_g2 = int(m_up.get('gol2', 0))
+        
+        r3_cols = st.columns(4)
+        for g_val in range(4):
+            with r3_cols[g_val]:
+                is_sel = (current_g2 == g_val)
+                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                if st.button(lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True):
+                    m_up['gol2'] = g_val
+                    salva_dati(db)
+                    st.rerun()
+                    
+        r4_cols = st.columns(4)
+        for g_val in range(4, 8):
+            with r4_cols[g_val - 4]:
+                is_sel = (current_g2 == g_val)
+                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+                if st.button(lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True):
+                    m_up['gol2'] = g_val
+                    salva_dati(db)
+                    st.rerun()
+
+        st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
+        if st.button("💾 Conferma e Salva Risultato Finale", key=f"top_user_save_{match_id_up}", use_container_width=True):
+            m_up['giocata'] = True
+            ricalcola_classifiche()
+            salva_dati(db)
+            st.success("Risultato salvato con successo!")
+            st.rerun()
+    st.markdown("---")
 
 st.html(
     """
@@ -595,7 +707,6 @@ if db["stato"] == "gironi":
                 titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
                 with st.expander(titolo_box):
                     
-                    # --- GOL COPPIA 1 (GRIGLIA 4x2 CON PULSANTI GRANDI) ---
                     st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
                     current_g1 = int(m.get('gol1', 0))
                     
@@ -621,7 +732,6 @@ if db["stato"] == "gironi":
 
                     st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
                     
-                    # --- GOL COPPIA 2 (GRIGLIA 4x2 CON PULSANTI GRANDI) ---
                     st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
                     current_g2 = int(m.get('gol2', 0))
                     
@@ -684,86 +794,62 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- CLASSIFICHE IN TEMPO REALE ---
+    # --- CLASSIFICHE A BLOCCHI SEPARATI (STILE ULTIMA FOTO) ---
     st.html("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
 
-    # TABELLA PORTIERI
+    # CLASSIFICA PORTIERI A BLOCCHI
     sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-    rows_p_html = ""
+    
+    html_portieri = f"""
+    <div class="ranking-card">
+        <div class="ranking-title">🥅 CLASSIFICA PORTIERI</div>
+    """
     for idx, (p, pt) in enumerate(sorted_p):
         dr = db["dr_portieri"].get(p, 0)
         dr_str = f"+{dr}" if dr > 0 else str(dr)
         gioc, tot = calcola_partite_giocate('portiere', p)
-        css_class = "qualificato" if idx < 8 else "eliminato"
-        rows_p_html += f"""
-            <tr class="{css_class}">
-                <td><b>{idx+1}°</b></td>
-                <td style="text-align: left; font-weight: 600;">🥅 {p}</td>
-                <td><b>{pt}</b></td>
-                <td>{dr_str}</td>
-                <td>{gioc}/{tot}</td>
-            </tr>
+        css_box = "player-row-green" if idx < 8 else "player-row-red"
+        
+        html_portieri += f"""
+        <div class="{css_box}">
+            <div style="font-weight: 800; font-size: 1.1rem; width: 15%;"><b>{idx+1}°</b></div>
+            <div style="font-weight: 700; width: 55%; text-align: left;">🥅 {p}</div>
+            <div style="font-weight: 600; width: 30%; text-align: right; font-size: 0.95rem;">
+                <span style="margin-right: 8px;">PT <b>{pt}</b></span>
+                <span style="margin-right: 8px;">G <b>{gioc}/{tot}</b></span>
+                <span>DR <b>{dr_str}</b></span>
+            </div>
+        </div>
         """
+    html_portieri += "</div>"
+    st.html(html_portieri)
 
-    table_p_full = f"""
-    <div class="ranking-card">
-        <div class="ranking-title">🥅 CLASSIFICA PORTIERI</div>
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>Pos</th>
-                    <th style="text-align: left;">Portiere</th>
-                    <th>Punti</th>
-                    <th>DR</th>
-                    <th>Giocate</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows_p_html}
-            </tbody>
-        </table>
-    </div>
-    """
-    st.html(table_p_full)
-
-    # TABELLA ATTACCANTI
+    # CLASSIFICA ATTACCANTI A BLOCCHI
     sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-    rows_a_html = ""
+    
+    html_attaccanti = f"""
+    <div class="ranking-card">
+        <div class="ranking-title" style="color: #22c55e; text-shadow: 0 0 12px rgba(34,197,94,0.6);">⚽ CLASSIFICA ATTACCANTI</div>
+    """
     for idx, (a, pt) in enumerate(sorted_a):
         dr = db["dr_attaccanti"].get(a, 0)
         dr_str = f"+{dr}" if dr > 0 else str(dr)
         gioc, tot = calcola_partite_giocate('attaccante', a)
-        css_class = "qualificato" if idx < 8 else "eliminato"
-        rows_a_html += f"""
-            <tr class="{css_class}">
-                <td><b>{idx+1}°</b></td>
-                <td style="text-align: left; font-weight: 600;">⚽ {a}</td>
-                <td><b>{pt}</b></td>
-                <td>{dr_str}</td>
-                <td>{gioc}/{tot}</td>
-            </tr>
+        css_box = "player-row-green" if idx < 8 else "player-row-red"
+        
+        html_attaccanti += f"""
+        <div class="{css_box}">
+            <div style="font-weight: 800; font-size: 1.1rem; width: 15%;"><b>{idx+1}°</b></div>
+            <div style="font-weight: 700; width: 55%; text-align: left;">⚽ {a}</div>
+            <div style="font-weight: 600; width: 30%; text-align: right; font-size: 0.95rem;">
+                <span style="margin-right: 8px;">PT <b>{pt}</b></span>
+                <span style="margin-right: 8px;">G <b>{gioc}/{tot}</b></span>
+                <span>DR <b>{dr_str}</b></span>
+            </div>
+        </div>
         """
-
-    table_a_full = f"""
-    <div class="ranking-card">
-        <div class="ranking-title" style="color: #22c55e; text-shadow: 0 0 12px rgba(34,197,94,0.6);">⚽ CLASSIFICA ATTACCANTI</div>
-        <table class="styled-table">
-            <thead>
-                <tr>
-                    <th>Pos</th>
-                    <th style="text-align: left;">Attaccante</th>
-                    <th>Punti</th>
-                    <th>DR</th>
-                    <th>Giocate</th>
-                </tr>
-            </thead>
-            <tbody>
-                {rows_a_html}
-            </tbody>
-        </table>
-    </div>
-    """
-    st.html(table_a_full)
+    html_attaccanti += "</div>"
+    st.html(html_attaccanti)
 
     st.markdown("---")
 
@@ -871,42 +957,6 @@ if db["stato"] == "gironi":
                             st.rerun()
 
     st.markdown("---")
-
-    # --- SEZIONE IN FONDO: LE PARTITE PERSONALI DEL GIOCATORE LOGGATO ---
-    if giocatore_selezionato != "-- Seleziona il tuo nome --":
-        partite_filtrate = []
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if m['p1'] == giocatore_selezionato or m['a1'] == giocatore_selezionato or m['p2'] == giocatore_selezionato or m['a2'] == giocatore_selezionato:
-                    tavolo_num = (idx % num_tavoli) + 1
-                    partite_filtrate.append({"turno": t_obj["turno"], "tavolo": tavolo_num, "m": m})
-
-        if partite_filtrate:
-            st.html(f"""
-                <div style="background: linear-gradient(135deg, #0b1329, #172554); border: 2px solid #fbbf24; border-radius: 16px; padding: 18px; margin-bottom: 16px; box-shadow: 0 0 20px rgba(251, 191, 36, 0.3);">
-                    <h4 style="margin: 0 0 12px 0; color: #fbbf24; font-size: 1.15rem; font-weight: 700; text-shadow: 0 0 8px rgba(251,191,36,0.5);">🔥 LE PARTITE DI {giocatore_selezionato.upper()}:</h4>
-            """)
-            for item in partite_filtrate:
-                m = item["m"]
-                if m.get("giocata", False):
-                    center_txt = f"<div style='color: #fbbf24; font-weight: 700; margin-top: 6px;'>Risultato: {m['gol1']} - {m['gol2']} (Giocata ✅)</div>"
-                else:
-                    center_txt = f"<div style='color: #00f2fe; font-weight: 700; margin-top: 6px;'>⏳ Biliardino {item['tavolo']} (Da giocare)</div>"
-
-                st.html(f"""
-                    <div style="background-color: #030712; border: 1px solid #00f2fe; border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; box-shadow: 0 0 10px rgba(0,242,254,0.2); text-align: center;">
-                        <div style="font-size: 0.85rem; color: #22c55e; font-weight: 700; margin-bottom: 6px;">TURNO {item['turno']} • BILIARDINO {item['tavolo']}</div>
-                        <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
-                            🥅 {m['p1']} / ⚽ {m['a1']}
-                        </div>
-                        <div style="font-weight: 800; color: #fbbf24; margin: 4px 0;">VS</div>
-                        <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
-                            🥅 {m['p2']} / ⚽ {m['a2']}
-                        </div>
-                        {center_txt}
-                    </div>
-                """)
-            st.html('</div>')
 
     if is_admin:
         st.markdown("---")
