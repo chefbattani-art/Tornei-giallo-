@@ -364,14 +364,15 @@ if os.path.exists(LOGO_FILE):
         logo_b64 = b64encode(f.read()).decode("utf-8")
     logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 120px; width: 100%; height: auto; margin-bottom: 8px;" /><br>'
 
-st.html(
+st.markdown(
     f"""
     <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #080e1e, #0b1329); padding: 20px; border-radius: 20px; box-shadow: 0 0 25px rgba(0, 242, 254, 0.25); border: 2px solid #00f2fe;">
         {logo_html}
         <h1 style="margin: 0; color: #00f2fe; font-size: 1.8rem; font-weight: 800; text-shadow: 0 0 15px rgba(0, 242, 254, 0.6);">🏆 Torneo Biliardino 'Giallo' Live</h1>
         <span style="display: inline-block; margin-top: 10px; background-color: rgba(30, 58, 138, 0.7); color: #38bdf8; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.95rem; border: 1px solid #00f2fe; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);">Regolamento Uisp 3 tocchi</span>
     </div>
-    """
+    """,
+    unsafe_allow_html=True
 )
 
 # --- GESTIONE SELEZIONE NOME PERSISTENTE (TRAMITE URL) ---
@@ -419,12 +420,10 @@ else:
 if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] != "setup":
     ricalcola_classifiche()
     
-    # Determina se il giocatore è un portiere o attaccante per prenderne i dati corretti
     ruolo_giocatore = "Portiere" if giocatore_selezionato in db["portieri"] else "Attaccante"
     if giocatore_selezionato in db["punti_portieri"]:
         punti_utente = db["punti_portieri"].get(giocatore_selezionato, 0)
         dr_utente = db["dr_portieri"].get(giocatore_selezionato, 0)
-        # Classifica ordinata portieri per posizione
         sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
         posizioni_dict = {p[0]: idx + 1 for idx, p in enumerate(sorted_p_list)}
         posizione = posizioni_dict.get(giocatore_selezionato, 1)
@@ -432,13 +431,11 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
     else:
         punti_utente = db["punti_attaccanti"].get(giocatore_selezionato, 0)
         dr_utente = db["dr_attaccanti"].get(giocatore_selezionato, 0)
-        # Classifica ordinata attaccanti per posizione
         sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
         posizioni_dict = {a[0]: idx + 1 for idx, a in enumerate(sorted_a_list)}
         posizione = posizioni_dict.get(giocatore_selezionato, 1)
         totale_punti_girone = sum(db["punti_attaccanti"].values())
 
-    # Calcolo percentuale di passaggio del turno
     if totale_punti_girone > 0:
         percentuale_qualificazione = int((punti_utente / totale_punti_girone) * 100)
     else:
@@ -482,7 +479,7 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         </div>
     """, unsafe_allow_html=True)
 
-# --- INDIVIDUAZIONE ESATTA DELle PARTITE ATTIVE SUI BILIARDINI ---
+# --- INDIVIDUAZIONE ESATTA DELLE PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
 partite_attive_correnti = []
 
@@ -515,7 +512,6 @@ partita_utente_in_coda = None
 turno_utente_in_coda = None
 
 if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
-    # 1. Controlla se è su uno dei tavoli attivi correnti (Partita in corso effettiva)
     for b_num in range(1, num_tavoli + 1):
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
@@ -523,7 +519,6 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
                     if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
                         
-                        # Verifica che sia la prima partita da giocare per questo tavolo
                         match_tavolo_attivo = None
                         for t_check in db["turni_partite"]:
                             for idx_c, mc in enumerate(t_check["partite"]):
@@ -542,7 +537,6 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         if partita_utente_corrente:
             break
 
-    # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda
     if not partita_utente_corrente:
         tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
         
@@ -562,23 +556,22 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
                 turno_utente_in_coda = turno_num
                 break
 
-# --- MOSTRA BOX IN ALTO SE IN CORSO O IN CODA ---
 if partita_utente_corrente:
-    st.html("""
+    st.markdown("""
         <div class="alert-active-game">
             <h4 style="margin: 0; color: #ffffff; font-size: 1.15rem; font-weight: 700;">🚨 ATTENZIONE: LA TUA PARTITA È IN CORSO!</h4>
             <p style="margin: 6px 0 0 0; color: #f8fafc; font-size: 1rem; font-weight: 600;">
                 Inserisci qui sotto il risultato finale e conferma.
             </p>
         </div>
-    """)
+    """, unsafe_allow_html=True)
     
     m_up = partita_utente_corrente
     b_num_up = tavolo_utente_corrente
     turno_up = turno_utente_corrente
     match_id_up = m_up['id']
 
-    st.html(f"""
+    st.markdown(f"""
         <div class="live-match-box">
             <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; text-shadow: 0 0 8px rgba(251,191,36,0.5);">
                 <span>🏟️ BILIARDINO {b_num_up} (IL TUO MATCH)</span>
@@ -594,7 +587,7 @@ if partita_utente_corrente:
                 </div>
             </div>
         </div>
-    """)
+    """, unsafe_allow_html=True)
 
     with st.expander(f"⚡ Inserisci Risultato Biliardino {b_num_up}", expanded=True):
         st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
@@ -657,7 +650,7 @@ if partita_utente_corrente:
 elif partita_utente_in_coda:
     m_coda = partita_utente_in_coda
     t_coda = turno_utente_in_coda
-    st.html(f"""
+    st.markdown(f"""
         <div class="alert-queue-game">
             <h4 style="margin: 0; color: #4ade80; font-size: 1.1rem; font-weight: 700;">⏳ LA TUA PROSSIMA PARTITA È IN CODA</h4>
             <p style="margin: 4px 0 0 0; color: #f8fafc; font-size: 0.95rem; font-weight: 600;">
@@ -672,17 +665,18 @@ elif partita_utente_in_coda:
                 <div>🥅 {m_coda['p2']} / ⚽ {m_coda['a2']}</div>
             </div>
         </div>
-    """)
+    """, unsafe_allow_html=True)
     st.markdown("---")
 
-st.html(
+st.markdown(
     """
     <div style="padding: 10px; background-color: #080e1e; border-radius: 10px; text-align: center; margin-bottom: 14px; border: 1px solid #22c55e; box-shadow: 0 0 10px rgba(34, 197, 94, 0.2);">
         🔄 <a href="javascript:window.location.reload(true)" style="text-decoration: none; color: #4ade80; font-weight: 700; font-size: 0.95rem;">
             Ricarica la pagina del browser per aggiornare in tempo reale
         </a>
     </div>
-    """
+    """,
+    unsafe_allow_html=True
 )
 
 # 1. SETUP
@@ -754,7 +748,6 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # --- PARTITE IN CORSO (SUI BILIARDINI) ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -777,7 +770,7 @@ if db["stato"] == "gironi":
             m, turno_num = partite_per_tavolo[b_num]
             match_id = m['id']
             
-            st.html(f"""
+            st.markdown(f"""
                 <div class="live-match-box">
                     <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; text-shadow: 0 0 8px rgba(251,191,36,0.5);">
                         <span>🏟️ BILIARDINO {b_num}</span>
@@ -793,7 +786,7 @@ if db["stato"] == "gironi":
                         </div>
                     </div>
                 </div>
-            """)
+            """, unsafe_allow_html=True)
 
             partecipa = (
                 giocatore_selezionato == m['p1'] or 
@@ -864,7 +857,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA ---
     num_partite_in_corso = len(partite_per_tavolo)
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
     
@@ -878,7 +870,7 @@ if db["stato"] == "gironi":
 
     if partite_in_coda and num_partite_in_corso > 0:
         for turno_num, m in partite_in_coda[:num_partite_in_corso]:
-            st.html(f"""
+            st.markdown(f"""
                 <div class="queue-match-box">
                     <div style="font-size: 0.85rem; color: #4ade80; font-weight: 700; margin-bottom: 4px;">👉 IN CODA (Turno {turno_num})</div>
                     <div style="text-align: center; font-weight: 600; font-size: 0.98rem; color: #f8fafc;">
@@ -887,14 +879,13 @@ if db["stato"] == "gironi":
                         <div>🥅 {m['p2']} / ⚽ {m['a2']}</div>
                     </div>
                 </div>
-            """)
+            """, unsafe_allow_html=True)
     else:
         st.info("Nessuna altra partita in coda.")
 
     st.markdown("---")
 
-    # --- CLASSIFICHE A BLOCCHI SEPARATI ---
-    st.html("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
+    st.markdown("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>", unsafe_allow_html=True)
 
     sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
     
@@ -920,7 +911,7 @@ if db["stato"] == "gironi":
         </div>
         """
     html_portieri += "</div>"
-    st.html(html_portieri)
+    st.markdown(html_portieri, unsafe_allow_html=True)
 
     sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
     
@@ -946,11 +937,10 @@ if db["stato"] == "gironi":
         </div>
         """
     html_attaccanti += "</div>"
-    st.html(html_attaccanti)
+    st.markdown(html_attaccanti, unsafe_allow_html=True)
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (ARCHIVIO) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
@@ -985,7 +975,7 @@ if db["stato"] == "gironi":
                     text_content = "<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px 0;'>VS</div>"
                     label_stato = f"Biliardino {tavolo_num}"
 
-                st.html(f"""
+                st.markdown(f"""
                     <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 12px rgba(0,242,254,0.15);">
                         <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: #00f2fe;">{label_stato}</div>
                         <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
@@ -996,7 +986,7 @@ if db["stato"] == "gironi":
                             🥅 {m['p2']} / ⚽ {m['a2']}
                         </div>
                     </div>
-                """)
+                """, unsafe_allow_html=True)
 
                 if is_admin:
                     with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
@@ -1101,11 +1091,11 @@ if db["stato"] == "eliminatorie":
                     p3_1, a3_1 = m2["p2"], m2["a2"]
 
     if finito_tutto:
-        st.html("""
+        st.markdown("""
             <div style="text-align: center; margin-top: 10px; margin-bottom: 20px;">
                 <h1 style="color: #00f2fe; font-size: 2.2rem; font-weight: 800; text-shadow: 0 0 20px rgba(0,242,254,0.6);">🏆 TORNEO CONCLUSO! 🏆</h1>
             </div>
-        """)
+        """, unsafe_allow_html=True)
 
         podio_html = f"""
         <div class="podium-container">
@@ -1124,7 +1114,7 @@ if db["stato"] == "eliminatorie":
             </div>
         </div>
         """
-        st.html(podio_html)
+        st.markdown(podio_html, unsafe_allow_html=True)
         st.markdown("---")
         
         col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
@@ -1188,7 +1178,7 @@ if db["stato"] == "eliminatorie":
                         text_content = "<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px 0;'>VS</div>"
                         label_stato = f"Biliardino {tavolo_num}"
 
-                    st.html(f"""
+                    st.markdown(f"""
                         <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 12px rgba(0,242,254,0.15);">
                             <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase; color: #00f2fe;">{label_stato}</div>
                             <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
@@ -1199,7 +1189,7 @@ if db["stato"] == "eliminatorie":
                                 🥅 {m['p2']} / ⚽ {m['a2']}
                             </div>
                         </div>
-                    """)
+                    """, unsafe_allow_html=True)
 
                     if is_admin:
                         with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
