@@ -435,14 +435,12 @@ tavolo_utente_corrente = None
 turno_utente_corrente = None
 
 if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
-    # Controlliamo prima se è in una partita attiva sul biliardino
     for b_num in range(1, num_tavoli + 1):
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
                 if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
                     if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
-                        # Verifichiamo se è effettivamente tra quelle in corso attive sui tavoli
                         match_tavolo_attivo = None
                         for t_check in db["turni_partite"]:
                             for idx_c, mc in enumerate(t_check["partite"]):
@@ -461,7 +459,6 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         if partita_utente_corrente:
             break
 
-    # Se non è attiva sul tavolo, controlliamo se è in coda
     if not partita_utente_corrente:
         tavoli_occupati_ids = []
         for b_num in range(1, num_tavoli + 1):
@@ -522,6 +519,7 @@ if partita_utente_corrente:
         st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
         current_g1 = int(m_up.get('gol1', 0))
         
+        # Tastierino integrato 0-7 (2 file da 4 pulsanti)
         r1_cols = st.columns(4)
         for g_val in range(4):
             with r1_cols[g_val]:
@@ -547,6 +545,7 @@ if partita_utente_corrente:
         st.markdown(f"**🥅 {m_up['p2']} / ⚽ {m_up['a2']} (Gol Coppia 2)**")
         current_g2 = int(m_up.get('gol2', 0))
         
+        # Tastierino integrato 0-7 (2 file da 4 pulsanti)
         r3_cols = st.columns(4)
         for g_val in range(4):
             with r3_cols[g_val]:
@@ -794,10 +793,9 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- CLASSIFICHE A BLOCCHI SEPARATI (STILE ULTIMA FOTO) ---
+    # --- CLASSIFICHE A BLOCCHI SEPARATI ---
     st.html("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
 
-    # CLASSIFICA PORTIERI A BLOCCHI
     sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
     
     html_portieri = f"""
@@ -824,7 +822,6 @@ if db["stato"] == "gironi":
     html_portieri += "</div>"
     st.html(html_portieri)
 
-    # CLASSIFICA ATTACCANTI A BLOCCHI
     sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
     
     html_attaccanti = f"""
@@ -1166,7 +1163,7 @@ if db["stato"] == "eliminatorie":
                             {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
                         ]
                         db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                        salva_dativ(db)
+                        salva_dati(db)
                         st.rerun()
                 elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
                     if st.button("🏁 Genera Finali", use_container_width=True):
