@@ -52,6 +52,66 @@ if "db" not in st.session_state:
 
 db = st.session_state.db
 
+# --- FUNZIONI DI GESTIONE AVANZAMENTO FASI ---
+def avvia_quarti():
+    sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+    sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+    
+    top_p = [p[0] for p in sorted_p_list[:8]]
+    top_a = [a[0] for a in sorted_a_list[:8]]
+    
+    quarti_partite = [
+        {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+        {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+        {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+        {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+    ]
+    db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
+    db["stato"] = "eliminatorie"
+    salva_dati(db)
+
+def genera_semifinali():
+    quarti = next((f for f in db.get("fasi_finali", []) if f['nome'] == "Quarti di Finale"), None)
+    if quarti:
+        vincitori = []
+        for m in quarti["partite"]:
+            if m.get("giocata", False):
+                if m["gol1"] >= m["gol2"]:
+                    vincitori.append({"p": m["p1"], "a": m["a1"]})
+                else:
+                    vincitori.append({"p": m["p2"], "a": m["a2"]})
+        if len(vincitori) == 4:
+            q1, q2, q3, q4 = vincitori[0], vincitori[1], vincitori[2], vincitori[3]
+            semifinale_partite = [
+                {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+            ]
+            db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
+            salva_dati(db)
+
+def genera_finali():
+    semifinali = next((f for f in db.get("fasi_finali", []) if f['nome'] == "Semifinali"), None)
+    if semifinali:
+        vincitori = []
+        perdenti = []
+        for m in semifinali["partite"]:
+            if m.get("giocata", False):
+                if m["gol1"] >= m["gol2"]:
+                    vincitori.append({"p": m["p1"], "a": m["a1"]})
+                    perdenti.append({"p": m["p2"], "a": m["a2"]})
+                else:
+                    vincitori.append({"p": m["p2"], "a": m["a2"]})
+                    perdenti.append({"p": m["p1"], "a": m["a1"]})
+        if len(vincitori) == 2:
+            sf1_v, sf2_v = vincitori[0], vincitori[1]
+            sf1_p, sf2_p = perdenti[0], perdenti[1]
+            finali_partite = [
+                {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+                {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["p"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
+            ]
+            db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
+            salva_dati(db)
+
 # --- BARRA LATERALE PER VERIFICA ADMIN ---
 st.sidebar.header("⚙️ Pannello Admin")
 modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
@@ -65,10 +125,50 @@ if modalita_admin:
     else:
         st.sidebar.error("PIN errato.")
 
-# --- CSS PERSONALIZZATO: GAMING NEON (BLU, AZZURRO, ORO, VERDE) ---
+# --- COMANDI DI AVANZAMENTO FASI IN SIDEBAR (ACCESSIBILE DA MOBILE SENZA SCROLL) ---
+if is_admin and db["stato"] != "setup":
+    st.sidebar.markdown("---")
+    st.sidebar.subheader("🕹️ Avanzamento Fasi")
+    
+    if db["stato"] == "gironi":
+        if st.sidebar.button("🏆 Avvia Quarti di Finale", use_container_width=True, key="sb_quarti"):
+            avvia_quarti()
+            st.rerun()
+            
+    elif db["stato"] == "eliminatorie":
+        fasi_nomi = [f["nome"] for f in db.get("fasi_finali", [])]
+        
+        if "Quarti di Finale" in fasi_nomi and "Semifinali" not in fasi_nomi:
+            quarti = next(f for f in db["fasi_finali"] if f['nome'] == "Quarti di Finale")
+            if all(m.get("giocata", False) for m in quarti["partite"]):
+                if st.sidebar.button("🚀 Genera Semifinali", use_container_width=True, key="sb_semi"):
+                    genera_semifinali()
+                    st.rerun()
+                    
+        if "Semifinali" in fasi_nomi and "Finali (1°-2° e 3°-4° Posto)" not in fasi_nomi:
+            semi = next(f for f in db["fasi_finali"] if f['nome'] == "Semifinali")
+            if all(m.get("giocata", False) for m in semi["partite"]):
+                if st.sidebar.button("🏁 Genera Finali", use_container_width=True, key="sb_finali"):
+                    genera_finali()
+                    st.rerun()
+                    
+        if st.sidebar.button("⬅️ Indietro ai Gironi", use_container_width=True, key="sb_back_gironi"):
+            db["stato"] = "gironi"
+            salva_dati(db)
+            st.rerun()
+
+# --- CSS PERSONALIZZATO: GAMING NEON & SCROLL SMOOTH ---
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        [data-testid="stAppViewContainer"] {
+            overflow-anchor: none;
+        }
 
         :root {
             color-scheme: dark;
@@ -415,7 +515,7 @@ elif db["stato"] != "setup" and tutti_i_giocatori:
 else:
     giocatore_selezionato = "-- Seleziona il tuo nome --"
 
-# --- INDIVIDUAZIONE ESATTA DELle PARTITE ATTIVE SUI BILIARDINI ---
+# --- INDIVIDUAZIONE ESATTA DELLE PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
 partite_attive_correnti = []
 
@@ -448,7 +548,6 @@ partita_utente_in_coda = None
 turno_utente_in_coda = None
 
 if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
-    # 1. Controlla se è su uno dei tavoli attivi correnti (Partita in corso effettiva)
     for b_num in range(1, num_tavoli + 1):
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
@@ -456,7 +555,6 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
                     if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
                         
-                        # Verifica che sia la prima partita da giocare per questo tavolo
                         match_tavolo_attivo = None
                         for t_check in db["turni_partite"]:
                             for idx_c, mc in enumerate(t_check["partite"]):
@@ -475,15 +573,13 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         if partita_utente_corrente:
             break
 
-    # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda (nei turni successivi/non attivi)
-    # APPLICHIAMO IL FILTRO RIGOROSO: La partita in coda del giocatore deve rientrare effettivamente nell'elenco delle code consentite (cioè tra le prime `num_partite_in_corso` partite libere)
     if not partita_utente_corrente:
         tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
         
         partite_in_coda_totali = []
         for t_obj in db["turni_partite"]:
             for m in t_obj["partite"]:
-                if not m.get("gi_ocata", False) and not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
+                if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                     partite_in_coda_totali.append((t_obj['turno'], m))
         
         num_partite_in_corso_count = len(partite_attive_correnti)
@@ -688,7 +784,6 @@ if db["stato"] == "gironi":
     ricalcola_classifiche()
     num_tavoli = db.get("num_tavoli", 3)
 
-    # --- PARTITE IN CORSO (SUI BILIARDINI) ---
     st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
     
     partite_per_tavolo = {}
@@ -739,7 +834,6 @@ if db["stato"] == "gironi":
             if partecipa or is_admin:
                 titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
                 with st.expander(titolo_box):
-                    
                     st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
                     current_g1 = int(m.get('gol1', 0))
                     
@@ -798,7 +892,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- PROSSIMI IN CODA (VINCOLATO ESATTAMENTE AL NUMERO DI PARTITE IN CORSO/TAVOLI ATTIVI) ---
     num_partite_in_corso = len(partite_per_tavolo)
     tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
     
@@ -827,7 +920,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- CLASSIFICHE A BLOCCHI SEPARATI ---
     st.html("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>")
 
     sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
@@ -884,7 +976,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-    # --- LISTA COMPLETA TURNI (ARCHIVIO) ---
     st.markdown("### 📅 Partite dei Turni (Archivio)")
 
     for turno_obj in db["turni_partite"]:
@@ -987,26 +1078,10 @@ if db["stato"] == "gironi":
                             st.success("Salvato!")
                             st.rerun()
 
-    st.markdown("---")
-
     if is_admin:
         st.markdown("---")
-        if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
-            sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-            sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-            
-            top_p = [p[0] for p in sorted_p_list[:8]]
-            top_a = [a[0] for a in sorted_a_list[:8]]
-            
-            quarti_partite = [
-                {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-            ]
-            db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
-            db["stato"] = "eliminatorie"
-            salva_dati(db)
+        if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True, key="main_start_quarti"):
+            avvia_quarti()
             st.rerun()
 
 # 3. ELIMINATORIE
@@ -1190,29 +1265,16 @@ if db["stato"] == "eliminatorie":
 
             if tutti_giocati and is_admin:
                 if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
-                    if st.button("🚀 Genera Semifinali", use_container_width=True):
-                        q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
-                        semifinale_partite = [
-                            {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                        ]
-                        db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                        salva_dati_dati(db) if 'salva_dati_dati' in globals() else salva_dati(db)
+                    if st.button("🚀 Genera Semifinali", use_container_width=True, key="main_gen_semi"):
+                        genera_semifinali()
                         st.rerun()
                 elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
-                    if st.button("🏁 Genera Finali", use_container_width=True):
-                        sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
-                        sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
-                        finali_partite = [
-                            {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["p"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                        ]
-                        db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
-                        salva_dati(db)
+                    if st.button("🏁 Genera Finali", use_container_width=True, key="main_gen_finali"):
+                        genera_finali()
                         st.rerun()
 
         if is_admin:
-            if st.button("⬅️ Indietro ai Gironi", use_container_width=True):
+            if st.button("⬅️ Indietro ai Gironi", use_container_width=True, key="main_back_gironi"):
                 db["stato"] = "gironi"
                 salva_dati(db)
                 st.rerun()
