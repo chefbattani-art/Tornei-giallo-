@@ -1,13 +1,12 @@
-import streamlit as st
-import pandas as pd
 import json
 import os
-import re
 import random
-from datetime import datetime, timedelta
-from streamlit_autorefresh import st_autorefresh
+import re
 from base64 import b64encode
+from datetime import datetime, timedelta
 from fpdf import FPDF
+import streamlit as st
+from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 
@@ -16,39 +15,42 @@ st_autorefresh(interval=5000, debounce=False, key="auto_refresh_torneo")
 DB_FILE = "torneo_data.json"
 LOGO_FILE = "logo_uisp.png"
 
+
 def carica_dati():
-    dati_default = {
-        "stato": "setup",
-        "portieri": [],
-        "attaccanti": [],
-        "num_tavoli": 3,
-        "partite_per_giocatore": 6,
-        "admin_pin": "0000",
-        "turni_partite": [], 
-        "punti_portieri": {},
-        "punti_attaccanti": {},
-        "dr_portieri": {},
-        "dr_attaccanti": {},
-        "fasi_finali": []
-    }
-    if os.path.exists(DB_FILE):
-        try:
-            with open(DB_FILE, "r") as f:
-                dati_salvati = json.load(f)
-                for k, v in dati_default.items():
-                    if k not in dati_salvati:
-                        dati_salvati[k] = v
-                return dati_salvati
-        except:
-            pass
-    return dati_default
+  dati_default = {
+      "stato": "setup",
+      "portieri": [],
+      "attaccanti": [],
+      "num_tavoli": 3,
+      "partite_per_giocatore": 6,
+      "admin_pin": "0000",
+      "turni_partite": [],
+      "punti_portieri": {},
+      "punti_attaccanti": {},
+      "dr_portieri": {},
+      "dr_attaccanti": {},
+      "fasi_finali": [],
+  }
+  if os.path.exists(DB_FILE):
+    try:
+      with open(DB_FILE, "r") as f:
+        dati_salvati = json.load(f)
+        for k, v in dati_default.items():
+          if k not in dati_salvati:
+            dati_salvati[k] = v
+        return dati_salvati
+    except:
+      pass
+  return dati_default
+
 
 def salva_dati(data):
-    with open(DB_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+  with open(DB_FILE, "w") as f:
+    json.dump(data, f, indent=4)
+
 
 if "db" not in st.session_state:
-    st.session_state.db = carica_dati()
+  st.session_state.db = carica_dati()
 
 db = st.session_state.db
 
@@ -58,15 +60,16 @@ modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
 
 is_admin = False
 if modalita_admin:
-    pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
-    if pin_inserito == db["admin_pin"]:
-        is_admin = True
-        st.sidebar.success("Accesso Admin OK ✅")
-    else:
-        st.sidebar.error("PIN errato.")
+  pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
+  if pin_inserito == db["admin_pin"]:
+    is_admin = True
+    st.sidebar.success("Accesso Admin OK ✅")
+  else:
+    st.sidebar.error("PIN errato.")
 
 # --- CSS PERSONALIZZATO: GAMING NEON (BLU, AZZURRO, ORO, VERDE) ---
-st.markdown("""
+st.markdown(
+    """
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
 
@@ -224,145 +227,168 @@ st.markdown("""
             box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
         }
     </style>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True,
+)
+
 
 def pulisci_nome(testo):
-    testo = testo.replace("🥅", "").replace("🚪", "").replace("⚽", "")
-    testo = re.sub(r'^\d+[\.\-\)]?\s*', '', testo)
-    return testo.strip()
+  testo = testo.replace("🥅", "").replace("🚪", "").replace("⚽", "")
+  testo = re.sub(r"^\d+[\.\-\)]?\s*", "", testo)
+  return testo.strip()
+
 
 def ricalcola_classifiche():
-    p_punti = {p: 0 for p in db["portieri"]}
-    p_dr = {p: 0 for p in db["portieri"]}
-    
-    a_punti = {a: 0 for a in db["attaccanti"]}
-    a_dr = {a: 0 for a in db["attaccanti"]}
-    
-    for turno_obj in db["turni_partite"]:
-        for m in turno_obj["partite"]:
-            if m.get("giocata", False):
-                g1 = m["gol1"]
-                g2 = m["gol2"]
-                diff = abs(g1 - g2)
-                
-                if g1 > g2:
-                    pt_s1, pt_s2 = (3, 0) if diff >= 2 else (2, 1)
-                elif g2 > g1:
-                    pt_s1, pt_s2 = (0, 3) if diff >= 2 else (1, 2)
-                else:
-                    pt_s1, pt_s2 = 2, 2
-                
-                p_punti[m['p1']] = p_punti.get(m['p1'], 0) + pt_s1
-                p_dr[m['p1']] = p_dr.get(m['p1'], 0) + (g1 - g2)
-                
-                a_punti[m['a1']] = a_punti.get(m['a1'], 0) + pt_s1
-                a_dr[m['a1']] = a_dr.get(m['a1'], 0) + (g1 - g2)
-                
-                p_punti[m['p2']] = p_punti.get(m['p2'], 0) + pt_s2
-                p_dr[m['p2']] = p_dr.get(m['p2'], 0) + (g2 - g1)
-                
-                a_punti[m['a2']] = a_punti.get(m['a2'], 0) + pt_s2
-                a_dr[m['a2']] = a_dr.get(m['a2'], 0) + (g2 - g1)
-                
-    db["punti_portieri"] = p_punti
-    db["dr_portieri"] = p_dr
-    db["punti_attaccanti"] = a_punti
-    db["dr_attaccanti"] = a_dr
+  p_punti = {p: 0 for p in db["portieri"]}
+  p_dr = {p: 0 for p in db["portieri"]}
+
+  a_punti = {a: 0 for a in db["attaccanti"]}
+  a_dr = {a: 0 for a in db["attaccanti"]}
+
+  for turno_obj in db["turni_partite"]:
+    for m in turno_obj["partite"]:
+      if m.get("giocata", False):
+        g1 = m["gol1"]
+        g2 = m["gol2"]
+        diff = abs(g1 - g2)
+
+        if g1 > g2:
+          pt_s1, pt_s2 = (3, 0) if diff >= 2 else (2, 1)
+        elif g2 > g1:
+          pt_s1, pt_s2 = (0, 3) if diff >= 2 else (1, 2)
+        else:
+          pt_s1, pt_s2 = 2, 2
+
+        p_punti[m["p1"]] = p_punti.get(m["p1"], 0) + pt_s1
+        p_dr[m["p1"]] = p_dr.get(m["p1"], 0) + (g1 - g2)
+
+        a_punti[m["a1"]] = a_punti.get(m["a1"], 0) + pt_s1
+        a_dr[m["a1"]] = a_dr.get(m["a1"], 0) + (g1 - g2)
+
+        p_punti[m["p2"]] = p_punti.get(m["p2"], 0) + pt_s2
+        p_dr[m["p2"]] = p_dr.get(m["p2"], 0) + (g2 - g1)
+
+        a_punti[m["a2"]] = a_punti.get(m["a2"], 0) + pt_s2
+        a_dr[m["a2"]] = a_dr.get(m["a2"], 0) + (g2 - g1)
+
+  db["punti_portieri"] = p_punti
+  db["dr_portieri"] = p_dr
+  db["punti_attaccanti"] = a_punti
+  db["dr_attaccanti"] = a_dr
+
 
 def calcola_partite_giocate(ruolo, nome):
-    giocate = 0
-    totali = 0
-    for turno_obj in db["turni_partite"]:
-        for m in turno_obj["partite"]:
-            is_presente = False
-            if ruolo == "portiere" and (m['p1'] == nome or m['p2'] == nome):
-                is_presente = True
-            elif ruolo == "attaccante" and (m['a1'] == nome or m['a2'] == nome):
-                is_presente = True
-            
-            if is_presente:
-                totali += 1
-                if m.get("giocata", False):
-                    giocate += 1
-    return giocate, totali
+  giocate = 0
+  totali = 0
+  for turno_obj in db["turni_partite"]:
+    for m in turno_obj["partite"]:
+      is_presente = False
+      if ruolo == "portiere" and (m["p1"] == nome or m["p2"] == nome):
+        is_presente = True
+      elif ruolo == "attaccante" and (m["a1"] == nome or m["a2"] == nome):
+        is_presente = True
+
+      if is_presente:
+        totali += 1
+        if m.get("giocata", False):
+          giocate += 1
+  return giocate, totali
+
 
 def genera_pdf_calendario():
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.set_font("Arial", "B", 16)
-    pdf.cell(0, 10, "Torneo Biliardino 'Giallo' - Schema Partite", 0, 1, "C")
-    pdf.ln(5)
-    
-    num_tavoli = db.get("num_tavoli", 3)
-    
-    for turno_obj in db["turni_partite"]:
-        pdf.set_font("Arial", "B", 12)
-        pdf.cell(0, 8, f"Turno {turno_obj['turno']}", 0, 1, "L")
-        pdf.set_font("Arial", "", 10)
-        
-        for idx, m in enumerate(turno_obj["partite"]):
-            tavolo_num = (idx % num_tavoli) + 1
-            risultato = f"{m['gol1']} - {m['gol2']}" if m.get("giocata", False) else "Da giocare"
-            riga = f"  - Biliardino {tavolo_num}: {m['p1']}/{m['a1']} vs {m['p2']}/{m['a2']} -> {risultato}"
-            riga_pulita = riga.encode('latin-1', 'ignore').decode('latin-1')
-            pdf.cell(0, 6, riga_pulita, 0, 1, "L")
-        pdf.ln(3)
-        
-    return bytes(pdf.output())
+  pdf = FPDF()
+  pdf.add_page()
+  pdf.set_font("Arial", "B", 16)
+  pdf.cell(0, 10, "Torneo Biliardino 'Giallo' - Schema Partite", 0, 1, "C")
+  pdf.ln(5)
+
+  num_tavoli = db.get("num_tavoli", 3)
+
+  for turno_obj in db["turni_partite"]:
+    pdf.set_font("Arial", "B", 12)
+    pdf.cell(0, 8, f"Turno {turno_obj['turno']}", 0, 1, "L")
+    pdf.set_font("Arial", "", 10)
+
+    for idx, m in enumerate(turno_obj["partite"]):
+      tavolo_num = (idx % num_tavoli) + 1
+      risultato = (
+          f"{m['gol1']} - {m['gol2']}" if m.get("giocata", False) else "Da giocare"
+      )
+      riga = f"  - Biliardino {tavolo_num}: {m['p1']}/{m['a1']} vs {m['p2']}/{m['a2']} -> {risultato}"
+      riga_pulita = riga.encode("latin-1", "ignore").decode("latin-1")
+      pdf.cell(0, 6, riga_pulita, 0, 1, "L")
+    pdf.ln(3)
+
+  return bytes(pdf.output())
+
 
 # --- OPZIONI ADMIN IN SIDEBAR ---
 if is_admin:
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🗑️ Reset Totale")
-    if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
-        if os.path.exists(DB_FILE):
-            os.remove(DB_FILE)
-        for key in list(st.session_state.keys()):
-            del st.session_state[key]
-        st.query_params.clear()
-        st.sidebar.success("Torneo azzerato con successo!")
-        st.rerun()
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🗑️ Reset Totale")
+  if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
+    if os.path.exists(DB_FILE):
+      os.remove(DB_FILE)
+    for key in list(st.session_state.keys()):
+      del st.session_state[key]
+    st.query_params.clear()
+    st.sidebar.success("Torneo azzerato con successo!")
+    st.rerun()
 
 if is_admin and db["stato"] != "setup":
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🛠️ Correzione Parametri")
-    with st.sidebar.expander("Modifica Biliardini / Turni"):
-        nuovi_tavoli = st.number_input("N° Biliardini", min_value=1, max_value=10, value=db["num_tavoli"])
-        nuovi_turni = st.number_input("N° Turni", min_value=1, max_value=10, value=db["partite_per_giocatore"])
-        if st.button("💾 Aggiorna Parametri", use_container_width=True):
-            db["num_tavoli"] = nuovi_tavoli
-            db["partite_per_giocatore"] = nuovi_turni
-            salva_dati(db)
-            st.sidebar.success("Parametri aggiornati!")
-            st.rerun()
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🛠️ Correzione Parametri")
+  with st.sidebar.expander("Modifica Biliardini / Turni"):
+    nuovi_tavoli = st.number_input(
+        "N° Biliardini", min_value=1, max_value=10, value=db["num_tavoli"]
+    )
+    nuovi_turni = st.number_input(
+        "N° Turni",
+        min_value=1,
+        max_value=10,
+        value=db["partite_per_giocatore"],
+    )
+    if st.button("💾 Aggiorna Parametri", use_container_width=True):
+      db["num_tavoli"] = nuovi_tavoli
+      db["partite_per_giocatore"] = nuovi_turni
+      salva_dati(db)
+      st.sidebar.success("Parametri aggiornati!")
+      st.rerun()
 
 if db["stato"] != "setup":
-    st.sidebar.markdown("---")
-    pdf_data = genera_pdf_calendario()
-    st.sidebar.download_button(
-        label="📥 Scarica PDF Calendario",
-        data=pdf_data,
-        file_name="schema_torneo_biliardino.pdf",
-        mime="application/pdf",
-        use_container_width=True
-    )
+  st.sidebar.markdown("---")
+  pdf_data = genera_pdf_calendario()
+  st.sidebar.download_button(
+      label="📥 Scarica PDF Calendario",
+      data=pdf_data,
+      file_name="schema_torneo_biliardino.pdf",
+      mime="application/pdf",
+      use_container_width=True,
+  )
 
 st.sidebar.markdown("---")
 st.sidebar.subheader("📱 Condividi Torneo")
-link_torneo = st.sidebar.text_input("Link Spettatore:", value="https://2quznathuywvfxcskgfjhk.streamlit.app")
+link_torneo = st.sidebar.text_input(
+    "Link Spettatore:", value="https://2quznathuywvfxcskgfjhk.streamlit.app"
+)
 
 if link_torneo and link_torneo != "https://":
-    import urllib.parse
-    encoded_url = urllib.parse.quote(link_torneo, safe='')
-    qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
-    st.sidebar.image(qr_api_url, caption="Inquadra per aprire", use_container_width=True)
+  import urllib.parse
+
+  encoded_url = urllib.parse.quote(link_torneo, safe="")
+  qr_api_url = (
+      f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={encoded_url}"
+  )
+  st.sidebar.image(
+      qr_api_url, caption="Inquadra per aprire", use_container_width=True
+  )
 
 # --- LOGO E HEADER COMUNE STILOSO NEON ---
 logo_html = ""
 if os.path.exists(LOGO_FILE):
-    with open(LOGO_FILE, "rb") as f:
-        logo_b64 = b64encode(f.read()).decode("utf-8")
-    logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 120px; width: 100%; height: auto; margin-bottom: 8px;" /><br>'
+  with open(LOGO_FILE, "rb") as f:
+    logo_b64 = b64encode(f.read()).decode("utf-8")
+  logo_html = f'<img src="data:image/png;base64,{logo_b64}" style="max-width: 120px; width: 100%; height: auto; margin-bottom: 8px;" /><br>'
 
 st.markdown(
     f"""
@@ -372,76 +398,96 @@ st.markdown(
         <span style="display: inline-block; margin-top: 10px; background-color: rgba(30, 58, 138, 0.7); color: #38bdf8; padding: 6px 16px; border-radius: 20px; font-weight: 700; font-size: 0.95rem; border: 1px solid #00f2fe; box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);">Regolamento Uisp 3 tocchi</span>
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # --- GESTIONE SELEZIONE NOME PERSISTENTE (TRAMITE URL) ---
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
 if is_admin:
-    giocatore_selezionato = "Admin"
+  giocatore_selezionato = "Admin"
 elif db["stato"] != "setup" and tutti_i_giocatori:
-    giocatore_url = st.query_params.get("giocatore", "")
+  giocatore_url = st.query_params.get("giocatore", "")
 
-    if giocatore_url in tutti_i_giocatori:
-        giocatore_selezionato = giocatore_url
-    else:
-        giocatore_selezionato = "-- Seleziona il tuo nome --"
+  if giocatore_url in tutti_i_giocatori:
+    giocatore_selezionato = giocatore_url
+  else:
+    giocatore_selezionato = "-- Seleziona il tuo nome --"
 
-    if giocatore_selezionato == "-- Seleziona il tuo nome --":
-        st.markdown("---")
-        st.markdown("### 🔍 Benvenuto! Seleziona il tuo nome per accedere al torneo:")
-        scelta_utente = st.selectbox(
-            "Il tuo nome:",
-            ["-- Seleziona il tuo nome --"] + tutti_i_giocatori,
-            index=0
-        )
-        if scelta_utente != "-- Seleziona il tuo nome --":
-            st.query_params["giocatore"] = scelta_utente
-            st.rerun()
-        st.stop()  
-    else:
-        col_n1, col_n2 = st.columns([3, 1])
-        with col_n1:
-            st.markdown(f"""
+  if giocatore_selezionato == "-- Seleziona il tuo nome --":
+    st.markdown("---")
+    st.markdown(
+        "### 🔍 Benvenuto! Seleziona il tuo nome per accedere al torneo:"
+    )
+    scelta_utente = st.selectbox(
+        "Il tuo nome:", ["-- Seleziona il tuo nome --"] + tutti_i_giocatori, index=0
+    )
+    if scelta_utente != "-- Seleziona il tuo nome --":
+      st.query_params["giocatore"] = scelta_utente
+      st.rerun()
+    st.stop()
+  else:
+    col_n1, col_n2 = st.columns([3, 1])
+    with col_n1:
+      st.markdown(
+          f"""
                 <div style="background: #080e1e; padding: 12px 18px; border-radius: 12px; border: 1px solid #00f2fe; font-weight: 600; color: #f8fafc; font-size: 1.05rem; box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);">
                     👤 Stai visualizzando come: <span style="color: #fbbf24; font-weight: 700;">{giocatore_selezionato}</span>
                 </div>
-            """, unsafe_allow_html=True)
-        with col_n2:
-            if st.button("🔄 Cambia Nome", use_container_width=True):
-                st.query_params.clear()
-                st.rerun()
-        st.markdown("---")
+            """,
+          unsafe_allow_html=True,
+      )
+    with col_n2:
+      if st.button("🔄 Cambia Nome", use_container_width=True):
+        st.query_params.clear()
+        st.rerun()
+    st.markdown("---")
 else:
-    giocatore_selezionato = "-- Seleziona il tuo nome --"
+  giocatore_selezionato = "-- Seleziona il tuo nome --"
 
 # --- RIQUADRO PERSONALIZZATO STATO GIOCATORE (SE SELEZIONATO E NON ADMIN) ---
-if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] != "setup":
-    ricalcola_classifiche()
-    
-    ruolo_giocatore = "Portiere" if giocatore_selezionato in db["portieri"] else "Attaccante"
-    if giocatore_selezionato in db["punti_portieri"]:
-        punti_utente = db["punti_portieri"].get(giocatore_selezionato, 0)
-        dr_utente = db["dr_portieri"].get(giocatore_selezionato, 0)
-        sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-        posizioni_dict = {p[0]: idx + 1 for idx, p in enumerate(sorted_p_list)}
-        posizione = posizioni_dict.get(giocatore_selezionato, 1)
-        totale_punti_girone = sum(db["punti_portieri"].values())
-    else:
-        punti_utente = db["punti_attaccanti"].get(giocatore_selezionato, 0)
-        dr_utente = db["dr_attaccanti"].get(giocatore_selezionato, 0)
-        sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-        posizioni_dict = {a[0]: idx + 1 for idx, a in enumerate(sorted_a_list)}
-        posizione = posizioni_dict.get(giocatore_selezionato, 1)
-        totale_punti_girone = sum(db["punti_attaccanti"].values())
+if (
+    giocatore_selezionato != "-- Seleziona il tuo nome --"
+    and not is_admin
+    and db["stato"] != "setup"
+):
+  ricalcola_classifiche()
 
-    if totale_punti_girone > 0:
-        percentuale_qualificazione = int((punti_utente / totale_punti_girone) * 100)
-    else:
-        percentuale_qualificazione = 0
+  ruolo_giocatore = (
+      "Portiere" if giocatore_selezionato in db["portieri"] else "Attaccante"
+  )
+  if giocatore_selezionato in db["punti_portieri"]:
+    punti_utente = db["punti_portieri"].get(giocatore_selezionato, 0)
+    dr_utente = db["dr_portieri"].get(giocatore_selezionato, 0)
+    sorted_p_list = sorted(
+        db["punti_portieri"].items(),
+        key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)),
+        reverse=True,
+    )
+    posizioni_dict = {p[0]: idx + 1 for idx, p in enumerate(sorted_p_list)}
+    posizione = posizioni_dict.get(giocatore_selezionato, 1)
+    totale_punti_girone = sum(db["punti_portieri"].values())
+  else:
+    punti_utente = db["punti_attaccanti"].get(giocatore_selezionato, 0)
+    dr_utente = db["dr_attaccanti"].get(giocatore_selezionato, 0)
+    sorted_a_list = sorted(
+        db["punti_attaccanti"].items(),
+        key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)),
+        reverse=True,
+    )
+    posizioni_dict = {a[0]: idx + 1 for idx, a in enumerate(sorted_a_list)}
+    posizione = posizioni_dict.get(giocatore_selezionato, 1)
+    totale_punti_girone = sum(db["punti_attaccanti"].values())
 
-    st.markdown(f"""
+  if totale_punti_girone > 0:
+    percentuale_qualificazione = int(
+        (punti_utente / totale_punti_girone) * 100
+    )
+  else:
+    percentuale_qualificazione = 0
+
+  st.markdown(
+      f"""
         <div style="
             background-color: #0e1117; 
             border: 2px solid #00f2fe; 
@@ -477,31 +523,33 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
                 <div style="font-size: 20px; font-weight: bold; color: #2ea043; margin-top: 3px;">{percentuale_qualificazione}%</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
 # --- INDIVIDUAZIONE ESATTA DELLE PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
 partite_attive_correnti = []
 
 if db["stato"] == "gironi":
-    for b_num in range(1, num_tavoli + 1):
-        match_trovata = None
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
-                    if match_trovata is None:
-                        match_trovata = m
-            if match_trovata:
-                break
-        if match_trovata and match_trovata not in partite_attive_correnti:
-            if len(partite_attive_correnti) < num_tavoli:
-                partite_attive_correnti.append(match_trovata)
+  for b_num in range(1, num_tavoli + 1):
+    match_trovata = None
+    for t_obj in db["turni_partite"]:
+      for idx, m in enumerate(t_obj["partite"]):
+        if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+          if match_trovata is None:
+            match_trovata = m
+      if match_trovata:
+        break
+    if match_trovata and match_trovata not in partite_attive_correnti:
+      if len(partite_attive_correnti) < num_tavoli:
+        partite_attive_correnti.append(match_trovata)
 
 elif db["stato"] == "eliminatorie":
-    for f_turno in db["fasi_finali"]:
-        for m in f_turno["partite"]:
-            if not m.get("giocata", False):
-                partite_attive_correnti.append(m)
+  for f_turno in db["fasi_finali"]:
+    for m in f_turno["partite"]:
+      if not m.get("giocata", False):
+        partite_attive_correnti.append(m)
 
 # --- VERIFICA SE IL GIOCATORE HA UNA PARTITA IN CORSO SUI TAVOLI ATTIVI O IN CODA ---
 partita_utente_corrente = None
@@ -511,67 +559,87 @@ turno_utente_corrente = None
 partita_utente_in_coda = None
 turno_utente_in_coda = None
 
-if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
-    for b_num in range(1, num_tavoli + 1):
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
-                    if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
-                        giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
-                        
-                        match_tavolo_attivo = None
-                        for t_check in db["turni_partite"]:
-                            for idx_c, mc in enumerate(t_check["partite"]):
-                                if ((idx_c % num_tavoli) + 1) == b_num and not mc.get("giocata", False):
-                                    if match_tavolo_attivo is None:
-                                        match_tavolo_attivo = mc
-                            if match_tavolo_attivo:
-                                break
-                        if match_tavolo_attivo and match_tavolo_attivo['id'] == m['id']:
-                            partita_utente_corrente = m
-                            tavolo_utente_corrente = b_num
-                            turno_utente_corrente = t_obj['turno']
-                            break
-            if partita_utente_corrente:
-                break
-        if partita_utente_corrente:
-            break
+if (
+    giocatore_selezionato != "-- Seleziona il tuo nome --"
+    and not is_admin
+    and db["stato"] == "gironi"
+):
+  for b_num in range(1, num_tavoli + 1):
+    for t_obj in db["turni_partite"]:
+      for idx, m in enumerate(t_obj["partite"]):
+        if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+          if (
+              giocatore_selezionato == m["p1"]
+              or giocatore_selezionato == m["a1"]
+              or giocatore_selezionato == m["p2"]
+              or giocatore_selezionato == m["a2"]
+          ):
 
-    if not partita_utente_corrente:
-        tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
-        
-        partite_in_coda_totali = []
-        for t_obj in db["turni_partite"]:
-            for m in t_obj["partite"]:
-                if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
-                    partite_in_coda_totali.append((t_obj['turno'], m))
-        
-        num_partite_in_corso_count = len(partite_attive_correnti)
-        partite_in_coda_effettive = partite_in_coda_totali[:num_partite_in_corso_count]
-
-        for turno_num, m in partite_in_coda_effettive:
-            if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
-                giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
-                partita_utente_in_coda = m
-                turno_utente_in_coda = turno_num
+            match_tavolo_attivo = None
+            for t_check in db["turni_partite"]:
+              for idx_c, mc in enumerate(t_check["partite"]):
+                if ((idx_c % num_tavoli) + 1) == b_num and not mc.get(
+                    "giocata", False
+                ):
+                  if match_tavolo_attivo is None:
+                    match_tavolo_attivo = mc
+              if match_tavolo_attivo:
                 break
+            if match_tavolo_attivo and match_tavolo_attivo["id"] == m["id"]:
+              partita_utente_corrente = m
+              tavolo_utente_corrente = b_num
+              turno_utente_corrente = t_obj["turno"]
+              break
+      if partita_utente_corrente:
+        break
+    if partita_utente_corrente:
+      break
+
+  if not partita_utente_corrente:
+    tavoli_occupati_ids = [m_att["id"] for m_att in partite_attive_correnti]
+
+    partite_in_coda_totali = []
+    for t_obj in db["turni_partite"]:
+      for m in t_obj["partite"]:
+        if not m.get("giocata", False) and m["id"] not in tavoli_occupati_ids:
+          partite_in_coda_totali.append((t_obj["turno"], m))
+
+    num_partite_in_corso_count = len(partite_attive_correnti)
+    partite_in_coda_effettive = partite_in_coda_totali[
+        :num_partite_in_corso_count
+    ]
+
+    for turno_num, m in partite_in_coda_effettive:
+      if (
+          giocatore_selezionato == m["p1"]
+          or giocatore_selezionato == m["a1"]
+          or giocatore_selezionato == m["p2"]
+          or giocatore_selezionato == m["a2"]
+      ):
+        partita_utente_in_coda = m
+        turno_utente_in_coda = turno_num
+        break
 
 if partita_utente_corrente:
-    st.markdown("""
+  st.markdown(
+      """
         <div class="alert-active-game">
             <h4 style="margin: 0; color: #ffffff; font-size: 1.15rem; font-weight: 700;">🚨 ATTENZIONE: LA TUA PARTITA È IN CORSO!</h4>
             <p style="margin: 6px 0 0 0; color: #f8fafc; font-size: 1rem; font-weight: 600;">
                 Inserisci qui sotto il risultato finale e conferma.
             </p>
         </div>
-    """, unsafe_allow_html=True)
-    
-    m_up = partita_utente_corrente
-    b_num_up = tavolo_utente_corrente
-    turno_up = turno_utente_corrente
-    match_id_up = m_up['id']
+    """,
+      unsafe_allow_html=True,
+  )
 
-    st.markdown(f"""
+  m_up = partita_utente_corrente
+  b_num_up = tavolo_utente_corrente
+  turno_up = turno_utente_corrente
+  match_id_up = m_up["id"]
+
+  st.markdown(
+      f"""
         <div class="live-match-box">
             <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; text-shadow: 0 0 8px rgba(251,191,36,0.5);">
                 <span>🏟️ BILIARDINO {b_num_up} (IL TUO MATCH)</span>
@@ -587,70 +655,87 @@ if partita_utente_corrente:
                 </div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
+    """,
+      unsafe_allow_html=True,
+  )
 
-    with st.expander(f"⚡ Inserisci Risultato Biliardino {b_num_up}", expanded=True):
-        st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
-        current_g1 = int(m_up.get('gol1', 0))
-        
-        r1_cols = st.columns(4)
-        for g_val in range(4):
-            with r1_cols[g_val]:
-                is_sel = (current_g1 == g_val)
-                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                if st.button(lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True):
-                    m_up['gol1'] = g_val
-                    salva_dati(db)
-                    st.rerun()
-                    
-        r2_cols = st.columns(4)
-        for g_val in range(4, 8):
-            with r2_cols[g_val - 4]:
-                is_sel = (current_g1 == g_val)
-                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                if st.button(lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True):
-                    m_up['gol1'] = g_val
-                    salva_dati(db)
-                    st.rerun()
+  with st.expander(
+      f"⚡ Inserisci Risultato Biliardino {b_num_up}", expanded=True
+  ):
+    st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
+    current_g1 = int(m_up.get("gol1", 0))
 
-        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
-        
-        st.markdown(f"**🥅 {m_up['p2']} / ⚽ {m_up['a2']} (Gol Coppia 2)**")
-        current_g2 = int(m_up.get('gol2', 0))
-        
-        r3_cols = st.columns(4)
-        for g_val in range(4):
-            with r3_cols[g_val]:
-                is_sel = (current_g2 == g_val)
-                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                if st.button(lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True):
-                    m_up['gol2'] = g_val
-                    salva_dati(db)
-                    st.rerun()
-                    
-        r4_cols = st.columns(4)
-        for g_val in range(4, 8):
-            with r4_cols[g_val - 4]:
-                is_sel = (current_g2 == g_val)
-                lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                if st.button(lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True):
-                    m_up['gol2'] = g_val
-                    salva_dati(db)
-                    st.rerun()
+    r1_cols = st.columns(4)
+    for g_val in range(4):
+      with r1_cols[g_val]:
+        is_sel = current_g1 == g_val
+        lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+        if st.button(
+            lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True
+        ):
+          m_up["gol1"] = g_val
+          salva_dati(db)
+          st.rerun()
 
-        st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
-        if st.button("💾 Conferma e Salva Risultato Finale", key=f"top_user_save_{match_id_up}", use_container_width=True):
-            m_up['giocata'] = True
-            ricalcola_classifiche()
-            salva_dati(db)
-            st.success("Risultato salvato con successo!")
-            st.rerun()
-    st.markdown("---")
+    r2_cols = st.columns(4)
+    for g_val in range(4, 8):
+      with r2_cols[g_val - 4]:
+        is_sel = current_g1 == g_val
+        lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+        if st.button(
+            lbl, key=f"top_user_g1_{match_id_up}_{g_val}", use_container_width=True
+        ):
+          m_up["gol1"] = g_val
+          salva_dati(db)
+          st.rerun()
+
+    st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
+
+    st.markdown(f"**🥅 {m_up['p2']} / ⚽ {m_up['a2']} (Gol Coppia 2)**")
+    current_g2 = int(m_up.get("gol2", 0))
+
+    r3_cols = st.columns(4)
+    for g_val in range(4):
+      with r3_cols[g_val]:
+        is_sel = current_g2 == g_val
+        lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+        if st.button(
+            lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True
+        ):
+          m_up["gol2"] = g_val
+          salva_dati(db)
+          st.rerun()
+
+    r4_cols = st.columns(4)
+    for g_val in range(4, 8):
+      with r4_cols[g_val - 4]:
+        is_sel = current_g2 == g_val
+        lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+        if st.button(
+            lbl, key=f"top_user_g2_{match_id_up}_{g_val}", use_container_width=True
+        ):
+          m_up["gol2"] = g_val
+          salva_dati(db)
+          st.rerun()
+
+    st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
+    if st.button(
+        "💾 Conferma e Salva Risultato Finale",
+        key=f"top_user_save_{match_id_up}",
+        use_container_width=True,
+    ):
+      m_up["giocata"] = True
+      ricalcola_classifiche()
+      salva_dati(db)
+      st.success("Risultato salvato con successo!")
+      st.rerun()
+  st.markdown("---")
 
 elif partita_utente_in_coda:
-    m_coda = partita_utente_in_coda
-    t_coda = turno_utente_in_coda
-    st.markdown(f"""
+  m_coda = partita_utente_in_coda
+  t_coda = turno_utente_in_coda
+  st.markdown(
+      f"""
         <div class="alert-queue-game">
             <h4 style="margin: 0; color: #4ade80; font-size: 1.1rem; font-weight: 700;">⏳ LA TUA PROSSIMA PARTITA È IN CODA</h4>
             <p style="margin: 4px 0 0 0; color: #f8fafc; font-size: 0.95rem; font-weight: 600;">
@@ -665,8 +750,10 @@ elif partita_utente_in_coda:
                 <div>🥅 {m_coda['p2']} / ⚽ {m_coda['a2']}</div>
             </div>
         </div>
-    """, unsafe_allow_html=True)
-    st.markdown("---")
+    """,
+      unsafe_allow_html=True,
+  )
+  st.markdown("---")
 
 st.markdown(
     """
@@ -674,101 +761,123 @@ st.markdown(
         🔄 Ricarica la pagina del browser per aggiornare in tempo reale i dati del torneo.
     </div>
     """,
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # 1. SETUP
 if db["stato"] == "setup":
-    st.subheader("1. Configurazione Iniziale del Torneo")
-    if not is_admin:
-        st.warning("⚠️ Il torneo non è ancora iniziato. L'amministratore deve effettuare l'accesso con il PIN nella barra laterale.")
-    else:
-        whatsapp_text = st.text_area("Incolla qui la lista da WhatsApp (es. 🥅 Mario, ⚽ Luigi):")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            db["num_tavoli"] = st.number_input("Numero di biliardini disponibili", min_value=1, max_value=10, value=db["num_tavoli"])
-        with col2:
-            db["partite_per_giocatore"] = st.number_input("Turni / Partite garantite", min_value=1, max_value=10, value=db["partite_per_giocatore"])
-            
-        db["admin_pin"] = st.text_input("Cambia PIN Admin", value=db["admin_pin"])
+  st.subheader("1. Configurazione Iniziale del Torneo")
+  if not is_admin:
+    st.warning(
+        "⚠️ Il torneo non è ancora iniziato. L'amministratore deve effettuare"
+        " l'accesso con il PIN nella barra laterale."
+    )
+  else:
+    whatsapp_text = st.text_area(
+        "Incolla qui la lista da WhatsApp (es. 🥅 Mario, ⚽ Luigi):"
+    )
 
-        if st.button("🚀 Avvia il Torneo e Genera Calendario"):
-            portieri = []
-            attaccanti = []
-            for line in whatsapp_text.split("\n"):
-                if "🥅" in line or "🚪" in line:
-                    nome = pulisci_nome(line)
-                    if nome: portieri.append(nome)
-                elif "⚽" in line:
-                    nome = pulisci_nome(line)
-                    if nome: attaccanti.append(nome)
-            
-            if len(portieri) < 8 or len(attaccanti) < 8:
-                st.error("Inserisci almeno 8 portieri (🥅) e 8 attaccanti (⚽).")
-            else:
-                db["portieri"] = portieri
-                db["attaccanti"] = attaccanti
-                db["punti_portieri"] = {p: 0 for p in portieri}
-                db["dr_portieri"] = {p: 0 for p in portieri}
-                db["punti_attaccanti"] = {a: 0 for a in attaccanti}
-                db["dr_attaccanti"] = {a: 0 for a in attaccanti}
-                db["stato"] = "gironi"
-                db["fasi_finali"] = []
-                
-                db["turni_partite"] = []
-                for t in range(1, db["partite_per_giocatore"] + 1):
-                    p_shuff = portieri.copy()
-                    a_shuff = attaccanti.copy()
-                    random.shuffle(p_shuff)
-                    random.shuffle(a_shuff)
-                    
-                    partite_turno = []
-                    i = 0
-                    while i + 1 < len(p_shuff) and i + 1 < len(a_shuff):
-                        match_id = f"t{t}_m{i//2}"
-                        partite_turno.append({
-                            "id": match_id,
-                            "p1": p_shuff[i], "a1": a_shuff[i],
-                            "p2": p_shuff[i+1], "a2": a_shuff[i+1],
-                            "giocata": False, "in_corso": False,
-                            "gol1": 0, "gol2": 0
-                        })
-                        i += 2
-                    db["turni_partite"].append({"turno": t, "partite": partite_turno})
+    col1, col2 = st.columns(2)
+    with col1:
+      db["num_tavoli"] = st.number_input(
+          "Numero di biliardini disponibili",
+          min_value=1,
+          max_value=10,
+          value=db["num_tavoli"],
+      )
+    with col2:
+      db["partite_per_giocatore"] = st.number_input(
+          "Turni / Partite garantite",
+          min_value=1,
+          max_value=10,
+          value=db["partite_per_giocatore"],
+      )
 
-                salva_dati(db)
-                st.success("Calendario generato!")
-                st.rerun()
+    db["admin_pin"] = st.text_input("Cambia PIN Admin", value=db["admin_pin"])
+
+    if st.button("🚀 Avvia il Torneo e Genera Calendario"):
+      portieri = []
+      attaccanti = []
+      for line in whatsapp_text.split("\n"):
+        if "🥅" in line or "🚪" in line:
+          nome = pulisci_nome(line)
+          if nome:
+            portieri.append(nome)
+        elif "⚽" in line:
+          nome = pulisci_nome(line)
+          if nome:
+            attaccanti.append(nome)
+
+      if len(portieri) < 8 or len(attaccanti) < 8:
+        st.error("Inserisci almeno 8 portieri (🥅) e 8 attaccanti (⚽).")
+      else:
+        db["portieri"] = portieri
+        db["attaccanti"] = attaccanti
+        db["punti_portieri"] = {p: 0 for p in portieri}
+        db["dr_portieri"] = {p: 0 for p in portieri}
+        db["punti_attaccanti"] = {a: 0 for a in attaccanti}
+        db["dr_attaccanti"] = {a: 0 for a in attaccanti}
+        db["stato"] = "gironi"
+        db["fasi_finali"] = []
+
+        db["turni_partite"] = []
+        for t in range(1, db["partite_per_giocatore"] + 1):
+          p_shuff = portieri.copy()
+          a_shuff = attaccanti.copy()
+          random.shuffle(p_shuff)
+          random.shuffle(a_shuff)
+
+          partite_turno = []
+          i = 0
+          while i + 1 < len(p_shuff) and i + 1 < len(a_shuff):
+            match_id = f"t{t}_m{i//2}"
+            partite_turno.append({
+                "id": match_id,
+                "p1": p_shuff[i],
+                "a1": a_shuff[i],
+                "p2": p_shuff[i + 1],
+                "a2": a_shuff[i + 1],
+                "giocata": False,
+                "in_corso": False,
+                "gol1": 0,
+                "gol2": 0,
+            })
+            i += 2
+          db["turni_partite"].append({"turno": t, "partite": partite_turno})
+
+        salva_dati(db)
+        st.success("Calendario generato!")
+        st.rerun()
 
 # 2. GIRONI
 if db["stato"] == "gironi":
-    ricalcola_classifiche()
-    num_tavoli = db.get("num_tavoli", 3)
+  ricalcola_classifiche()
+  num_tavoli = db.get("num_tavoli", 3)
 
-    st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
-    
-    partite_per_tavolo = {}
-    for b_num in range(1, num_tavoli + 1):
-        match_trovata = None
-        turno_trovato = None
-        for t_obj in db["turni_partite"]:
-            for idx, m in enumerate(t_obj["partite"]):
-                if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
-                    if match_trovata is None:
-                        match_trovata = m
-                        turno_trovato = t_obj['turno']
-            if match_trovata:
-                break
-        if match_trovata:
-            partite_per_tavolo[b_num] = (match_trovata, turno_trovato)
+  st.markdown("### 🔥 PARTITE IN CORSO (Sui biliardini):")
 
-    for b_num in range(1, num_tavoli + 1):
-        if b_num in partite_per_tavolo:
-            m, turno_num = partite_per_tavolo[b_num]
-            match_id = m['id']
-            
-            st.markdown(f"""
+  partite_per_tavolo = {}
+  for b_num in range(1, num_tavoli + 1):
+    match_trovata = None
+    turno_trovato = None
+    for t_obj in db["turni_partite"]:
+      for idx, m in enumerate(t_obj["partite"]):
+        if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
+          if match_trovata is None:
+            match_trovata = m
+            turno_trovato = t_obj["turno"]
+      if match_trovata:
+        break
+    if match_trovata:
+      partite_per_tavolo[b_num] = (match_trovata, turno_trovato)
+
+  for b_num in range(1, num_tavoli + 1):
+    if b_num in partite_per_tavolo:
+      m, turno_num = partite_per_tavolo[b_num]
+      match_id = m["id"]
+
+      st.markdown(
+          f"""
                 <div class="live-match-box">
                     <div style="font-weight: 700; color: #fbbf24; margin-bottom: 8px; font-size: 0.95rem; display: flex; justify-content: space-between; text-shadow: 0 0 8px rgba(251,191,36,0.5);">
                         <span>🏟️ BILIARDINO {b_num}</span>
@@ -784,91 +893,121 @@ if db["stato"] == "gironi":
                         </div>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
+            """,
+          unsafe_allow_html=True,
+      )
 
-            partecipa = (
-                giocatore_selezionato == m['p1'] or 
-                giocatore_selezionato == m['a1'] or 
-                giocatore_selezionato == m['p2'] or 
-                giocatore_selezionato == m['a2']
-            )
+      partecipa = (
+          giocatore_selezionato == m["p1"]
+          or giocatore_selezionato == m["a1"]
+          or giocatore_selezionato == m["p2"]
+          or giocatore_selezionato == m["a2"]
+      )
 
-            if partecipa or is_admin:
-                titolo_box = f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in corso!)" if partecipa else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
-                with st.expander(titolo_box):
-                    
-                    st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                    current_g1 = int(m.get('gol1', 0))
-                    
-                    r1_cols = st.columns(4)
-                    for g_val in range(4):
-                        with r1_cols[g_val]:
-                            is_sel = (current_g1 == g_val)
-                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                            if st.button(lbl, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
-                                m['gol1'] = g_val
-                                salva_dati(db)
-                                st.rerun()
-                                
-                    r2_cols = st.columns(4)
-                    for g_val in range(4, 8):
-                        with r2_cols[g_val - 4]:
-                            is_sel = (current_g1 == g_val)
-                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                            if st.button(lbl, key=f"top_g1_{b_num}_{match_id}_{g_val}", use_container_width=True):
-                                m['gol1'] = g_val
-                                salva_dati(db)
-                                st.rerun()
+      if partecipa or is_admin:
+        titolo_box = (
+            f"⚡ Inserisci Risultato Biliardino {b_num} (Tuo Match in"
+            f" corso!)"
+            if partecipa
+            else f"⚙️ Inserisci Gol Biliardino {b_num} (Admin)"
+        )
+        with st.expander(titolo_box):
+          st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+          current_g1 = int(m.get("gol1", 0))
 
-                    st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
-                    
-                    st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                    current_g2 = int(m.get('gol2', 0))
-                    
-                    r3_cols = st.columns(4)
-                    for g_val in range(4):
-                        with r3_cols[g_val]:
-                            is_sel = (current_g2 == g_val)
-                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                            if st.button(lbl, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
-                                m['gol2'] = g_val
-                                salva_dati(db)
-                                st.rerun()
-                                
-                    r4_cols = st.columns(4)
-                    for g_val in range(4, 8):
-                        with r4_cols[g_val - 4]:
-                            is_sel = (current_g2 == g_val)
-                            lbl = f"⭐ {g_val}" if is_sel else str(g_val)
-                            if st.button(lbl, key=f"top_g2_{b_num}_{match_id}_{g_val}", use_container_width=True):
-                                m['gol2'] = g_val
-                                salva_dati(db)
-                                st.rerun()
+          r1_cols = st.columns(4)
+          for g_val in range(4):
+            with r1_cols[g_val]:
+              is_sel = current_g1 == g_val
+              lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+              if st.button(
+                  lbl,
+                  key=f"top_g1_{b_num}_{match_id}_{g_val}",
+                  use_container_width=True,
+              ):
+                m["gol1"] = g_val
+                salva_dati(db)
+                st.rerun()
 
-                    st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
-                    if st.button("💾 Conferma e Salva Risultato Finale", key=f"top_save_{b_num}_{match_id}", use_container_width=True):
-                        m['giocata'] = True
-                        ricalcola_classifiche()
-                        salva_dati(db)
-                        st.success("Risultato salvato con successo!")
-                        st.rerun()
+          r2_cols = st.columns(4)
+          for g_val in range(4, 8):
+            with r2_cols[g_val - 4]:
+              is_sel = current_g1 == g_val
+              lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+              if st.button(
+                  lbl,
+                  key=f"top_g1_{b_num}_{match_id}_{g_val}",
+                  use_container_width=True,
+              ):
+                m["gol1"] = g_val
+                salva_dati(db)
+                st.rerun()
 
-    st.markdown("---")
+          st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
 
-    num_partite_in_corso = len(partite_per_tavolo)
-    tavoli_occupati_ids = [val[0]['id'] for val in partite_per_tavolo.values()]
-    
-    partite_in_coda = []
-    for t_obj in db["turni_partite"]:
-        for m in t_obj["partite"]:
-            if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
-                partite_in_coda.append((t_obj['turno'], m))
+          st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+          current_g2 = int(m.get("gol2", 0))
 
-    st.markdown(f"### 📢 PROSSIMI IN CODA ({min(len(partite_in_coda), num_partite_in_corso)} in attesa):")
+          r3_cols = st.columns(4)
+          for g_val in range(4):
+            with r3_cols[g_val]:
+              is_sel = current_g2 == g_val
+              lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+              if st.button(
+                  lbl,
+                  key=f"top_g2_{b_num}_{match_id}_{g_val}",
+                  use_container_width=True,
+              ):
+                m["gol2"] = g_val
+                salva_dati(db)
+                st.rerun()
 
-    if partite_in_coda and num_partite_in_corso > 0:
-        for turno_num, m in partite_in_coda[:num_partite_in_corso]:
-            st.markdown(f"""
+          r4_cols = st.columns(4)
+          for g_val in range(4, 8):
+            with r4_cols[g_val - 4]:
+              is_sel = current_g2 == g_val
+              lbl = f"⭐ {g_val}" if is_sel else str(g_val)
+              if st.button(
+                  lbl,
+                  key=f"top_g2_{b_num}_{match_id}_{g_val}",
+                  use_container_width=True,
+              ):
+                m["gol2"] = g_val
+                salva_dati(db)
+                st.rerun()
+
+          st.markdown("<div style='margin: 14px 0;'></div>", unsafe_allow_html=True)
+          if st.button(
+              "💾 Conferma e Salva Risultato Finale",
+              key=f"top_save_{b_num}_{match_id}",
+              use_container_width=True,
+          ):
+            m["giocata"] = True
+            ricalcola_classifiche()
+            salva_dati(db)
+            st.success("Risultato salvato con successo!")
+            st.rerun()
+
+  st.markdown("---")
+
+  num_partite_in_corso = len(partite_per_tavolo)
+  tavoli_occupati_ids = [val[0]["id"] for val in partite_per_tavolo.values()]
+
+  partite_in_coda = []
+  for t_obj in db["turni_partite"]:
+    for m in t_obj["partite"]:
+      if not m.get("giocata", False) and m["id"] not in tavoli_occupati_ids:
+        partite_in_coda.append((t_obj["turno"], m))
+
+  st.markdown(
+      f"### 📢 PROSSIMI IN CODA ({min(len(partite_in_coda), num_partite_in_corso)}"
+      " in attesa):"
+  )
+
+  if partite_in_coda and num_partite_in_corso > 0:
+    for turno_num, m in partite_in_coda[:num_partite_in_corso]:
+      st.markdown(
+          f"""
                 <div class="queue-match-box">
                     <div style="font-size: 0.85rem; color: #4ade80; font-weight: 700; margin-bottom: 4px;">👉 IN CODA (Turno {turno_num})</div>
                     <div style="text-align: center; font-weight: 600; font-size: 0.98rem; color: #f8fafc;">
@@ -877,27 +1016,38 @@ if db["stato"] == "gironi":
                         <div>🥅 {m['p2']} / ⚽ {m['a2']}</div>
                     </div>
                 </div>
-            """, unsafe_allow_html=True)
-    else:
-        st.info("Nessuna altra partita in coda.")
+            """,
+          unsafe_allow_html=True,
+      )
+  else:
+    st.info("Nessuna altra partita in coda.")
 
-    st.markdown("---")
+  st.markdown("---")
 
-    st.markdown("<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px; font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆 CLASSIFICHE IN TEMPO REALE 🏆</h2>", unsafe_allow_html=True)
+  st.markdown(
+      "<h2 style='text-align: center; color: #00f2fe; margin-bottom: 20px;"
+      " font-weight: 800; text-shadow: 0 0 15px rgba(0,242,254,0.5);'>🏆"
+      " CLASSIFICHE IN TEMPO REALE 🏆</h2>",
+      unsafe_allow_html=True,
+  )
 
-    sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-    
-    html_portieri = f"""
+  sorted_p = sorted(
+      db["punti_portieri"].items(),
+      key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)),
+      reverse=True,
+  )
+
+  html_portieri = f"""
     <div class="ranking-card">
         <div class="ranking-title">🥅 CLASSIFICA PORTIERI</div>
     """
-    for idx, (p, pt) in enumerate(sorted_p):
-        dr = db["dr_portieri"].get(p, 0)
-        dr_str = f"+{dr}" if dr > 0 else str(dr)
-        gioc, tot = calcola_partite_giocate('portiere', p)
-        css_box = "player-row-green" if idx < 8 else "player-row-red"
-        
-        html_portieri += f"""
+  for idx, (p, pt) in enumerate(sorted_p):
+    dr = db["dr_portieri"].get(p, 0)
+    dr_str = f"+{dr}" if dr > 0 else str(dr)
+    gioc, tot = calcola_partite_giocate("portiere", p)
+    css_box = "player-row-green" if idx < 8 else "player-row-red"
+
+    html_portieri += f"""
         <div class="{css_box}">
             <div style="font-weight: 800; font-size: 1.1rem; width: 15%;"><b>{idx+1}°</b></div>
             <div style="font-weight: 700; width: 55%; text-align: left;">🥅 {p}</div>
@@ -908,22 +1058,26 @@ if db["stato"] == "gironi":
             </div>
         </div>
         """
-    html_portieri += "</div>"
-    st.markdown(html_portieri, unsafe_allow_html=True)
+  html_portieri += "</div>"
+  st.markdown(html_portieri, unsafe_allow_html=True)
 
-    sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-    
-    html_attaccanti = f"""
+  sorted_a = sorted(
+      db["punti_attaccanti"].items(),
+      key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)),
+      reverse=True,
+  )
+
+  html_attaccanti = f"""
     <div class="ranking-card">
         <div class="ranking-title" style="color: #22c55e; text-shadow: 0 0 12px rgba(34,197,94,0.6);">⚽ CLASSIFICA ATTACCANTI</div>
     """
-    for idx, (a, pt) in enumerate(sorted_a):
-        dr = db["dr_attaccanti"].get(a, 0)
-        dr_str = f"+{dr}" if dr > 0 else str(dr)
-        gioc, tot = calcola_partite_giocate('attaccante', a)
-        css_box = "player-row-green" if idx < 8 else "player-row-red"
-        
-        html_attaccanti += f"""
+  for idx, (a, pt) in enumerate(sorted_a):
+    dr = db["dr_attaccanti"].get(a, 0)
+    dr_str = f"+{dr}" if dr > 0 else str(dr)
+    gioc, tot = calcola_partite_giocate("attaccante", a)
+    css_box = "player-row-green" if idx < 8 else "player-row-red"
+
+    html_attaccanti += f"""
         <div class="{css_box}">
             <div style="font-weight: 800; font-size: 1.1rem; width: 15%;"><b>{idx+1}°</b></div>
             <div style="font-weight: 700; width: 55%; text-align: left;">⚽ {a}</div>
@@ -934,46 +1088,55 @@ if db["stato"] == "gironi":
             </div>
         </div>
         """
-    html_attaccanti += "</div>"
-    st.markdown(html_attaccanti, unsafe_allow_html=True)
+  html_attaccanti += "</div>"
+  st.markdown(html_attaccanti, unsafe_allow_html=True)
 
-    st.markdown("---")
+  st.markdown("---")
 
-    st.markdown("### 📅 Partite dei Turni (Archivio)")
+  st.markdown("### 📅 Partite dei Turni (Archivio)")
 
-    for turno_obj in db["turni_partite"]:
-        turno_num = turno_obj['turno']
-        tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
-        alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
-        in_corso = alcuna_giocata and not tutte_giocate
+  for turno_obj in db["turni_partite"]:
+    turno_num = turno_obj["turno"]
+    tutte_giocate = all(m.get("giocata", False) for m in turno_obj["partite"])
+    alcuna_giocata = any(m.get("giocata", False) for m in turno_obj["partite"])
+    in_corso = alcuna_giocata and not tutte_giocate
 
-        if tutte_giocate:
-            header_text = f"Turno {turno_num} (Completato ✅)"
-            espanso_default = False
-        elif in_corso:
-            header_text = f"Turno {turno_num} (In corso ⏳)"
-            espanso_default = True
+    if tutte_giocate:
+      header_text = f"Turno {turno_num} (Completato ✅)"
+      espanso_default = False
+    elif in_corso:
+      header_text = f"Turno {turno_num} (In corso ⏳)"
+      espanso_default = True
+    else:
+      header_text = f"Turno {turno_num} (Da giocare ⏳)"
+      espanso_default = False
+
+    with st.expander(header_text, expanded=espanso_default):
+      for idx, m in enumerate(turno_obj["partite"]):
+        tavolo_num = (idx % num_tavoli) + 1
+        match_id = m["id"]
+
+        if m["giocata"]:
+          box_bg = "linear-gradient(135deg, #450a0a, #7f1d1d)"
+          border_color = "#ef4444"
+          text_content = (
+              f"<div style='color: #fbbf24; font-size: 1.1rem; font-weight:"
+              f" 700; text-shadow: 0 0 8px rgba(251,191,36,0.4); margin: 6px"
+              f" 0;'>Risultato: {m['gol1']} - {m['gol2']}</div>"
+          )
+          label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
         else:
-            header_text = f"Turno {turno_num} (Da giocare ⏳)"
-            espanso_default = False
+          box_bg = "linear-gradient(135deg, #022c22, #064e3b)"
+          border_color = "#22c55e"
+          text_content = (
+              "<div style='color: #fbbf24; font-size: 1.1rem; font-weight:"
+              " 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px"
+              " 0;'>VS</div>"
+          )
+          label_stato = f"Biliardino {tavolo_num}"
 
-        with st.expander(header_text, expanded=espanso_default):
-            for idx, m in enumerate(turno_obj["partite"]):
-                tavolo_num = (idx % num_tavoli) + 1
-                match_id = m['id']
-                
-                if m["giocata"]:
-                    box_bg = "linear-gradient(135deg, #450a0a, #7f1d1d)"
-                    border_color = "#ef4444"
-                    text_content = f"<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 700; text-shadow: 0 0 8px rgba(251,191,36,0.4); margin: 6px 0;'>Risultato: {m['gol1']} - {m['gol2']}</div>"
-                    label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
-                else:
-                    box_bg = "linear-gradient(135deg, #022c22, #064e3b)"
-                    border_color = "#22c55e"
-                    text_content = "<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px 0;'>VS</div>"
-                    label_stato = f"Biliardino {tavolo_num}"
-
-                st.markdown(f"""
+        st.markdown(
+            f"""
                     <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 12px rgba(0,242,254,0.15);">
                         <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase; letter-spacing: 0.5px; color: #00f2fe;">{label_stato}</div>
                         <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
@@ -984,118 +1147,208 @@ if db["stato"] == "gironi":
                             🥅 {m['p2']} / ⚽ {m['a2']}
                         </div>
                     </div>
-                """, unsafe_allow_html=True)
+                """,
+            unsafe_allow_html=True,
+        )
 
-                if is_admin:
-                    with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                        st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                        curr_m1 = int(m.get('gol1', 0))
-                        
-                        rc1 = st.columns(4)
-                        for g_val in range(4):
-                            with rc1[g_val]:
-                                sel_m1 = (curr_m1 == g_val)
-                                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
-                                if st.button(lbl_m1, key=f"adm_g1_{match_id}_{g_val}", use_container_width=True):
-                                    m['gol1'] = g_val
-                                    salva_dati(db)
-                                    st.rerun()
-                        rc2 = st.columns(4)
-                        for g_val in range(4, 8):
-                            with rc2[g_val - 4]:
-                                sel_m1 = (curr_m1 == g_val)
-                                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
-                                if st.button(lbl_m1, key=f"adm_g1_{match_id}_{g_val}", use_container_width=True):
-                                    m['gol1'] = g_val
-                                    salva_dati(db)
-                                    st.rerun()
+        if is_admin:
+          with st.expander(
+              f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)",
+              expanded=False,
+          ):
+            st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+            curr_m1 = int(m.get("gol1", 0))
 
-                        st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
-                        st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                        curr_m2 = int(m.get('gol2', 0))
-                        
-                        rc3 = st.columns(4)
-                        for g_val in range(4):
-                            with rc3[g_val]:
-                                sel_m2 = (curr_m2 == g_val)
-                                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
-                                if st.button(lbl_m2, key=f"adm_g2_{match_id}_{g_val}", use_container_width=True):
-                                    m['gol2'] = g_val
-                                    salva_dati(db)
-                                    st.rerun()
-                        rc4 = st.columns(4)
-                        for g_val in range(4, 8):
-                            with rc4[g_val - 4]:
-                                sel_m2 = (curr_m2 == g_val)
-                                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
-                                if st.button(lbl_m2, key=f"adm_g2_{match_id}_{g_val}", use_container_width=True):
-                                    m['gol2'] = g_val
-                                    salva_dati(db)
-                                    st.rerun()
+            rc1 = st.columns(4)
+            for g_val in range(4):
+              with rc1[g_val]:
+                sel_m1 = curr_m1 == g_val
+                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
+                if st.button(
+                    lbl_m1,
+                    key=f"adm_g1_{match_id}_{g_val}",
+                    use_container_width=True,
+                ):
+                  m["gol1"] = g_val
+                  salva_dati(db)
+                  st.rerun()
+            rc2 = st.columns(4)
+            for g_val in range(4, 8):
+              with rc2[g_val - 4]:
+                sel_m1 = curr_m1 == g_val
+                lbl_m1 = f"⭐ {g_val}" if sel_m1 else str(g_val)
+                if st.button(
+                    lbl_m1,
+                    key=f"adm_g1_{match_id}_{g_val}",
+                    use_container_width=True,
+                ):
+                  m["gol1"] = g_val
+                  salva_dati(db)
+                  st.rerun()
 
-                        st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
-                        if st.button(f"💾 Salva Modifica", key=f"save_{match_id}", use_container_width=True):
-                            m['giocata'] = True
-                            ricalcola_classifiche()
-                            salva_dati(db)
-                            st.success("Salvato!")
-                            st.rerun()
+            st.markdown(
+                "<div style='margin: 8px 0;'></div>", unsafe_allow_html=True
+            )
+            st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+            curr_m2 = int(m.get("gol2", 0))
 
+            rc3 = st.columns(4)
+            for g_val in range(4):
+              with rc3[g_val]:
+                sel_m2 = curr_m2 == g_val
+                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
+                if st.button(
+                    lbl_m2,
+                    key=f"adm_g2_{match_id}_{g_val}",
+                    use_container_width=True,
+                ):
+                  m["gol2"] = g_val
+                  salva_dati(db)
+                  st.rerun()
+            rc4 = st.columns(4)
+            for g_val in range(4, 8):
+              with rc4[g_val - 4]:
+                sel_m2 = curr_m2 == g_val
+                lbl_m2 = f"⭐ {g_val}" if sel_m2 else str(g_val)
+                if st.button(
+                    lbl_m2,
+                    key=f"adm_g2_{match_id}_{g_val}",
+                    use_container_width=True,
+                ):
+                  m["gol2"] = g_val
+                  salva_dati(db)
+                  st.rerun()
+
+            st.markdown(
+                "<div style='margin: 10px 0;'></div>", unsafe_allow_html=True
+            )
+            if st.button(
+                f"💾 Salva Modifica",
+                key=f"save_{match_id}",
+                use_container_width=True,
+            ):
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.success("Salvato!")
+              st.rerun()
+
+  st.markdown("---")
+
+  if is_admin:
     st.markdown("---")
+    if st.button(
+        "🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True
+    ):
+      sorted_p_list = sorted(
+          db["punti_portieri"].items(),
+          key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)),
+          reverse=True,
+      )
+      sorted_a_list = sorted(
+          db["punti_attaccanti"].items(),
+          key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)),
+          reverse=True,
+      )
 
-    if is_admin:
-        st.markdown("---")
-        if st.button("🏆 Avvia Fase Eliminazione Diretta (Quarti)", use_container_width=True):
-            sorted_p_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-            sorted_a_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-            
-            top_p = [p[0] for p in sorted_p_list[:8]]
-            top_a = [a[0] for a in sorted_a_list[:8]]
-            
-            quarti_partite = [
-                {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-            ]
-            db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
-            db["stato"] = "eliminatorie"
-            salva_dati(db)
-            st.rerun()
+      top_p = [p[0] for p in sorted_p_list[:8]]
+      top_a = [a[0] for a in sorted_a_list[:8]]
+
+      quarti_partite = [
+          {
+              "id": "ef_t1_m1",
+              "p1": top_p[0],
+              "a1": top_a[0],
+              "p2": top_p[7],
+              "a2": top_a[7],
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+          },
+          {
+              "id": "ef_t1_m2",
+              "p1": top_p[1],
+              "a1": top_a[1],
+              "p2": top_p[6],
+              "a2": top_a[6],
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+          },
+          {
+              "id": "ef_t1_m3",
+              "p1": top_p[2],
+              "a1": top_a[2],
+              "p2": top_p[5],
+              "a2": top_a[5],
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+          },
+          {
+              "id": "ef_t1_m4",
+              "p1": top_p[3],
+              "a1": top_a[3],
+              "p2": top_p[4],
+              "a2": top_a[4],
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+          },
+      ]
+      db["fasi_finali"] = [{
+          "turno": 1,
+          "nome": "Quarti di Finale",
+          "partite": quarti_partite,
+      }]
+      db["stato"] = "eliminatorie"
+      salva_dati(db)
+      st.rerun()
 
 # 3. ELIMINATORIE
 if db["stato"] == "eliminatorie":
-    num_tavoli = db.get("num_tavoli", 3)
-    fasi = db["fasi_finali"]
-    
-    finito_tutto = False
-    p1_1, a1_1, p2_1, a2_1, p3_1, a3_1 = "", "", "", "", "", ""
-    
-    for f_turno in fasi:
-        if f_turno['nome'] == "Finali (1°-2° e 3°-4° Posto)":
-            fin_partite = f_turno["partite"]
-            if len(fin_partite) >= 2 and fin_partite[0].get("giocata", False) and fin_partite[1].get("giocata", False):
-                finito_tutto = True
-                m1, m2 = fin_partite[0], fin_partite[1]
-                if m1["gol1"] >= m1["gol2"]:
-                    p1_1, a1_1 = m1["p1"], m1["a1"]
-                    p2_1, a2_1 = m1["p2"], m1["a2"]
-                else:
-                    p1_1, a1_1 = m1["p2"], m1["a2"]
-                    p2_1, a2_1 = m1["p1"], m1["a1"]
-                if m2["gol1"] >= m2["gol2"]:
-                    p3_1, a3_1 = m2["p1"], m2["a1"]
-                else:
-                    p3_1, a3_1 = m2["p2"], m2["a2"]
+  num_tavoli = db.get("num_tavoli", 3)
+  fasi = db["fasi_finali"]
 
-    if finito_tutto:
-        st.markdown("""
+  finito_tutto = False
+  p1_1, a1_1, p2_1, a2_1, p3_1, a3_1 = "", "", "", "", "", ""
+
+  for f_turno in fasi:
+    if f_turno["nome"] == "Finali (1°-2° e 3°-4° Posto)":
+      fin_partite = f_turno["partite"]
+      if (
+          len(fin_partite) >= 2
+          and fin_partite[0].get("giocata", False)
+          and fin_partite[1].get("giocata", False)
+      ):
+        finito_tutto = True
+        m1, m2 = fin_partite[0], fin_partite[1]
+        if m1["gol1"] >= m1["gol2"]:
+          p1_1, a1_1 = m1["p1"], m1["a1"]
+          p2_1, a2_1 = m1["p2"], m1["a2"]
+        else:
+          p1_1, a1_1 = m1["p2"], m1["a2"]
+          p2_1, a2_1 = m1["p1"], m1["a1"]
+        if m2["gol1"] >= m2["gol2"]:
+          p3_1, a3_1 = m2["p1"], m2["a1"]
+        else:
+          p3_1, a3_1 = m2["p2"], m2["a2"]
+
+  if finito_tutto:
+    st.markdown(
+        """
             <div style="text-align: center; margin-top: 10px; margin-bottom: 20px;">
                 <h1 style="color: #00f2fe; font-size: 2.2rem; font-weight: 800; text-shadow: 0 0 20px rgba(0,242,254,0.6);">🏆 TORNEO CONCLUSO! 🏆</h1>
             </div>
-        """, unsafe_allow_html=True)
+        """,
+        unsafe_allow_html=True,
+    )
 
-        podio_html = f"""
+    podio_html = f"""
         <div class="podium-container">
             <div class="podium-step podium-2">
                 <div style="font-size: 1rem; color: #38bdf8;">🥈 2° Posto</div>
@@ -1112,71 +1365,82 @@ if db["stato"] == "eliminatorie":
             </div>
         </div>
         """
-        st.markdown(podio_html, unsafe_allow_html=True)
-        st.markdown("---")
-        
-        col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
-        with col_f2:
-            pdf_data = genera_pdf_calendario()
-            st.download_button(
-                label="📥 Scarica Riepilogo PDF",
-                data=pdf_data,
-                file_name="riepilogo_finale_torneo.pdf",
-                mime="application/pdf",
-                use_container_width=True
+    st.markdown(podio_html, unsafe_allow_html=True)
+    st.markdown("---")
+
+    col_f1, col_f2, col_f3 = st.columns([1, 2, 1])
+    with col_f2:
+      pdf_data = genera_pdf_calendario()
+      st.download_button(
+          label="📥 Scarica Riepilogo PDF",
+          data=pdf_data,
+          file_name="riepilogo_finale_torneo.pdf",
+          mime="application/pdf",
+          use_container_width=True,
+      )
+      if is_admin:
+        if st.button("⬅️ Torna alla gestione", use_container_width=True):
+          fin_partite[0]["giocata"] = False
+          salva_dati(db)
+          st.rerun()
+  else:
+    st.subheader("🏆 Fase a Eliminazione Diretta")
+
+    for f_turno in fasi:
+      tutti_giocati = True
+      alcuna_giocata_ef = any(
+          m.get("giocata", False) for m in f_turno["partite"]
+      )
+      vincitori_turno = []
+      perdenti_turno = []
+
+      for idx, m in enumerate(f_turno["partite"]):
+        if m.get("giocata", False):
+          if m["gol1"] >= m["gol2"]:
+            vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
+            perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
+          else:
+            vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
+            perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
+        else:
+          tutti_giocati = False
+
+      ef_chiuse = tutti_giocati
+      ef_in_corso = alcuna_giocata_ef and not tutti_giocati
+
+      if ef_chiuse:
+        ef_header = f"🔥 {f_turno['nome']} (Completato ✅)"
+      elif ef_in_corso:
+        ef_header = f"🔥 {f_turno['nome']} (In corso ⏳)"
+      else:
+        ef_header = f"🔥 {f_turno['nome']} (Da giocare ⏳)"
+
+      with st.expander(ef_header, expanded=ef_in_corso):
+        for idx, m in enumerate(f_turno["partite"]):
+          tavolo_num = (idx % num_tavoli) + 1
+          match_id = m["id"]
+
+          if m["giocata"]:
+            box_bg = "linear-gradient(135deg, #450a0a, #7f1d1d)"
+            border_color = "#ef4444"
+            text_content = (
+                f"<div style='color: #fbbf24; font-size: 1.1rem; font-weight:"
+                f" 700; text-shadow: 0 0 8px rgba(251,191,36,0.4); margin: 6px"
+                f" 0;'>Risultato: {m['gol1']} - {m['gol2']}</div>"
             )
-            if is_admin:
-                if st.button("⬅️ Torna alla gestione", use_container_width=True):
-                    fin_partite[0]["giocata"] = False
-                    salva_dati(db)
-                    st.rerun()
-    else:
-        st.subheader("🏆 Fase a Eliminazione Diretta")
-        
-        for f_turno in fasi:
-            tutti_giocati = True
-            alcuna_giocata_ef = any(m.get("giocata", False) for m in f_turno["partite"])
-            vincitori_turno = []
-            perdenti_turno = []
-            
-            for idx, m in enumerate(f_turno["partite"]):
-                if m.get("giocata", False):
-                    if m["gol1"] >= m["gol2"]:
-                        vincitori_turno.append({"p": m["p1"], "a": m["a1"]})
-                        perdenti_turno.append({"p": m["p2"], "a": m["a2"]})
-                    else:
-                        vincitori_turno.append({"p": m["p2"], "a": m["a2"]})
-                        perdenti_turno.append({"p": m["p1"], "a": m["a1"]})
-                else:
-                    tutti_giocati = False
+            label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
+          else:
+            box_bg = "linear-gradient(135deg, #022c22, #064e3b)"
+            border_color = "#22c55e"
+            text_content = (
+                "<div style='color: #fbbf24; font-size: 1.1rem; font-weight:"
+                " 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px"
+                " 0;'>VS</div>"
+            )
+            label_stato = f"Biliardino {tavolo_num}"
 
-            ef_chiuse = tutti_giocati
-            ef_in_corso = alcuna_giocata_ef and not tutti_giocati
-            
-            if ef_chiuse:
-                ef_header = f"🔥 {f_turno['nome']} (Completato ✅)"
-            elif ef_in_corso:
-                ef_header = f"🔥 {f_turno['nome']} (In corso ⏳)"
-            else:
-                ef_header = f"🔥 {f_turno['nome']} (Da giocare ⏳)"
-
-            with st.expander(ef_header, expanded=ef_in_corso):
-                for idx, m in enumerate(f_turno["partite"]):
-                    tavolo_num = (idx % num_tavoli) + 1
-                    match_id = m['id']
-
-                    if m["giocata"]:
-                        box_bg = "linear-gradient(135deg, #450a0a, #7f1d1d)"
-                        border_color = "#ef4444"
-                        text_content = f"<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 700; text-shadow: 0 0 8px rgba(251,191,36,0.4); margin: 6px 0;'>Risultato: {m['gol1']} - {m['gol2']}</div>"
-                        label_stato = f"Biliardino {tavolo_num} (Giocata ✅)"
-                    else:
-                        box_bg = "linear-gradient(135deg, #022c22, #064e3b)"
-                        border_color = "#22c55e"
-                        text_content = "<div style='color: #fbbf24; font-size: 1.1rem; font-weight: 800; text-shadow: 0 0 8px rgba(251,191,36,0.5); margin: 6px 0;'>VS</div>"
-                        label_stato = f"Biliardino {tavolo_num}"
-
-                    st.markdown(f"""
+          st.markdown(
+              f"""
                         <div style="background: {box_bg}; border: 1px solid {border_color}; border-radius: 12px; padding: 14px; margin-bottom: 10px; color: white; text-align: center; box-shadow: 0 0 12px rgba(0,242,254,0.15);">
                             <div style="font-weight: 700; margin-bottom: 6px; font-size: 0.95rem; text-transform: uppercase; color: #00f2fe;">{label_stato}</div>
                             <div style="font-size: 1rem; font-weight: 600; color: #f8fafc;">
@@ -1187,86 +1451,178 @@ if db["stato"] == "eliminatorie":
                                 🥅 {m['p2']} / ⚽ {m['a2']}
                             </div>
                         </div>
-                    """, unsafe_allow_html=True)
+                    """,
+              unsafe_allow_html=True,
+          )
 
-                    if is_admin:
-                        with st.expander(f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)", expanded=False):
-                            st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
-                            curr_ef1 = int(m.get('gol1', 0))
-                            
-                            rc_ef1 = st.columns(4)
-                            for g_val in range(4):
-                                with rc_ef1[g_val]:
-                                    sel_ef1 = (curr_ef1 == g_val)
-                                    lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
-                                    if st.button(lbl_ef1, key=f"ef_adm_g1_{match_id}_{g_val}", use_container_width=True):
-                                        m['gol1'] = g_val
-                                        salva_dati(db)
-                                        st.rerun()
-                            rc_ef2 = st.columns(4)
-                            for g_val in range(4, 8):
-                                with rc_ef2[g_val - 4]:
-                                    sel_ef1 = (curr_ef1 == g_val)
-                                    lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
-                                    if st.button(lbl_ef1, key=f"ef_adm_g1_{match_id}_{g_val}", use_container_width=True):
-                                        m['gol1'] = g_val
-                                        salva_dati(db)
-                                        st.rerun()
+          if is_admin:
+            with st.expander(
+                f"⚙️ Modifica Risultato Biliardino {tavolo_num} (Admin)",
+                expanded=False,
+            ):
+              st.markdown(f"**🥅 {m['p1']} / ⚽ {m['a1']} (Gol Coppia 1)**")
+              curr_ef1 = int(m.get("gol1", 0))
 
-                            st.markdown("<div style='margin: 8px 0;'></div>", unsafe_allow_html=True)
-                            st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
-                            curr_ef2 = int(m.get('gol2', 0))
-                            
-                            rc_ef3 = st.columns(4)
-                            for g_val in range(4):
-                                with rc_ef3[g_val]:
-                                    sel_ef2 = (curr_ef2 == g_val)
-                                    lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
-                                    if st.button(lbl_ef2, key=f"ef_adm_g2_{match_id}_{g_val}", use_container_width=True):
-                                        m['gol2'] = g_val
-                                        salva_dati(db)
-                                        st.rerun()
-                            rc_ef4 = st.columns(4)
-                            for g_val in range(4, 8):
-                                with rc_ef4[g_val - 4]:
-                                    sel_ef2 = (curr_ef2 == g_val)
-                                    lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
-                                    if st.button(lbl_ef2, key=f"ef_adm_g2_{match_id}_{g_val}", use_container_width=True):
-                                        m['gol2'] = g_val
-                                        salva_dati(db)
-                                        st.rerun()
+              rc_ef1 = st.columns(4)
+              for g_val in range(4):
+                with rc_ef1[g_val]:
+                  sel_ef1 = curr_ef1 == g_val
+                  lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
+                  if st.button(
+                      lbl_ef1,
+                      key=f"ef_adm_g1_{match_id}_{g_val}",
+                      use_container_width=True,
+                  ):
+                    m["gol1"] = g_val
+                    salva_dati(db)
+                    st.rerun()
+              rc_ef2 = st.columns(4)
+              for g_val in range(4, 8):
+                with rc_ef2[g_val - 4]:
+                  sel_ef1 = curr_ef1 == g_val
+                  lbl_ef1 = f"⭐ {g_val}" if sel_ef1 else str(g_val)
+                  if st.button(
+                      lbl_ef1,
+                      key=f"ef_adm_g1_{match_id}_{g_val}",
+                      use_container_width=True,
+                  ):
+                    m["gol1"] = g_val
+                    salva_dati(db)
+                    st.rerun()
 
-                            st.markdown("<div style='margin: 10px 0;'></div>", unsafe_allow_html=True)
-                            if st.button("💾 Salva Modifica", key=f"ef_save_{match_id}", use_container_width=True):
-                                m['giocata'] = True
-                                salva_dati(db)
-                                st.rerun()
+              st.markdown(
+                  "<div style='margin: 8px 0;'></div>", unsafe_allow_html=True
+              )
+              st.markdown(f"**🥅 {m['p2']} / ⚽ {m['a2']} (Gol Coppia 2)**")
+              curr_ef2 = int(m.get("gol2", 0))
 
-            if tutti_giocati and is_admin:
-                if f_turno['nome'] == "Quarti di Finale" and len(vincitori_turno) == 4 and not any(f['nome'] == "Semifinali" for f in fasi):
-                    if st.button("🚀 Genera Semifinali", use_container_width=True):
-                        q1, q2, q3, q4 = vincitori_turno[0], vincitori_turno[1], vincitori_turno[2], vincitori_turno[3]
-                        semifinale_partite = [
-                            {"id": "ef_t2_m1", "p1": q1["p"], "a1": q2["a"], "p2": q3["p"], "a2": q4["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t2_m2", "p1": q2["p"], "a1": q1["a"], "p2": q4["p"], "a2": q3["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                        ]
-                        db["fasi_finali"].append({"turno": 2, "nome": "Semifinali", "partite": semifinale_partite})
-                        salva_dati(db)
-                        st.rerun()
-                elif f_turno['nome'] == "Semifinali" and len(vincitori_turno) == 2 and not any(f['nome'] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi):
-                    if st.button("🏁 Genera Finali", use_container_width=True):
-                        sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
-                        sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
-                        finali_partite = [
-                            {"id": "ef_t3_m1", "p1": sf1_v["p"], "a1": sf2_v["a"], "p2": sf2_v["p"], "a2": sf1_v["a"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-                            {"id": "ef_t3_m2", "p1": sf1_p["p"], "a1": sf2_p["p"], "p2": sf2_p["p"], "a2": sf1_p["p"], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0}
-                        ]
-                        db["fasi_finali"].append({"turno": 3, "nome": "Finali (1°-2° e 3°-4° Posto)", "partite": finali_partite})
-                        salva_dati(db)
-                        st.rerun()
+              rc_ef3 = st.columns(4)
+              for g_val in range(4):
+                with rc_ef3[g_val]:
+                  sel_ef2 = curr_ef2 == g_val
+                  lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
+                  if st.button(
+                      lbl_ef2,
+                      key=f"ef_adm_g2_{match_id}_{g_val}",
+                      use_container_width=True,
+                  ):
+                    m["gol2"] = g_val
+                    salva_dati(db)
+                    st.rerun()
+              rc_ef4 = st.columns(4)
+              for g_val in range(4, 8):
+                with rc_ef4[g_val - 4]:
+                  sel_ef2 = curr_ef2 == g_val
+                  lbl_ef2 = f"⭐ {g_val}" if sel_ef2 else str(g_val)
+                  if st.button(
+                      lbl_ef2,
+                      key=f"ef_adm_g2_{match_id}_{g_val}",
+                      use_container_width=True,
+                  ):
+                    m["gol2"] = g_val
+                    salva_dati(db)
+                    st.rerun()
 
-        if is_admin:
-            if st.button("⬅️ Indietro ai Gironi", use_container_width=True):
-                db["stato"] = "gironi"
+              st.markdown(
+                  "<div style='margin: 10px 0;'></div>", unsafe_allow_html=True
+              )
+              if st.button(
+                  "💾 Salva Modifica",
+                  key=f"ef_save_{match_id}",
+                  use_container_width=True,
+              ):
+                m["giocata"] = True
                 salva_dati(db)
                 st.rerun()
+
+      if tutti_giocati and is_admin:
+        if (
+            f_turno["nome"] == "Quarti di Finale"
+            and len(vincitori_turno) == 4
+            and not any(f["nome"] == "Semifinali" for f in fasi)
+        ):
+          if st.button("🚀 Genera Semifinali", use_container_width=True):
+            q1, q2, q3, q4 = (
+                vincitori_turno[0],
+                vincitori_turno[1],
+                vincitori_turno[2],
+                vincitori_turno[3],
+            )
+            semifinale_partite = [
+                {
+                    "id": "ef_t2_m1",
+                    "p1": q1["p"],
+                    "a1": q2["a"],
+                    "p2": q3["p"],
+                    "a2": q4["a"],
+                    "giocata": False,
+                    "in_corso": False,
+                    "gol1": 0,
+                    "gol2": 0,
+                },
+                {
+                    "id": "ef_t2_m2",
+                    "p1": q2["p"],
+                    "a1": q1["a"],
+                    "p2": q4["p"],
+                    "a2": q3["a"],
+                    "giocata": False,
+                    "in_corso": False,
+                    "gol1": 0,
+                    "gol2": 0,
+                },
+            ]
+            db["fasi_finali"].append({
+                "turno": 2,
+                "nome": "Semifinali",
+                "partite": semifinale_partite,
+            })
+            salva_dati(db)
+            st.rerun()
+        elif (
+            f_turno["nome"] == "Semifinali"
+            and len(vincitori_turno) == 2
+            and not any(
+                f["nome"] == "Finali (1°-2° e 3°-4° Posto)" for f in fasi
+            )
+        ):
+          if st.button("🏁 Genera Finali", use_container_width=True):
+            sf1_v, sf2_v = vincitori_turno[0], vincitori_turno[1]
+            sf1_p, sf2_p = perdenti_turno[0], perdenti_turno[1]
+            finali_partite = [
+                {
+                    "id": "ef_t3_m1",
+                    "p1": sf1_v["p"],
+                    "a1": sf2_v["a"],
+                    "p2": sf2_v["p"],
+                    "a2": sf1_v["a"],
+                    "giocata": False,
+                    "in_corso": False,
+                    "gol1": 0,
+                    "gol2": 0,
+                },
+                {
+                    "id": "ef_t3_m2",
+                    "p1": sf1_p["p"],
+                    "a1": sf2_p["p"],
+                    "p2": sf2_p["p"],
+                    "a2": sf1_p["p"],
+                    "giocata": False,
+                    "in_corso": False,
+                    "gol1": 0,
+                    "gol2": 0,
+                },
+            ]
+            db["fasi_finali"].append({
+                "turno": 3,
+                "nome": "Finali (1°-2° e 3°-4° Posto)",
+                "partite": finali_partite,
+            })
+            salva_dati(db)
+            st.rerun()
+
+    if is_admin:
+      if st.button("⬅️ Indietro ai Gironi", use_container_width=True):
+        db["stato"] = "gironi"
+        salva_dati(db)
+        st.rerun()
