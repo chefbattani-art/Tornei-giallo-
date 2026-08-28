@@ -213,6 +213,16 @@ st.markdown("""
             text-align: center;
             box-shadow: 0 0 25px rgba(239, 68, 68, 0.6);
         }
+        
+        .alert-queue-game {
+            background: linear-gradient(135deg, #064e3b, #022c22);
+            border: 2px solid #22c55e;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 16px;
+            text-align: center;
+            box-shadow: 0 0 25px rgba(34, 197, 94, 0.4);
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -321,7 +331,7 @@ if is_admin and db["stato"] != "setup":
         nuovi_turni = st.number_input("N° Turni", min_value=1, max_value=10, value=db["partite_per_giocatore"])
         if st.button("💾 Aggiorna Parametri", use_container_width=True):
             db["num_tavoli"] = nuovi_tavoli
-            db["partite_per_giocatore"] = nuovi_turni
+            db["partite_per_giocatore"] = nouveaux_turni if 'nouveaux_turni' in locals() else nuovi_turni
             salva_dati(db)
             st.sidebar.success("Parametri aggiornati!")
             st.rerun()
@@ -405,7 +415,7 @@ elif db["stato"] != "setup" and tutti_i_giocatori:
 else:
     giocatore_selezionato = "-- Seleziona il tuo nome --"
 
-# --- INDIVIDUAZIONE ESATTA DELLE PARTITE ATTIVE SUI BILIARDINI ---
+# --- INDIVIDUAZIONE ESATTA DELle PARTITE ATTIVE SUI BILIARDINI ---
 num_tavoli = db.get("num_tavoli", 3)
 partite_attive_correnti = []
 
@@ -429,18 +439,24 @@ elif db["stato"] == "eliminatorie":
             if not m.get("giocata", False):
                 partite_attive_correnti.append(m)
 
-# --- VERIFICA SE IL GIOCATORE SELEZIONATO HA UNA PARTITA ATTIVA E MOSTRALA IN ALTO ---
+# --- VERIFICA SE IL GIOCATORE HA UNA PARTITA IN CORSO SUI TAVOLI ATTIVI O IN CODA ---
 partita_utente_corrente = None
 tavolo_utente_corrente = None
 turno_utente_corrente = None
 
+partita_utente_in_coda = None
+turno_utente_in_coda = None
+
 if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and db["stato"] == "gironi":
+    # 1. Controlla se è su uno dei tavoli attivi correnti (Partita in corso effettiva)
     for b_num in range(1, num_tavoli + 1):
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
                 if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
                     if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
+                        
+                        # Verifica che sia la prima partita da giocare per questo tavolo
                         match_tavolo_attivo = None
                         for t_check in db["turni_partite"]:
                             for idx_c, mc in enumerate(t_check["partite"]):
@@ -459,29 +475,21 @@ if giocatore_selezionato != "-- Seleziona il tuo nome --" and not is_admin and d
         if partita_utente_corrente:
             break
 
+    # 2. Se NON è su un tavolo attivo, controlla se ha una partita in coda (nei turni successivi/non attivi)
     if not partita_utente_corrente:
-        tavoli_occupati_ids = []
-        for b_num in range(1, num_tavoli + 1):
-            for t_obj in db["turni_partite"]:
-                for idx, m in enumerate(t_obj["partite"]):
-                    if ((idx % num_tavoli) + 1) == b_num and not m.get("giocata", False):
-                        tavoli_occupati_ids.append(m['id'])
-                        break
-                if tavoli_occupati_ids and tavoli_occupati_ids[-1] == m.get('id'):
-                    break
-
+        tavoli_occupati_ids = [m_att['id'] for m_att in partite_attive_correnti]
         for t_obj in db["turni_partite"]:
             for idx, m in enumerate(t_obj["partite"]):
                 if not m.get("giocata", False) and m['id'] not in tavoli_occupati_ids:
                     if (giocatore_selezionato == m['p1'] or giocatore_selezionato == m['a1'] or 
                         giocatore_selezionato == m['p2'] or giocatore_selezionato == m['a2']):
-                        partita_utente_corrente = m
-                        tavolo_utente_corrente = (idx % num_tavoli) + 1
-                        turno_utente_corrente = t_obj['turno']
+                        partita_utente_in_coda = m
+                        turno_utente_in_coda = t_obj['turno']
                         break
-            if partita_utente_corrente:
+            if partita_utente_in_coda:
                 break
 
+# --- MOSTRA BOX IN ALTO SE IN CORSO O IN CODA ---
 if partita_utente_corrente:
     st.html("""
         <div class="alert-active-game">
@@ -519,7 +527,6 @@ if partita_utente_corrente:
         st.markdown(f"**🥅 {m_up['p1']} / ⚽ {m_up['a1']} (Gol Coppia 1)**")
         current_g1 = int(m_up.get('gol1', 0))
         
-        # Tastierino integrato 0-7 (2 file da 4 pulsanti)
         r1_cols = st.columns(4)
         for g_val in range(4):
             with r1_cols[g_val]:
@@ -545,7 +552,6 @@ if partita_utente_corrente:
         st.markdown(f"**🥅 {m_up['p2']} / ⚽ {m_up['a2']} (Gol Coppia 2)**")
         current_g2 = int(m_up.get('gol2', 0))
         
-        # Tastierino integrato 0-7 (2 file da 4 pulsanti)
         r3_cols = st.columns(4)
         for g_val in range(4):
             with r3_cols[g_val]:
@@ -573,6 +579,27 @@ if partita_utente_corrente:
             salva_dati(db)
             st.success("Risultato salvato con successo!")
             st.rerun()
+    st.markdown("---")
+
+elif partita_utente_in_coda:
+    m_coda = partita_utente_in_coda
+    t_coda = turno_utente_in_coda
+    st.html(f"""
+        <div class="alert-queue-game">
+            <h4 style="margin: 0; color: #4ade80; font-size: 1.1rem; font-weight: 700;">⏳ LA TUA PROSSIMA PARTITA È IN CODA</h4>
+            <p style="margin: 4px 0 0 0; color: #f8fafc; font-size: 0.95rem; font-weight: 600;">
+                Turno {t_coda} - Attendi che si liberi un biliardino.
+            </p>
+        </div>
+        <div class="queue-match-box">
+            <div style="font-size: 0.85rem; color: #4ade80; font-weight: 700; margin-bottom: 4px;">👉 IL TUO PROSSIMO MATCH (Turno {t_coda})</div>
+            <div style="text-align: center; font-weight: 600; font-size: 0.98rem; color: #f8fafc;">
+                <div>🥅 {m_coda['p1']} / ⚽ {m_coda['a1']}</div>
+                <div style="color: #fbbf24; font-weight: 800; margin: 2px 0;">VS</div>
+                <div>🥅 {m_coda['p2']} / ⚽ {m_coda['a2']}</div>
+            </div>
+        </div>
+    """)
     st.markdown("---")
 
 st.html(
