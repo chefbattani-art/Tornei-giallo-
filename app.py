@@ -60,10 +60,15 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   a_list = list(attaccanti)
 
   turni_partite = []
-  attaccanti_che_hanno_riposato_per_turno = {}
+  ruoli_riposo_per_turno = {}  # Può tracciare chi riposa e se sono attaccanti o portieri
   
   compagni_precedenti = set()
   avversari_precedenti = set()
+
+  # Determiniamo se gestiamo 11 attaccanti o 11 portieri in base alle liste
+  # Se ci sono meno portieri o configurato diversamente, gestiamo il riposo del ruolo in eccesso
+  # Di default il sistema gestiva il riposo degli attaccanti. Se i portieri sono di meno o uguali, gestiamo gli attaccanti, altrimenti invertiamo.
+  is_portieri_in_eccesso = len(p_list) > len(a_list)
 
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
@@ -72,30 +77,41 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
-    idx_riposo_a = (t - 1) % len(a_curr)
-    attaccante_in_riposo = a_curr.pop(idx_riposo_a)
-    attaccanti_che_hanno_riposato_per_turno[t] = attaccante_in_riposo
+    if is_portieri_in_eccesso:
+      idx_riposo_p = (t - 1) % len(p_curr)
+      portiere_in_riposo = p_curr.pop(idx_riposo_p)
+      ruoli_riposo_per_turno[t] = ("portiere", portiere_in_riposo)
+    else:
+      idx_riposo_a = (t - 1) % len(a_curr)
+      attaccante_in_riposo = a_curr.pop(idx_riposo_a)
+      ruoli_riposo_per_turno[t] = ("attaccante", attaccante_in_riposo)
 
     miglior_partite = []
     min_penalita = 999999
 
     for _ in range(300):
-      a_temp = list(a_curr)
-      random.shuffle(a_temp)
+      if is_portieri_in_eccesso:
+        p_temp = list(p_curr)
+        random.shuffle(p_temp)
+        a_temp = list(a_curr)
+      else:
+        p_temp = list(p_curr)
+        a_temp = list(a_curr)
+        random.shuffle(a_temp)
       
       partite_tentative = []
       penalita_tentativo = 0
 
       i = 0
-      while i < len(p_curr) and i < len(a_temp):
-        p1 = p_curr[i]
+      while i < len(p_temp) and i < len(a_temp):
+        p1 = p_temp[i]
         a1 = a_temp[i]
 
-        if i + 1 < len(p_curr) and i + 1 < len(a_temp):
-          p2 = p_curr[i + 1]
+        if i + 1 < len(p_temp) and i + 1 < len(a_temp):
+          p2 = p_temp[i + 1]
           a2 = a_temp[i + 1]
         else:
-          p2 = p_curr[(i + 1) % len(p_curr)]
+          p2 = p_temp[(i + 1) % len(p_temp)]
           a2 = a_temp[(i + 1) % len(a_temp)]
 
         squadra_1 = tuple(sorted([p1, a1]))
@@ -148,73 +164,123 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
           "gol2": 0,
       })
 
-    partite_turno.append({
-        "id": f"t{t}_riposo_a",
-        "p1": "",
-        "a1": attaccante_in_riposo,
-        "p2": "",
-        "a2": "",
-        "giocata": True,
-        "in_corso": False,
-        "gol1": 0,
-        "gol2": 0,
-        "è_riposo_attaccante": True,
-    })
-
-    turni_partite.append({"turno": t, "partite": partite_turno})
-
-  attaccanti_da_recuperare = list(attaccanti_che_hanno_riposato_per_turno.values())
-  if len(attaccanti_da_recuperare) > 0:
-    random.shuffle(attaccanti_da_recuperare)
-    portieri_jolly = list(portieri)
-    random.shuffle(portieri_jolly)
-
-    turno_num = num_turni + 1
-    partite_turno_extra = []
-    match_idx = 0
-    p_index = 0
-
-    for i in range(0, len(attaccanti_da_recuperare), 2):
-      if i + 1 < len(attaccanti_da_recuperare):
-        a1 = attaccanti_da_recuperare[i]
-        a2 = attaccanti_da_recuperare[i + 1]
-
-        pj1 = portieri_jolly[p_index % len(portieri_jolly)]
-        pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
-        p_index += 2
-
-        match_id = f"t{turno_num}_m{match_idx}"
-        partite_turno_extra.append({
-            "id": match_id,
-            "p1": f"{pj1} (Jolly)",
-            "a1": a1,
-            "p2": f"{pj2} (Jolly)",
-            "a2": a2,
-            "giocata": False,
-            "in_corso": False,
-            "gol1": 0,
-            "gol2": 0,
-            "è_extra_recupero": True,
-        })
-        match_idx += 1
-
-    if len(attaccanti_da_recuperare) % 2 != 0:
-      a_singolo = attaccanti_da_recuperare[-1]
-      pj1 = portieri_jolly[p_index % len(portieri_jolly)]
-      pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
-      match_id = f"t{turno_num}_m{match_idx}"
-      partite_turno_extra.append({
-          "id": match_id,
-          "p1": f"{pj1} (Jolly)",
-          "a1": a_singolo,
-          "p2": f"{pj2} (Jolly)",
-          "a2": "RIPOSO",
+    tipo_rip, nome_rip = ruoli_riposo_per_turno[t]
+    if tipo_rip == "attaccante":
+      partite_turno.append({
+          "id": f"t{t}_riposo_a",
+          "p1": "",
+          "a1": nome_rip,
+          "p2": "",
+          "a2": "",
           "giocata": True,
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "è_extra_recupero": True,
+          "è_riposo_attaccante": True,
       })
+    else:
+      partite_turno.append({
+          "id": f"t{t}_riposo_p",
+          "p1": nome_rip,
+          "a1": "",
+          "p2": "",
+          "a2": "",
+          "giocata": True,
+          "in_corso": False,
+          "gol1": 0,
+          "gol2": 0,
+          "è_riposo_portiere": True,
+      })
+
+    turni_partite.append({"turno": t, "partite": partite_turno})
+
+  # Turno Extra / Recupero
+  elementi_da_recuperare = [val[1] for val in ruoli_riposo_per_turno.values()]
+  if len(elementi_da_recuperare) > 0:
+    random.shuffle(elementi_da_recuperare)
+    turno_num = num_turni + 1
+    partite_turno_extra = []
+    match_idx = 0
+
+    if is_portieri_in_eccesso:
+      # Recupero Portieri in eccesso, usiamo gli attaccanti come jolly
+      attaccanti_jolly = list(attaccanti)
+      random.shuffle(attaccanti_jolly)
+      a_index = 0
+
+      for i in range(0, len(elementi_da_recuperare), 2):
+        if i + 1 < len(elementi_da_recuperare):
+          p1_r = elementi_da_recuperare[i]
+          p2_r = elementi_da_recuperare[i + 1]
+
+          aj1 = attaccanti_jolly[a_index % len(attaccanti_jolly)]
+          aj2 = attaccanti_jolly[(a_index + 1) % len(attaccanti_jolly)]
+          a_index += 2
+
+          match_id = f"t{turno_num}_m{match_idx}"
+          partite_turno_extra.append({
+              "id": match_id,
+              "p1": p1_r,
+              "a1": f"{aj1} (Jolly)",
+              "p2": p2_r,
+              "a2": f"{aj2} (Jolly)",
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+              "è_extra_recupero": True,
+              "is_portieri_jolly": True
+          })
+          match_idx += 1
+    else:
+      # Recupero Attaccanti in eccesso, usiamo i portieri come jolly
+      portieri_jolly = list(portieri)
+      random.shuffle(portieri_jolly)
+      p_index = 0
+
+      for i in range(0, len(elementi_da_recuperare), 2):
+        if i + 1 < len(elementi_da_recuperare):
+          a1 = elementi_da_recuperare[i]
+          a2 = elementi_da_recuperare[i + 1]
+
+          pj1 = portieri_jolly[p_index % len(portieri_jolly)]
+          pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
+          p_index += 2
+
+          match_id = f"t{turno_num}_m{match_idx}"
+          partite_turno_extra.append({
+              "id": match_id,
+              "p1": f"{pj1} (Jolly)",
+              "a1": a1,
+              "p2": f"{pj2} (Jolly)",
+              "a2": a2,
+              "giocata": False,
+              "in_corso": False,
+              "gol1": 0,
+              "gol2": 0,
+              "è_extra_recupero": True,
+              "is_portieri_jolly": False
+          })
+          match_idx += 1
+
+      if len(elementi_da_recuperare) % 2 != 0:
+        a_singolo = elementi_da_recuperare[-1]
+        pj1 = portieri_jolly[p_index % len(portieri_jolly)]
+        pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
+        match_id = f"t{turno_num}_m{match_idx}"
+        partite_turno_extra.append({
+            "id": match_id,
+            "p1": f"{pj1} (Jolly)",
+            "a1": a_singolo,
+            "p2": f"{pj2} (Jolly)",
+            "a2": "RIPOSO",
+            "giocata": True,
+            "in_corso": False,
+            "gol1": 0,
+            "gol2": 0,
+            "è_extra_recupero": True,
+            "is_portieri_jolly": False
+        })
 
     if partite_turno_extra:
       turni_partite.append({"turno": turno_num, "partite": partite_turno_extra})
@@ -286,7 +352,7 @@ def ricalcola_classifiche():
 
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
-      if m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
+      if m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
         g1 = m["gol1"]
         g2 = m["gol2"]
         diff = abs(g1 - g2)
@@ -299,23 +365,24 @@ def ricalcola_classifiche():
           pt_s1, pt_s2 = 2, 2
 
         is_extra = m.get("è_extra_recupero", False)
+        is_portieri_jolly = m.get("is_portieri_jolly", False)
 
-        if m["a1"] in a_punti:
+        if m["a1"] in a_punti and not is_portieri_jolly:
           a_punti[m["a1"]] += pt_s1
           a_dr[m["a1"]] += g1 - g2
-        if m["a2"] in a_punti:
+        if m["a2"] in a_punti and not is_portieri_jolly:
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
-        if not is_extra:
-          p1_pulito = pulisci_nome(m["p1"])
-          p2_pulito = pulisci_nome(m["p2"])
-          if p1_pulito in p_punti:
-            p_punti[p1_pulito] += pt_s1
-            p_dr[p1_pulito] += g1 - g2
-          if p2_pulito in p_punti:
-            p_punti[p2_pulito] += pt_s2
-            p_dr[p2_pulito] += g2 - g1
+        p1_pulito = pulisci_nome(m["p1"])
+        p2_pulito = pulisci_nome(m["p2"])
+
+        if p1_pulito in p_punti and not (is_extra and is_portieri_jolly):
+          p_punti[p1_pulito] += pt_s1
+          p_dr[p1_pulito] += g1 - g2
+        if p2_pulito in p_punti and not (is_extra and is_portieri_jolly):
+          p_punti[p2_pulito] += pt_s2
+          p_dr[p2_pulito] += g2 - g1
 
   db["punti_portieri"] = p_punti
   db["dr_portieri"] = p_dr
@@ -328,8 +395,10 @@ def calcola_partite_giocate(ruolo, nome):
   totali = 0
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
-      if m.get("è_riposo_attaccante", False):
+      if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False):
         if ruolo == "attaccante" and m["a1"] == nome:
+          totali += 1
+        if ruolo == "portiere" and m["p1"] == nome:
           totali += 1
         continue
 
@@ -337,10 +406,10 @@ def calcola_partite_giocate(ruolo, nome):
       if ruolo == "portiere":
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
-        if (p1_pulito == nome or p2_pulito == nome) and not m.get("è_extra_recupero", False):
+        if (p1_pulito == nome or p2_pulito == nome) and not (m.get("è_extra_recupero", False) and m.get("is_portieri_jolly", False)):
           is_presente = True
       elif ruolo == "attaccante":
-        if m["a1"] == nome or m["a2"] == nome:
+        if (m["a1"] == nome or m["a2"] == nome) and not (m.get("è_extra_recupero", False) and not m.get("is_portieri_jolly", False)):
           is_presente = True
 
       if is_presente:
@@ -362,12 +431,14 @@ def genera_pdf_calendario():
   for turno_obj in db["turni_partite"]:
     t_nome = turno_obj["turno"]
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, f"Turno {t_nome}" + (" (Turno Extra Recupero Attaccanti)" if t_nome > db.get("partite_per_giocatore", 6) else ""), 0, 1, "L")
+    pdf.cell(0, 8, f"Turno {t_nome}" + (" (Turno Extra Recupero)" if t_nome > db.get("partite_per_giocatore", 6) else ""), 0, 1, "L")
     pdf.set_font("Arial", "", 10)
 
     for idx, m in enumerate(turno_obj["partite"]):
       if m.get("è_riposo_attaccante", False):
         riga = f"  - Riposa ATT: {m['a1']}"
+      elif m.get("è_riposo_portiere", False):
+        riga = f"  - Riposa POR: {m['p1']}"
       else:
         tavolo_num = (idx % num_tavoli) + 1
         risultato = f"{m['gol1']} - {m['gol2']}" if m.get("giocata", False) else "Da giocare"
@@ -439,13 +510,21 @@ st.markdown("""
             box-shadow: 0 4px 15px rgba(52, 211, 153, 0.2);
         }
         .finished-match-box {
-            background: linear-gradient(135deg, #111827, #1f2937);
-            border: 2px solid #4b5563;
+            background: linear-gradient(135deg, #450a0a, #7f1d1d);
+            border: 2px solid #f87171;
             border-radius: 16px;
             padding: 14px;
             margin-bottom: 14px;
             text-align: center;
-            opacity: 0.85;
+            box-shadow: 0 4px 15px rgba(248, 113, 113, 0.25);
+        }
+        .queue-match-box {
+            background: linear-gradient(135deg, #1e3a8a, #1e293b);
+            border: 2px solid #60a5fa;
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-bottom: 10px;
+            box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25);
         }
         .extra-match-box {
             background: linear-gradient(135deg, #451a03, #78350f);
@@ -456,13 +535,14 @@ st.markdown("""
             text-align: center;
             box-shadow: 0 4px 20px rgba(251, 191, 36, 0.25);
         }
-        .talpa-match-box {
-            background: linear-gradient(135deg, #1f2937, #111827);
-            border: 2px dashed #4b5563;
+        .riposo-match-box {
+            background: linear-gradient(135deg, #0c4a6e, #0369a1);
+            border: 2px solid #38bdf8;
             border-radius: 16px;
             padding: 14px;
             margin-bottom: 14px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
         }
         .team-section {
             background: rgba(15, 23, 42, 0.8);
@@ -608,7 +688,7 @@ if db["stato"] == "gironi":
       match_in_corso = None
       for t_obj in db["turni_partite"]:
         for m in t_obj["partite"]:
-          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
+          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
             p1_p = pulisci_nome(m["p1"])
             p2_p = pulisci_nome(m["p2"])
             if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
@@ -638,7 +718,7 @@ if db["stato"] == "gironi":
   
   for t_obj in db["turni_partite"]:
     for m in t_obj["partite"]:
-      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
+      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
         m_info = {"turno": t_obj["turno"], "match": m}
         if len(partite_attive) < num_tavoli:
           partite_attive.append(m_info)
@@ -662,15 +742,15 @@ if db["stato"] == "gironi":
   else:
     st.info("Nessuna partita in corso al momento.")
 
-  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
+  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi Match)")
   if partite_in_coda:
-    for item in partite_in_coda[:num_tavoli]:
+    for item in partite_in_coda:
       m = item["match"]
       st.markdown(f"""
-        <div style="background: rgba(31, 41, 55, 0.6); border: 1px solid #4b5563; padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;">
-            <div style="font-size: 0.85rem; color: #9ca3af; font-weight: 600;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
-            <div style="font-size: 1.05rem; font-weight: 700; color: #e5e7eb; margin-top: 4px;">
-                {m['p1']} e {m['a1']} vs {m['p2']} e {m['a2']}
+        <div class="queue-match-box">
+            <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
+                {m['p1']} e {m['a1']} <span style="color: #60a5fa;">vs</span> {m['p2']} e {m['a2']}
             </div>
         </div>
       """, unsafe_allow_html=True)
@@ -693,15 +773,22 @@ if db["stato"] == "gironi":
   st.markdown("### 🔥 TUTTI I TURNI E RISULTATI")
   for t_obj in db["turni_partite"]:
     is_extra = t_obj["turno"] > db.get("partite_per_giocatore", 6)
-    titolo_turno = f"📌 Turno {t_obj['turno']} (Turno Extra Recupero Attaccanti - GIALLO 🟡)" if is_extra else f"📌 Turno {t_obj['turno']}"
+    titolo_turno = f"📌 Turno {t_obj['turno']} (Turno Extra Recupero - GIALLO 🟡)" if is_extra else f"📌 Turno {t_obj['turno']}"
     st.markdown(f"#### {titolo_turno}")
 
     for idx, m in enumerate(t_obj["partite"]):
       if m.get("è_riposo_attaccante", False):
         st.markdown(f"""
-            <div class="talpa-match-box">
-                <div style="font-weight: 700; color: #9ca3af;">⏳ RIPOSO ATTACCANTE</div>
-                <div><b>Riposa ATT: {m['a1']}</b></div>
+            <div class="riposo-match-box">
+                <div style="font-weight: 800; color: #e0f2fe; font-size: 1.1rem;">⏳ RIPOSO ATTACCANTE</div>
+                <div style="font-size: 1.1rem; color: #ffffff; margin-top: 4px;"><b>Riposa ATT: {m['a1']}</b></div>
+            </div>
+        """, unsafe_allow_html=True)
+      elif m.get("è_riposo_portiere", False):
+        st.markdown(f"""
+            <div class="riposo-match-box">
+                <div style="font-weight: 800; color: #e0f2fe; font-size: 1.1rem;">⏳ RIPOSO PORTIERE</div>
+                <div style="font-size: 1.1rem; color: #ffffff; margin-top: 4px;"><b>Riposa POR: {m['p1']}</b></div>
             </div>
         """, unsafe_allow_html=True)
       elif m.get("è_extra_recupero", False):
@@ -710,13 +797,25 @@ if db["stato"] == "gironi":
         box_class = "finished-match-box" if is_giocata else "extra-match-box"
         testo_risultato = f"✅ <b>Risultato Finale: {m['gol1']} - {m['gol2']}</b>" if is_giocata else "⏳ <b>Da giocare</b>"
 
+        is_portieri_jolly = m.get("is_portieri_jolly", False)
+        if is_portieri_jolly:
+          p1_txt = f'<span style="color: #fbbf24; font-weight: bold;">{m["p1"]}</span>'
+          p2_txt = f'<span style="color: #fbbf24; font-weight: bold;">{m["p2"]}</span>'
+          sottono_txt = "(Attaccanti Jolly - Non prendono punti classifica)"
+          titolo_box = f"🟡 🌟 JOLLY / RECUPERO PORTIERI (Tavolo {tavolo_num})"
+        else:
+          p1_txt = f'{m["p1"]} (<span style="color: #fbbf24; font-weight: bold;">Portiere Jolly</span>)'
+          p2_txt = f'{m["p2"]} (<span style="color: #fbbf24; font-weight: bold;">Portiere Jolly</span>)'
+          sottono_txt = "(Portieri Jolly - Non prendono punti classifica)"
+          titolo_box = f"🟡 🌟 JOLLY / RECUPERO ATTACCANTI (Tavolo {tavolo_num})"
+
         st.markdown(f"""
             <div class="{box_class}">
-                <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px; font-size: 1.1rem;">🟡 🌟 JOLLY / RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
+                <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px; font-size: 1.1rem;">{titolo_box}</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 8px 0;">
-                    {m['p1']} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                    {p1_txt} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {p2_txt} e {m['a2']}
                 </div>
-                <div style="font-size:0.9rem; color:#fde047; margin-bottom: 8px; font-weight: 600;">(Portieri Jolly - Non prendono punti classifica)</div>
+                <div style="font-size:0.9rem; color:#fde047; margin-bottom: 8px; font-weight: 600;">{sottono_txt}</div>
                 <div style="font-size: 1.1rem;">{testo_risultato}</div>
             </div>
         """, unsafe_allow_html=True)
@@ -771,7 +870,7 @@ if db["stato"] == "gironi":
 
         st.markdown(f"""
             <div class="{box_class}">
-                <div style="font-weight: 700; color: {'#9ca3af' if is_giocata else '#34d399'}; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
+                <div style="font-weight: 700; color: {'#f87171' if is_giocata else '#34d399'}; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
                     {m['p1']} e {m['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
                 </div>
