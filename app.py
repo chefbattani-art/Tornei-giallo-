@@ -56,12 +56,11 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
-# --- GENERAZIONE CALENDARIO CON ROTAZIONE SINGOLA E TURNO EXTRA AUTOMATICO ---
+# --- GENERAZIONE CALENDARIO CON TURNO EXTRA VISIBILE FIN DALL'INIZIO ---
 def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
-  # Gestione portieri dispari se necessario
   if len(p_list) % 2 != 0:
     p_list.append("⏳ [RIPOSO]")
 
@@ -72,17 +71,13 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
     p_curr = list(p_list)
     a_curr = list(attaccanti)
 
-    # Rotazione portieri
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
-    # Scegliamo un attaccante che riposa in questo turno (rotazione ciclica per equità)
     idx_riposo_a = (t - 1) % len(a_curr)
     attaccante_in_riposo = a_curr.pop(idx_riposo_a)
     attaccanti_che_hanno_riposato_per_turno[t] = attaccante_in_riposo
 
-    # Ora a_curr ha un numero dispari (se il totale era pari, ora è dispari)
-    # Creiamo gli accoppiamenti
     partite_turno = []
     match_idx = 0
 
@@ -101,7 +96,7 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
           "p2": p2,
           "a2": a2,
           "giocata": contiene_talpa_p,
-          "in_corso": false,
+          "in_corso": False,
           "gol1": 0,
           "gol2": 0,
           "con_talpa_p": contiene_talpa_p,
@@ -109,7 +104,6 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
       match_idx += 1
       i += 2
 
-    # Aggiungiamo l'attaccante che riposa come box dedicato nel turno
     partite_turno.append({
         "id": f"t{t}_riposo_a",
         "p1": "",
@@ -125,8 +119,7 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # --- TURNO EXTRA AUTOMATICO SUBITO DOPO IL TURNO 6 ---
-  # Prende gli attaccanti che hanno riposato nei vari turni e li fa scontrare
+  # --- CREAZIONE TURNO EXTRA SUBITO DOPO IL TURNO 6 (VISIBILE DA SUBITO) ---
   attaccanti_da_recuperare = list(attaccanti_che_hanno_riposato_per_turno.values())
   if len(attaccanti_da_recuperare) > 0:
     random.shuffle(attaccanti_da_recuperare)
@@ -163,7 +156,6 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
         })
         match_idx += 1
 
-    # Gestione eventuale attaccante singolo rimasto nel turno extra se dispari
     if len(attaccanti_da_recuperare) % 2 != 0:
       a_singolo = attaccanti_da_recuperare[-1]
       pj1 = portieri_jolly[p_index % len(portieri_jolly)]
@@ -502,7 +494,6 @@ def ricalcola_classifiche():
 
         is_extra = m.get("è_extra_recupero", False)
 
-        # Aggiorna attaccanti (prendono sempre punti)
         if m["a1"] in a_punti:
           a_punti[m["a1"]] += pt_s1
           a_dr[m["a1"]] += g1 - g2
@@ -510,7 +501,6 @@ def ricalcola_classifiche():
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
-        # I portieri NON prendono punti nel turno extra recupero
         if not is_extra:
           p1_pulito = pulisci_nome(m["p1"])
           p2_pulito = pulisci_nome(m["p2"])
@@ -534,7 +524,7 @@ def calcola_partite_giocate(ruolo, nome):
     for m in turno_obj["partite"]:
       if m.get("è_riposo_attaccante", False):
         if ruolo == "attaccante" and m["a1"] == nome:
-          totali += 1  # figurava nel turno ma riposava
+          totali += 1
         continue
 
       is_presente = False
