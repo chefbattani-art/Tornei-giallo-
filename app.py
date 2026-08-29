@@ -428,17 +428,27 @@ st.markdown("""
             color: #fef08a !important;
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
         }
+        /* SCHEDE PARTITE */
         .live-match-box {
-            background: linear-gradient(135deg, #0f172a, #1e293b);
-            border: 2px solid #38bdf8;
+            background: linear-gradient(135deg, #064e3b, #022c22);
+            border: 2px solid #34d399;
             border-radius: 16px;
             padding: 16px;
             margin-bottom: 14px;
             text-align: center;
-            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15);
+            box-shadow: 0 4px 15px rgba(52, 211, 153, 0.2);
+        }
+        .finished-match-box {
+            background: linear-gradient(135deg, #111827, #1f2937);
+            border: 2px solid #4b5563;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 14px;
+            text-align: center;
+            opacity: 0.85;
         }
         .extra-match-box {
-            background: linear-gradient(135deg, #1c1917, #292524);
+            background: linear-gradient(135deg, #451a03, #78350f);
             border: 2px solid #fbbf24;
             border-radius: 16px;
             padding: 16px;
@@ -462,7 +472,34 @@ st.markdown("""
             margin-bottom: 10px;
             text-align: center;
         }
-        /* Trasformazione Radio Bottoni Gol in Pulsanti Quadrati Gamer Centrali */
+        /* CLASSIFICHE PRO STYLE (Verde / Rosso) */
+        .rank-card-green {
+            background: linear-gradient(135deg, rgba(6, 78, 59, 0.4), rgba(2, 44, 34, 0.6));
+            border-left: 6px solid #34d399;
+            border-top: 1px solid #059669;
+            border-right: 1px solid #059669;
+            border-bottom: 1px solid #059669;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .rank-card-red {
+            background: linear-gradient(135deg, rgba(127, 29, 29, 0.3), rgba(69, 10, 10, 0.5));
+            border-left: 6px solid #f87171;
+            border-top: 1px solid #991b1b;
+            border-right: 1px solid #991b1b;
+            border-bottom: 1px solid #991b1b;
+            padding: 10px 14px;
+            border-radius: 10px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        /* Bottoni Radio Gol Gamer Style */
         div[row-widget] {
             justify-content: center !important;
         }
@@ -498,7 +535,6 @@ st.markdown("""
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.5) !important;
             color: #fbbf24 !important;
         }
-        /* Nascondi il cerchietto nativo dei radio button per un look pulito full-button */
         div.row-widget.stRadio input[type="radio"] {
             display: none !important;
         }
@@ -557,12 +593,10 @@ if db["stato"] == "gironi":
     giocatore_selezionato = st.selectbox("Seleziona il tuo nome per vedere il riepilogo generale:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
     
     if giocatore_selezionato != "-- Seleziona --":
-      # Determina ruolo e statistiche
       ruolo_p = "portiere" if giocatore_selezionato in db["portieri"] else "attaccante"
       pts = db["punti_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["punti_attaccanti"].get(giocatore_selezionato, 0)
       dr = db["dr_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["dr_attaccanti"].get(giocatore_selezionato, 0)
       
-      # Calcolo posizione
       if ruolo_p == "portiere":
         sorted_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
       else:
@@ -571,7 +605,6 @@ if db["stato"] == "gironi":
       pos = next((i + 1 for i, item in enumerate(sorted_list) if item[0] == giocatore_selezionato), "-")
       gioc, tot = calcola_partite_giocate(ruolo_p, giocatore_selezionato)
 
-      # Controlla se ha una partita in corso (non giocata e attiva)
       match_in_corso = None
       for t_obj in db["turni_partite"]:
         for m in t_obj["partite"]:
@@ -593,11 +626,58 @@ if db["stato"] == "gironi":
             <div>📊 <b>Differenza Reti:</b> {dr:+d}</div>
             <div>⚽ <b>Partite:</b> {gioc} / {tot}</div>
           </div>
-          {"<div style='margin-top: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 8px 12px; border-radius: 8px;'>🟢 <b>Partita in corso/programmata:</b> " + match_in_corso + "</div>" if match_in_corso else "<div style='margin-top: 10px; color: #9ca3af;'>Nessuna partita attiva al momento.</div>"}
+          {"<div style='margin-top: 12px; color: #34d399; background: rgba(52,211,153,0.1); padding: 8px 12px; border-radius: 8px;'>🟢 <b>Partita attiva:</b> " + match_in_corso + "</div>" if match_in_corso else "<div style='margin-top: 10px; color: #9ca3af;'>Nessuna partita attiva al momento.</div>"}
         </div>
       """, unsafe_allow_html=True)
 
     st.markdown("---")
+
+  # ESTRAZIONE PARTITE IN CORSO E IN CODA (In base al numero di tavoli)
+  partite_attive = []
+  partite_in_coda = []
+  
+  for t_obj in db["turni_partite"]:
+    for m in t_obj["partite"]:
+      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
+        m_info = {"turno": t_obj["turno"], "match": m}
+        if len(partite_attive) < num_tavoli:
+          partite_attive.append(m_info)
+        else:
+          partite_in_coda.append(m_info)
+
+  st.markdown(f"### 🟢 PARTITE IN CORSO (Live sui {num_tavoli} Biliardini)")
+  if partite_attive:
+    for idx, item in enumerate(partite_attive):
+      m = item["match"]
+      tavolo_num = idx + 1
+      st.markdown(f"""
+        <div class="live-match-box">
+            <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num} (Turno {item['turno']}) — LIVE 🟢</div>
+            <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                {m['p1']} e {m['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+            </div>
+            <div style="font-size: 0.95rem; color: #a7f3d0;">In corso... Inserisci il risultato dal tabellone del turno sotto.</div>
+        </div>
+      """, unsafe_allow_html=True)
+  else:
+    st.info("Nessuna partita in corso al momento.")
+
+  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
+  if partite_in_coda:
+    for item in partite_in_coda[:num_tavoli]:
+      m = item["match"]
+      st.markdown(f"""
+        <div style="background: rgba(31, 41, 55, 0.6); border: 1px solid #4b5563; padding: 12px 16px; border-radius: 12px; margin-bottom: 8px;">
+            <div style="font-size: 0.85rem; color: #9ca3af; font-weight: 600;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
+            <div style="font-size: 1.05rem; font-weight: 700; color: #e5e7eb; margin-top: 4px;">
+                {m['p1']} e {m['a1']} vs {m['p2']} e {m['a2']}
+            </div>
+        </div>
+      """, unsafe_allow_html=True)
+  else:
+    st.info("Nessuna partita in coda.")
+
+  st.markdown("---")
 
   if db["turni_partite"]:
     pdf_bytes = genera_pdf_calendario()
@@ -610,7 +690,7 @@ if db["stato"] == "gironi":
     )
     st.markdown("---")
 
-  st.markdown("### 🔥 PARTITE E TURNI:")
+  st.markdown("### 🔥 TUTTI I TURNI E RISULTATI")
   for t_obj in db["turni_partite"]:
     is_extra = t_obj["turno"] > db.get("partite_per_giocatore", 6)
     titolo_turno = f"📌 Turno {t_obj['turno']} (Turno Extra Recupero Attaccanti - GIALLO 🟡)" if is_extra else f"📌 Turno {t_obj['turno']}"
@@ -626,12 +706,12 @@ if db["stato"] == "gironi":
         """, unsafe_allow_html=True)
       elif m.get("è_extra_recupero", False):
         tavolo_num = (idx % num_tavoli) + 1
-        testo_risultato = "⏳ <b>Da giocare</b>"
-        if m.get("giocata", False):
-          testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
+        is_giocata = m.get("giocata", False)
+        box_class = "finished-match-box" if is_giocata else "extra-match-box"
+        testo_risultato = f"✅ <b>Risultato Finale: {m['gol1']} - {m['gol2']}</b>" if is_giocata else "⏳ <b>Da giocare</b>"
 
         st.markdown(f"""
-            <div class="extra-match-box">
+            <div class="{box_class}">
                 <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px; font-size: 1.1rem;">🟡 🌟 JOLLY / RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 8px 0;">
                     {m['p1']} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
@@ -685,15 +765,15 @@ if db["stato"] == "gironi":
               st.rerun()
       else:
         tavolo_num = (idx % num_tavoli) + 1
-        testo_risultato = "⏳ <b>Da giocare</b>"
-        if m.get("giocata", False):
-          testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
+        is_giocata = m.get("giocata", False)
+        box_class = "finished-match-box" if is_giocata else "live-match-box"
+        testo_risultato = f"✅ <b>Risultato Finale: {m['gol1']} - {m['gol2']}</b>" if is_giocata else "⏳ <b>Da giocare</b>"
 
         st.markdown(f"""
-            <div class="live-match-box">
-                <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
+            <div class="{box_class}">
+                <div style="font-weight: 700; color: {'#9ca3af' if is_giocata else '#34d399'}; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
-                    {m['p1']} e {m['a1']} <span style="color:#38bdf8; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                    {m['p1']} e {m['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
                 </div>
                 <div style="font-size: 1.1rem; margin-top: 8px;">{testo_risultato}</div>
             </div>
@@ -743,17 +823,32 @@ if db["stato"] == "gironi":
               st.rerun()
 
   st.markdown("---")
-  st.markdown("### 🏆 CLASSIFICHE IN TEMPO REALE")
+  st.markdown("### 🏆 CLASSIFICHE PROFESSIONALI IN TEMPO REALE")
+  st.markdown("<div style='font-size: 0.9rem; color: #9ca3af; margin-bottom: 12px;'>🟢 Prime 8 posizioni in zona qualificazione Quarti | 🔴 Ultime posizioni in zona eliminazione</div>", unsafe_allow_html=True)
 
+  st.markdown("#### 🥅 Classifica Portieri")
   sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
   for idx, (p, pt) in enumerate(sorted_p):
     gioc, tot = calcola_partite_giocate("portiere", p)
     dr_p = db["dr_portieri"].get(p, 0)
-    st.write(f"{idx+1}° 🥅 {p} — Punti: {pt} | Diff. Reti: {dr_p:+d} | Partite: {gioc}/{tot}")
+    card_class = "rank-card-green" if idx < 8 else "rank-card-red"
+    st.markdown(f"""
+      <div class="{card_class}">
+        <div><b>{idx+1}°</b> &nbsp; 🥅 &nbsp; <b>{p}</b></div>
+        <div style="color: #cbd5e1; font-size: 0.95rem;">Punti: <b>{pt}</b> &nbsp;|&nbsp; Diff. Reti: <b>{dr_p:+d}</b> &nbsp;|&nbsp; Partite: {gioc}/{tot}</div>
+      </div>
+    """, unsafe_allow_html=True)
 
   st.markdown("<br>", unsafe_allow_html=True)
+  st.markdown("#### ⚽ Classifica Attaccanti")
   sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
   for idx, (a, pt) in enumerate(sorted_a):
     gioc, tot = calcola_partite_giocate("attaccante", a)
     dr_a = db["dr_attaccanti"].get(a, 0)
-    st.write(f"{idx+1}° ⚽ {a} — Punti: {pt} | Diff. Reti: {dr_a:+d} | Partite: {gioc}/{tot}")
+    card_class = "rank-card-green" if idx < 8 else "rank-card-red"
+    st.markdown(f"""
+      <div class="{card_class}">
+        <div><b>{idx+1}°</b> &nbsp; ⚽ &nbsp; <b>{a}</b></div>
+        <div style="color: #cbd5e1; font-size: 0.95rem;">Punti: <b>{pt}</b> &nbsp;|&nbsp; Diff. Reti: <b>{dr_a:+d}</b> &nbsp;|&nbsp; Partite: {gioc}/{tot}</div>
+      </div>
+    """, unsafe_allow_html=True)
