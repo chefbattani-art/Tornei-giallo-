@@ -585,9 +585,9 @@ if db["stato"] == "setup":
     whatsapp_text = st.text_area("Incolla qui la lista da WhatsApp:")
     col1, col2 = st.columns(2)
     with col1:
-      db["num_tavoli"] = st.number_input("Numero di biliardini", min_value=1, max_value=10, value=db["num_tavoli"])
+      db["num_tavoli"] = int(st.text_input("Numero di biliardini", value=str(db["num_tavoli"]), type="default"))
     with col2:
-      db["partite_per_giocatore"] = st.number_input("Turni / Partite garantite", min_value=1, max_value=10, value=db["partite_per_giocatore"])
+      db["partite_per_giocatore"] = int(st.text_input("Turni / Partite garantite", value=str(db["partite_per_giocatore"]), type="default"))
     db["admin_pin"] = st.text_input("PIN Admin", value=db["admin_pin"])
 
     if st.button("🚀 Avvia il Torneo e Genera Calendario"):
@@ -622,7 +622,6 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
-  # WIDGET RIEPILOGO PERSONALE GIOCATORE IN ALTO (Stile "La tua coppia")
   if tutti_i_giocatori:
     st.markdown("### 🔎 Profilo Personale Giocatore")
     giocatore_selezionato = st.selectbox("Seleziona il tuo nome:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
@@ -662,7 +661,6 @@ if db["stato"] == "gironi":
         </div>
       """, unsafe_allow_html=True)
 
-      # RICERCA PARTITA IN CORSO O IN CODA PER IL GIOCATORE SELEZIONATO
       match_trovato = None
       stato_partita = None
       tavolo_assegnato = None
@@ -702,7 +700,6 @@ if db["stato"] == "gironi":
             </div>
           """, unsafe_allow_html=True)
           
-          # Form inserimento risultato direttamente sotto la partita in corso personale
           exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
           if exp_key_open_pers not in st.session_state:
             st.session_state[exp_key_open_pers] = False
@@ -710,22 +707,26 @@ if db["stato"] == "gironi":
           with st.expander(f"⚙️ Inserisci il Risultato (Biliardino {tavolo_assegnato})", expanded=st.session_state[exp_key_open_pers]):
             with st.form(key=f"form_pers_{match_trovato['id']}"):
               st.write("Inserisci i goal assegnati a ciascuna squadra:")
-              curr_g1 = int(match_trovato.get("gol1", 0))
-              curr_g2 = int(match_trovato.get("gol2", 0))
+              curr_g1 = str(match_trovato.get("gol1", 0))
+              curr_g2 = str(match_trovato.get("gol2", 0))
               
               col_pers_1, col_pers_2 = st.columns(2)
               with col_pers_1:
                   st.markdown(f'<b>🥅 {match_trovato["p1"]} & {match_trovato["a1"]}</b>', unsafe_allow_html=True)
-                  nuovo_g1 = st.number_input("Gol S1", min_value=0, max_value=15, value=curr_g1, key=f"num_pers_g1_{match_trovato['id']}", label_visibility="collapsed")
+                  str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_pers_g1_{match_trovato['id']}", label_visibility="collapsed")
               with col_pers_2:
                   st.markdown(f'<b>🥅 {match_trovato["p2"]} & {match_trovato["a2"]}</b>', unsafe_allow_html=True)
-                  nuovo_g2 = st.number_input("Gol S2", min_value=0, max_value=15, value=curr_g2, key=f"num_pers_g2_{match_trovato['id']}", label_visibility="collapsed")
+                  str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_pers_g2_{match_trovato['id']}", label_visibility="collapsed")
               
               st.markdown("<br>", unsafe_allow_html=True)
               submitted_pers = st.form_submit_button("Salva Risultato", use_container_width=True)
               if submitted_pers:
-                match_trovato["gol1"] = int(nuovo_g1)
-                match_trovato["gol2"] = int(nuovo_g2)
+                try:
+                  match_trovato["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                  match_trovato["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+                except ValueError:
+                  match_trovato["gol1"] = 0
+                  match_trovato["gol2"] = 0
                 match_trovato["giocata"] = True
                 ricalcola_classifiche()
                 salva_dati(db)
@@ -746,7 +747,6 @@ if db["stato"] == "gironi":
 
     st.markdown("---")
 
-  # ESTRAZIONE PARTITE IN CORSO E IN CODA GENERALI (Vincolate al numero di biliardini)
   partite_aperte_totali = []
   for t_obj in db["turni_partite"]:
     for idx, m in enumerate(t_obj["partite"]):
@@ -771,7 +771,6 @@ if db["stato"] == "gironi":
         </div>
       """, unsafe_allow_html=True)
 
-      # Possibilità di inserire il risultato anche direttamente dalla sezione partite in corso
       exp_key_gen = f"exp_open_gen_{m['id']}"
       if exp_key_gen not in st.session_state:
         st.session_state[exp_key_gen] = False
@@ -779,22 +778,26 @@ if db["stato"] == "gironi":
       with st.expander(f"⚙️ Inserisci Risultato Biliardino {tav_num} (Turno {item['turno']})", expanded=st.session_state[exp_key_gen]):
         with st.form(key=f"form_gen_{m['id']}"):
           st.write("Inserisci i goal assegnati a ciascuna squadra:")
-          curr_g1 = int(m.get("gol1", 0))
-          curr_g2 = int(m.get("gol2", 0))
+          curr_g1 = str(m.get("gol1", 0))
+          curr_g2 = str(m.get("gol2", 0))
           
           col_gen_1, col_gen_2 = st.columns(2)
           with col_gen_1:
               st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-              nuovo_g1 = st.number_input("Gol S1", min_value=0, max_value=15, value=curr_g1, key=f"num_gen_g1_{m['id']}", label_visibility="collapsed")
+              str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_gen_g1_{m['id']}", label_visibility="collapsed")
           with col_gen_2:
               st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-              nuovo_g2 = st.number_input("Gol S2", min_value=0, max_value=15, value=curr_g2, key=f"num_gen_g2_{m['id']}", label_visibility="collapsed")
+              str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_gen_g2_{m['id']}", label_visibility="collapsed")
           
           st.markdown("<br>", unsafe_allow_html=True)
           submitted_gen = st.form_submit_button("Salva Risultato", use_container_width=True)
           if submitted_gen:
-            m["gol1"] = int(nuovo_g1)
-            m["gol2"] = int(nuovo_g2)
+            try:
+              m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+              m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+            except ValueError:
+              m["gol1"] = 0
+              m["gol2"] = 0
             m["giocata"] = True
             ricalcola_classifiche()
             salva_dati(db)
@@ -889,22 +892,26 @@ if db["stato"] == "gironi":
           with st.form(key=f"form_rec_{m['id']}"):
             st.write("Inserisci i goal assegnati a ciascuna squadra:")
             
-            curr_g1 = int(m.get("gol1", 0))
-            curr_g2 = int(m.get("gol2", 0))
+            curr_g1 = str(m.get("gol1", 0))
+            curr_g2 = str(m.get("gol2", 0))
             
             col_rec_1, col_rec_2 = st.columns(2)
             with col_rec_1:
                 st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-                nuovo_g1 = st.number_input("Gol S1", min_value=0, max_value=15, value=curr_g1, key=f"num_rec_g1_{m['id']}", label_visibility="collapsed")
+                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_rec_g1_{m['id']}", label_visibility="collapsed")
             with col_rec_2:
                 st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-                nuovo_g2 = st.number_input("Gol S2", min_value=0, max_value=15, value=curr_g2, key=f"num_rec_g2_{m['id']}", label_visibility="collapsed")
+                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_rec_g2_{m['id']}", label_visibility="collapsed")
             
             st.markdown("<br>", unsafe_allow_html=True)
             submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
             if submitted:
-              m["gol1"] = int(nuovo_g1)
-              m["gol2"] = int(nuovo_g2)
+              try:
+                m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+              except ValueError:
+                m["gol1"] = 0
+                m["gol2"] = 0
               m["giocata"] = True
               ricalcola_classifiche()
               salva_dati(db)
@@ -934,22 +941,26 @@ if db["stato"] == "gironi":
           with st.form(key=f"form_{m['id']}"):
             st.write("Inserisci i goal assegnati a ciascuna squadra:")
             
-            curr_g1 = int(m.get("gol1", 0))
-            curr_g2 = int(m.get("gol2", 0))
+            curr_g1 = str(m.get("gol1", 0))
+            curr_g2 = str(m.get("gol2", 0))
             
             col_g1, col_g2 = st.columns(2)
             with col_g1:
                 st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-                nuovo_g1 = st.number_input("Gol S1", min_value=0, max_value=15, value=curr_g1, key=f"num_g1_{m['id']}", label_visibility="collapsed")
+                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_g1_{m['id']}", label_visibility="collapsed")
             with col_g2:
                 st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-                nuovo_g2 = st.number_input("Gol S2", min_value=0, max_value=15, value=curr_g2, key=f"num_g2_{m['id']}", label_visibility="collapsed")
+                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_g2_{m['id']}", label_visibility="collapsed")
             
             st.markdown("<br>", unsafe_allow_html=True)
             submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
             if submitted:
-              m["gol1"] = int(nuovo_g1)
-              m["gol2"] = int(nuovo_g2)
+              try:
+                m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+              except ValueError:
+                m["gol1"] = 0
+                m["gol2"] = 0
               m["giocata"] = True
               ricalcola_classifiche()
               salva_dati(db)
