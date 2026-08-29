@@ -165,7 +165,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # --- TURNO EXTRA VISIBILE FIN DALL'INIZIO ---
   attaccanti_da_recuperare = list(
       attaccanti_che_hanno_riposato_per_turno.values()
   )
@@ -229,7 +228,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   return turni_partite
 
 
-# --- FUNZIONI DI GESTIONE AVANZAMENTO FASI ---
 def avvia_quarti():
   sorted_p_list = sorted(
       db["punti_portieri"].items(),
@@ -298,101 +296,6 @@ def avvia_quarti():
   salva_dati(db)
 
 
-def genera_semifinali():
-  quarti = next(
-      (f for f in db.get("fasi_finali", []) if f["nome"] == "Quarti di Finale"),
-      None,
-  )
-  if quarti:
-    vincitori = []
-    for m in quarti["partite"]:
-      if m.get("giocata", False):
-        if m["gol1"] >= m["gol2"]:
-          vincitori.append({"p": m["p1"], "a": m["a1"]})
-        else:
-          vincitori.append({"p": m["p2"], "a": m["a2"]})
-    if len(vincitori) == 4:
-      q1, q2, q3, q4 = vincitori[0], vincitori[1], vincitori[2], vincitori[3]
-      semifinale_partite = [
-          {
-              "id": "ef_t2_m1",
-              "p1": q1["p"],
-              "a1": q2["a"],
-              "p2": q3["p"],
-              "a2": q4["a"],
-              "giocata": False,
-              "in_corso": False,
-              "gol1": 0,
-              "gol2": 0,
-          },
-          {
-              "id": "ef_t2_m2",
-              "p1": q2["p"],
-              "a1": q1["a"],
-              "p2": q4["p"],
-              "a2": q3["a"],
-              "giocata": False,
-              "in_corso": False,
-              "gol1": 0,
-              "gol2": 0,
-          },
-      ]
-      db["fasi_finali"].append(
-          {"turno": 2, "nome": "Semifinali", "partite": semifinale_partite}
-      )
-      salva_dati(db)
-
-
-def genera_finali():
-  semifinali = next(
-      (f for f in db.get("fasi_finali", []) if f["nome"] == "Semifinali"), None
-  )
-  if semifinali:
-    vincitori = []
-    perdenti = []
-    for m in semifinali["partite"]:
-      if m.get("giocata", False):
-        if m["gol1"] >= m["gol2"]:
-          vincitori.append({"p": m["p1"], "a": m["a1"]})
-          perdenti.append({"p": m["p2"], "a": m["a2"]})
-        else:
-          vincitori.append({"p": m["p2"], "a": m["a2"]})
-          perdenti.append({"p": m["p1"], "a": m["a1"]})
-    if len(vincitori) == 2:
-      sf1_v, sf2_v = vincitori[0], vincitori[1]
-      sf1_p, sf2_p = perdenti[0], perdenti[1]
-      finali_partite = [
-          {
-              "id": "ef_t3_m1",
-              "p1": sf1_v["p"],
-              "a1": sf2_v["a"],
-              "p2": sf2_v["p"],
-              "a2": sf1_v["a"],
-              "giocata": False,
-              "in_corso": False,
-              "gol1": 0,
-              "gol2": 0,
-          },
-          {
-              "id": "ef_t3_m2",
-              "p1": sf1_p["p"],
-              "a1": sf2_p["p"],
-              "p2": sf2_p["p"],
-              "a2": sf1_p["p"],
-              "giocata": False,
-              "in_corso": False,
-              "gol1": 0,
-              "gol2": 0,
-          },
-      ]
-      db["fasi_finali"].append({
-          "turno": 3,
-          "nome": "Finali (1°-2° e 3°-4° Posto)",
-          "partite": finali_partite,
-      })
-      salva_dati(db)
-
-
 # --- BARRA LATERALE ADMIN ---
 st.sidebar.header("⚙️ Pannello Admin")
 modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
@@ -416,28 +319,6 @@ if is_admin and db["stato"] != "setup":
       avvia_quarti()
       st.rerun()
   elif db["stato"] == "eliminatorie":
-    fasi_nomi = [f["nome"] for f in db.get("fasi_finali", [])]
-    if "Quarti di Finale" in fasi_nomi and "Semifinali" not in fasi_nomi:
-      quarti = next(
-          f for f in db["fasi_finali"] if f["nome"] == "Quarti di Finale"
-      )
-      if all(m.get("giocata", False) for m in quarti["partite"]):
-        if st.sidebar.button(
-            "🚀 Genera Semifinali", use_container_width=True, key="sb_semi"
-        ):
-          genera_semifinali()
-          st.rerun()
-    if (
-        "Semifinali" in fasi_nomi
-        and "Finali (1°-2° e 3°-4° Posto)" not in fasi_nomi
-    ):
-      semi = next(f for f in db["fasi_finali"] if f["nome"] == "Semifinali")
-      if all(m.get("giocata", False) for m in semi["partite"]):
-        if st.sidebar.button(
-            "🏁 Genera Finali", use_container_width=True, key="sb_finali"
-        ):
-          genera_finali()
-          st.rerun()
     if st.sidebar.button(
         "⬅️ Indietro ai Gironi", use_container_width=True, key="sb_back_gironi"
     ):
@@ -482,15 +363,17 @@ st.markdown(
             background: linear-gradient(135deg, #0f172a, #172554);
             border: 2px solid #fbbf24;
             border-radius: 14px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             margin-bottom: 12px;
+            text-align: center;
         }
         .extra-match-box {
             background: linear-gradient(135deg, #1e1b4b, #311042);
             border: 2px solid #a855f7;
             border-radius: 14px;
-            padding: 12px 16px;
+            padding: 14px 16px;
             margin-bottom: 12px;
+            text-align: center;
         }
         .talpa-match-box {
             background: linear-gradient(135deg, #374151, #1f2937);
@@ -499,6 +382,7 @@ st.markdown(
             padding: 12px 16px;
             margin-bottom: 12px;
             opacity: 0.9;
+            text-align: center;
         }
     </style>
 """,
@@ -627,7 +511,7 @@ def genera_pdf_calendario():
             if m.get("giocata", False)
             else "Da giocare"
         )
-        riga = f"  - Biliardino {tavolo_num}: {m['p1']}/{m['a1']} vs {m['p2']}/{m['a2']} -> {risultato}"
+        riga = f"  - Biliardino {tavolo_num}: {m['p1']} e {m['a1']} vs {m['p2']} e {m['a2']} -> {risultato}"
 
       riga_pulita = riga.encode("latin-1", "ignore").decode("latin-1")
       pdf.cell(0, 6, riga_pulita, 0, 1, "L")
@@ -646,7 +530,6 @@ if is_admin:
     st.query_params.clear()
     st.rerun()
 
-# --- HEADER COMUNE ---
 st.html(
     """
     <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #080e1e, #0b1329); padding: 20px; border-radius: 20px; border: 2px solid #00f2fe;">
@@ -779,68 +662,109 @@ if db["stato"] == "gironi":
         )
       elif m.get("è_extra_recupero", False):
         tavolo_num = (idx % num_tavoli) + 1
+        
+        testo_risultato = "⏳ <b>Da giocare</b>"
+        if m.get("giocata", False):
+          testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
+
         st.html(
             f"""
                 <div class="extra-match-box">
-                    <div style="font-weight: 700; color: #a855f7;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
-                    <div>🥅 {m['p1']} / ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Non prendono punti)</span></div>
+                    <div style="font-weight: 700; color: #a855f7; margin-bottom: 4px;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
+                    <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                        {m['p1']} e {m['a1']} <span style="color:#a855f7; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                    </div>
+                    <div style="font-size:0.85rem; color:#d8b4fe; margin-bottom: 6px;">(Portieri Jolly - Non prendono punti)</div>
+                    <div style="font-size: 1.05rem;">{testo_risultato}</div>
                 </div>
             """
         )
-        if (
+        
+        puoi_votare = (
             is_admin
             or giocatore_selezionato in [m["a1"], m["a2"]]
             or giocatore_selezionato in pulisci_nome(m["p1"])
             or giocatore_selezionato in pulisci_nome(m["p2"])
-        ):
-          with st.expander(
-              f"Inserisci Risultato Recupero Tavolo {tavolo_num} (Turno"
-              f" {t_obj['turno']})"
-          ):
-            g1 = st.number_input(
-                "Gol Coppia 1", 0, 10, int(m.get("gol1", 0)), key=f"g1_{m['id']}"
-            )
-            g2 = st.number_input(
-                "Gol Coppia 2", 0, 10, int(m.get("gol2", 0)), key=f"g2_{m['id']}"
-            )
-            if st.button("Salva Risultato", key=f"save_{m['id']}"):
-              m["gol1"] = g1
-              m["gol2"] = g2
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.rerun()
+        )
+        if puoi_votare:
+          with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} (Turno {t_obj['turno']})"):
+            st.write("Scegli il risultato finale dell'incontro:")
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1:
+              if st.button("Vince Coppia 1 (7-3)", key=f"rec_v1_{m['id']}", use_container_width=True):
+                m["gol1"] = 7
+                m["gol2"] = 3
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
+            with col_b2:
+              if st.button("Pareggio (5-5)", key=f"rec_par_{m['id']}", use_container_width=True):
+                m["gol1"] = 5
+                m["gol2"] = 5
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
+            with col_b3:
+              if st.button("Vince Coppia 2 (3-7)", key=f"rec_v2_{m['id']}", use_container_width=True):
+                m["gol1"] = 3
+                m["gol2"] = 7
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
       else:
         tavolo_num = (idx % num_tavoli) + 1
+        
+        testo_risultato = "⏳ <b>Da giocare</b>"
+        if m.get("giocata", False):
+          testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
+
         st.html(
             f"""
                 <div class="live-match-box">
-                    <div style="font-weight: 700; color: #fbbf24;">🏟️ BILIARDINO {tavolo_num}</div>
-                    <div>🥅 {m['p1']} / ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} / ⚽ {m['a2']}</div>
+                    <div style="font-weight: 700; color: #fbbf24; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
+                    <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                        {m['p1']} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                    </div>
+                    <div style="font-size: 1.1rem; margin-top: 8px;">{testo_risultato}</div>
                 </div>
             """
         )
-        if (
+        
+        puoi_votare = (
             is_admin
             or giocatore_selezionato in [m["p1"], m["a1"], m["p2"], m["a2"]]
-        ):
-          with st.expander(
-              f"Inserisci Risultato Biliardino {tavolo_num} (Turno"
-              f" {t_obj['turno']})"
-          ):
-            g1 = st.number_input(
-                "Gol Coppia 1", 0, 10, int(m.get("gol1", 0)), key=f"g1_{m['id']}"
-            )
-            g2 = st.number_input(
-                "Gol Coppia 2", 0, 10, int(m.get("gol2", 0)), key=f"g2_{m['id']}"
-            )
-            if st.button("Salva Risultato", key=f"save_{m['id']}"):
-              m["gol1"] = g1
-              m["gol2"] = g2
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.rerun()
+        )
+        if puoi_votare:
+          with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})"):
+            st.write("Registra l'esito della partita con un click:")
+            col_b1, col_b2, col_b3 = st.columns(3)
+            with col_b1:
+              if st.button("Vince Coppia 1 (7-3)", key=f"v1_{m['id']}", use_container_width=True):
+                m["gol1"] = 7
+                m["gol2"] = 3
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
+            with col_b2:
+              if st.button("Pareggio (5-5)", key=f"par_{m['id']}", use_container_width=True):
+                m["gol1"] = 5
+                m["gol2"] = 5
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
+            with col_b3:
+              if st.button("Vince Coppia 2 (3-7)", key=f"v2_{m['id']}", use_container_width=True):
+                m["gol1"] = 3
+                m["gol2"] = 7
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.rerun()
 
   st.markdown("---")
   st.markdown("### 🏆 CLASSIFICHE IN TEMPO REALE")
