@@ -265,11 +265,11 @@ if is_admin and db["stato"] != "setup":
       salva_dati(db)
       st.rerun()
 
-st.html("""
+st.markdown("""
     <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #080e1e, #0b1329); padding: 20px; border-radius: 20px; border: 2px solid #00f2fe;">
         <h1 style="margin: 0; color: #00f2fe; font-size: 1.8rem; font-weight: 800;">🏆 Torneo Biliardino 'Giallo' Live</h1>
     </div>
-""")
+""", unsafe_allow_html=True)
 
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
@@ -390,7 +390,7 @@ if is_admin:
     st.query_params.clear()
     st.rerun()
 
-st.html("""
+st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap');
         html { scroll-behavior: smooth; }
@@ -522,19 +522,19 @@ if db["stato"] == "gironi":
 
     for idx, m in enumerate(t_obj["partite"]):
       if m.get("è_riposo_attaccante", False):
-        st.html(f"""
+        st.markdown(f"""
             <div class="talpa-match-box">
                 <div style="font-weight: 700; color: #9ca3af;">⏳ RIPOSO ATTACCANTE</div>
                 <div><b>Riposa ATT: {m['a1']}</b></div>
             </div>
-        """)
+        """, unsafe_allow_html=True)
       elif m.get("è_extra_recupero", False):
         tavolo_num = (idx % num_tavoli) + 1
         testo_risultato = "⏳ <b>Da giocare</b>"
         if m.get("giocata", False):
           testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
 
-        st.html(f"""
+        st.markdown(f"""
             <div class="extra-match-box">
                 <div style="font-weight: 700; color: #a855f7; margin-bottom: 4px;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
                 <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
@@ -543,7 +543,7 @@ if db["stato"] == "gironi":
                 <div style="font-size:0.85rem; color:#d8b4fe; margin-bottom: 6px;">(Portieri Jolly - Non prendono punti)</div>
                 <div style="font-size: 1.05rem;">{testo_risultato}</div>
             </div>
-        """)
+        """, unsafe_allow_html=True)
         
         exp_key_open = f"exp_open_rec_{m['id']}"
         if exp_key_open not in st.session_state:
@@ -593,7 +593,7 @@ if db["stato"] == "gironi":
         if m.get("giocata", False):
           testo_risultato = f"✅ Risultato: <b>{m['gol1']} - {m['gol2']}</b>"
 
-        st.html(f"""
+        st.markdown(f"""
             <div class="live-match-box">
                 <div style="font-weight: 700; color: #fbbf24; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
@@ -601,7 +601,7 @@ if db["stato"] == "gironi":
                 </div>
                 <div style="font-size: 1.1rem; margin-top: 8px;">{testo_risultato}</div>
             </div>
-        """)
+        """, unsafe_allow_html=True)
         
         exp_key_open = f"exp_open_{m['id']}"
         if exp_key_open not in st.session_state:
