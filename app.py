@@ -688,32 +688,22 @@ if db["stato"] == "gironi":
         )
         if puoi_votare:
           with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} (Turno {t_obj['turno']})"):
-            st.write("Scegli il risultato finale dell'incontro:")
-            col_b1, col_b2, col_b3 = st.columns(3)
-            with col_b1:
-              if st.button("Vince Coppia 1 (7-3)", key=f"rec_v1_{m['id']}", use_container_width=True):
-                m["gol1"] = 7
-                m["gol2"] = 3
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
-            with col_b2:
-              if st.button("Pareggio (5-5)", key=f"rec_par_{m['id']}", use_container_width=True):
-                m["gol1"] = 5
-                m["gol2"] = 5
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
-            with col_b3:
-              if st.button("Vince Coppia 2 (3-7)", key=f"rec_v2_{m['id']}", use_container_width=True):
-                m["gol1"] = 3
-                m["gol2"] = 7
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
+            st.write("Seleziona i gol fatti dalle due coppie:")
+            opzioni_gol = list(range(8))
+            
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+              g_s1 = st.radio("Gol Coppia 1", opzioni_gol, index=int(m.get("gol1", 0)), horizontal=True, key=f"radio_rec_g1_{m['id']}")
+            with col_g2:
+              g_s2 = st.radio("Gol Coppia 2", opzioni_gol, index=int(m.get("gol2", 0)), horizontal=True, key=f"radio_rec_g2_{m['id']}")
+            
+            if st.button("Salva Risultato", key=f"btn_save_rec_{m['id']}", use_container_width=True):
+              m["gol1"] = g_s1
+              m["gol2"] = g_s2
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.rerun()
       else:
         tavolo_num = (idx % num_tavoli) + 1
         
@@ -739,32 +729,22 @@ if db["stato"] == "gironi":
         )
         if puoi_votare:
           with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})"):
-            st.write("Registra l'esito della partita con un click:")
-            col_b1, col_b2, col_b3 = st.columns(3)
-            with col_b1:
-              if st.button("Vince Coppia 1 (7-3)", key=f"v1_{m['id']}", use_container_width=True):
-                m["gol1"] = 7
-                m["gol2"] = 3
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
-            with col_b2:
-              if st.button("Pareggio (5-5)", key=f"par_{m['id']}", use_container_width=True):
-                m["gol1"] = 5
-                m["gol2"] = 5
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
-            with col_b3:
-              if st.button("Vince Coppia 2 (3-7)", key=f"v2_{m['id']}", use_container_width=True):
-                m["gol1"] = 3
-                m["gol2"] = 7
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
+            st.write("Seleziona i gol fatti dalle due coppie:")
+            opzioni_gol = list(range(8))
+            
+            col_g1, col_g2 = st.columns(2)
+            with col_g1:
+              g_s1 = st.radio("Gol Coppia 1", opzioni_gol, index=int(m.get("gol1", 0)), horizontal=True, key=f"radio_g1_{m['id']}")
+            with col_g2:
+              g_s2 = st.radio("Gol Coppia 2", opzioni_gol, index=int(m.get("gol2", 0)), horizontal=True, key=f"radio_g2_{m['id']}")
+            
+            if st.button("Salva Risultato", key=f"btn_save_{m['id']}", use_container_width=True):
+              m["gol1"] = g_s1
+              m["gol2"] = g_s2
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.rerun()
 
   st.markdown("---")
   st.markdown("### 🏆 CLASSIFICHE IN TEMPO REALE")
