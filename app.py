@@ -266,8 +266,8 @@ if is_admin and db["stato"] != "setup":
       st.rerun()
 
 st.markdown("""
-    <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #080e1e, #0b1329); padding: 20px; border-radius: 20px; border: 2px solid #00f2fe;">
-        <h1 style="margin: 0; color: #00f2fe; font-size: 1.8rem; font-weight: 800;">🏆 Torneo Biliardino 'Giallo' Live</h1>
+    <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #0b0f19, #111827); padding: 22px; border-radius: 20px; border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);">
+        <h1 style="margin: 0; color: #fbbf24; font-size: 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">🏆 Torneo Biliardino 'Giallo' Live</h1>
     </div>
 """, unsafe_allow_html=True)
 
@@ -413,46 +413,94 @@ st.markdown("""
             background-color: #030712 !important;
         }
         button[data-testid="stBaseButton-secondary"], div.stButton > button {
-            background: linear-gradient(135deg, #0f172a, #1e293b) !important;
-            color: #38bdf8 !important;
-            border: 1px solid #00f2fe !important;
-            border-radius: 10px !important;
+            background: linear-gradient(135deg, #111827, #1f2937) !important;
+            color: #fbbf24 !important;
+            border: 1px solid #fbbf24 !important;
+            border-radius: 12px !important;
             font-weight: 700 !important;
             font-size: 1.1rem !important;
-            height: 48px !important;
+            height: 50px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.2s ease-in-out;
+        }
+        button[data-testid="stBaseButton-secondary"]:hover {
+            border-color: #fef08a !important;
+            color: #fef08a !important;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
         }
         .live-match-box {
-            background: linear-gradient(135deg, #0f172a, #172554);
-            border: 2px solid #fbbf24;
-            border-radius: 14px;
-            padding: 14px 16px;
-            margin-bottom: 12px;
+            background: linear-gradient(135deg, #0f172a, #1e293b);
+            border: 2px solid #38bdf8;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
             text-align: center;
+            box-shadow: 0 4px 15px rgba(56, 189, 248, 0.15);
         }
         .extra-match-box {
-            background: linear-gradient(135deg, #1e1b4b, #311042);
-            border: 2px solid #a855f7;
-            border-radius: 14px;
-            padding: 14px 16px;
-            margin-bottom: 12px;
+            background: linear-gradient(135deg, #1c1917, #292524);
+            border: 2px solid #fbbf24;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 14px;
             text-align: center;
+            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.25);
         }
         .talpa-match-box {
-            background: linear-gradient(135deg, #374151, #1f2937);
-            border: 2px dashed #9ca3af;
-            border-radius: 14px;
-            padding: 12px 16px;
-            margin-bottom: 12px;
-            opacity: 0.9;
+            background: linear-gradient(135deg, #1f2937, #111827);
+            border: 2px dashed #4b5563;
+            border-radius: 16px;
+            padding: 14px;
+            margin-bottom: 14px;
             text-align: center;
         }
         .team-section {
-            background: rgba(15, 23, 42, 0.6);
+            background: rgba(15, 23, 42, 0.8);
             border: 1px solid #334155;
-            padding: 10px;
-            border-radius: 8px;
-            margin-bottom: 6px;
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
             text-align: center;
+        }
+        /* Trasformazione Radio Bottoni Gol in Pulsanti Quadrati Gamer Centrali */
+        div[row-widget] {
+            justify-content: center !important;
+        }
+        div.row-widget.stRadio > div {
+            flex-direction: row !important;
+            justify-content: center !important;
+            gap: 12px !important;
+        }
+        div.row-widget.stRadio label {
+            background-color: #1e293b !important;
+            border: 2px solid #475569 !important;
+            border-radius: 12px !important;
+            padding: 12px 18px !important;
+            font-weight: 800 !important;
+            font-size: 1.3rem !important;
+            color: #f8fafc !important;
+            cursor: pointer !important;
+            transition: all 0.2s ease-in-out !important;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            min-width: 55px;
+            text-align: center;
+        }
+        div.row-widget.stRadio label:hover {
+            border-color: #fbbf24 !important;
+            background-color: #334155 !important;
+        }
+        div.row-widget.stRadio input[type="radio"]:checked + div {
+            color: #fbbf24 !important;
+        }
+        div.row-widget.stRadio label:has(input[type="radio"]:checked) {
+            background: linear-gradient(135deg, #1e293b, #0f172a) !important;
+            border-color: #fbbf24 !important;
+            box-shadow: 0 0 15px rgba(251, 191, 36, 0.5) !important;
+            color: #fbbf24 !important;
+        }
+        /* Nascondi il cerchietto nativo dei radio button per un look pulito full-button */
+        div.row-widget.stRadio input[type="radio"] {
+            display: none !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -503,6 +551,54 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
+  # WIDGET RIEPILOGO PERSONALE GIOCATORE IN ALTO
+  if tutti_i_giocatori:
+    st.markdown("### 🔎 Cerca il tuo Profilo Giocatore")
+    giocatore_selezionato = st.selectbox("Seleziona il tuo nome per vedere il riepilogo generale:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
+    
+    if giocatore_selezionato != "-- Seleziona --":
+      # Determina ruolo e statistiche
+      ruolo_p = "portiere" if giocatore_selezionato in db["portieri"] else "attaccante"
+      pts = db["punti_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["punti_attaccanti"].get(giocatore_selezionato, 0)
+      dr = db["dr_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["dr_attaccanti"].get(giocatore_selezionato, 0)
+      
+      # Calcolo posizione
+      if ruolo_p == "portiere":
+        sorted_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+      else:
+        sorted_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+      
+      pos = next((i + 1 for i, item in enumerate(sorted_list) if item[0] == giocatore_selezionato), "-")
+      gioc, tot = calcola_partite_giocate(ruolo_p, giocatore_selezionato)
+
+      # Controlla se ha una partita in corso (non giocata e attiva)
+      match_in_corso = None
+      for t_obj in db["turni_partite"]:
+        for m in t_obj["partite"]:
+          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
+            p1_p = pulisci_nome(m["p1"])
+            p2_p = pulisci_nome(m["p2"])
+            if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
+              match_in_corso = f"Turno {t_obj['turno']} — {m['p1']} & {m['a1']} vs {m['p2']} & {m['a2']}"
+              break
+        if match_in_corso:
+          break
+
+      st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #111827, #1f2937); border: 2px solid #fbbf24; border-radius: 16px; padding: 18px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(251,191,36,0.15);">
+          <h3 style="margin: 0 0 10px 0; color: #fbbf24;">⚡ Riepilogo Generale: {giocatore_selezionato} ({ruolo_p.capitalize()})</h3>
+          <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 1.1rem;">
+            <div>🏆 <b>Posizione:</b> {pos}°</div>
+            <div>⭐ <b>Punti:</b> {pts}</div>
+            <div>📊 <b>Differenza Reti:</b> {dr:+d}</div>
+            <div>⚽ <b>Partite:</b> {gioc} / {tot}</div>
+          </div>
+          {"<div style='margin-top: 12px; color: #38bdf8; background: rgba(56,189,248,0.1); padding: 8px 12px; border-radius: 8px;'>🟢 <b>Partita in corso/programmata:</b> " + match_in_corso + "</div>" if match_in_corso else "<div style='margin-top: 10px; color: #9ca3af;'>Nessuna partita attiva al momento.</div>"}
+        </div>
+      """, unsafe_allow_html=True)
+
+    st.markdown("---")
+
   if db["turni_partite"]:
     pdf_bytes = genera_pdf_calendario()
     st.download_button(
@@ -517,7 +613,7 @@ if db["stato"] == "gironi":
   st.markdown("### 🔥 PARTITE E TURNI:")
   for t_obj in db["turni_partite"]:
     is_extra = t_obj["turno"] > db.get("partite_per_giocatore", 6)
-    titolo_turno = f"📌 Turno {t_obj['turno']} (Turno Extra Recupero Attaccanti)" if is_extra else f"📌 Turno {t_obj['turno']}"
+    titolo_turno = f"📌 Turno {t_obj['turno']} (Turno Extra Recupero Attaccanti - GIALLO 🟡)" if is_extra else f"📌 Turno {t_obj['turno']}"
     st.markdown(f"#### {titolo_turno}")
 
     for idx, m in enumerate(t_obj["partite"]):
@@ -536,12 +632,12 @@ if db["stato"] == "gironi":
 
         st.markdown(f"""
             <div class="extra-match-box">
-                <div style="font-weight: 700; color: #a855f7; margin-bottom: 4px;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
-                <div style="font-size: 1.15rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
-                    {m['p1']} e {m['a1']} <span style="color:#a855f7; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                <div style="font-weight: 800; color: #fbbf24; margin-bottom: 4px; font-size: 1.1rem;">🟡 🌟 JOLLY / RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
+                <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 8px 0;">
+                    {m['p1']} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
                 </div>
-                <div style="font-size:0.85rem; color:#d8b4fe; margin-bottom: 6px;">(Portieri Jolly - Non prendono punti)</div>
-                <div style="font-size: 1.05rem;">{testo_risultato}</div>
+                <div style="font-size:0.9rem; color:#fde047; margin-bottom: 8px; font-weight: 600;">(Portieri Jolly - Non prendono punti classifica)</div>
+                <div style="font-size: 1.1rem;">{testo_risultato}</div>
             </div>
         """, unsafe_allow_html=True)
         
@@ -549,7 +645,7 @@ if db["stato"] == "gironi":
         if exp_key_open not in st.session_state:
           st.session_state[exp_key_open] = False
 
-        with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
+        with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} [JOLLY] (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
           with st.form(key=f"form_rec_{m['id']}"):
             st.write("Inserisci i goal assegnati a ciascuna squadra:")
             
@@ -595,9 +691,9 @@ if db["stato"] == "gironi":
 
         st.markdown(f"""
             <div class="live-match-box">
-                <div style="font-weight: 700; color: #fbbf24; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
+                <div style="font-weight: 700; color: #38bdf8; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num}</div>
                 <div style="font-size: 1.2rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
-                    {m['p1']} e {m['a1']} <span style="color:#fbbf24; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
+                    {m['p1']} e {m['a1']} <span style="color:#38bdf8; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
                 </div>
                 <div style="font-size: 1.1rem; margin-top: 8px;">{testo_risultato}</div>
             </div>
@@ -652,9 +748,12 @@ if db["stato"] == "gironi":
   sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
   for idx, (p, pt) in enumerate(sorted_p):
     gioc, tot = calcola_partite_giocate("portiere", p)
-    st.write(f"{idx+1}° 🥅 {p} - Punti: {pt} - Partite: {gioc}")
+    dr_p = db["dr_portieri"].get(p, 0)
+    st.write(f"{idx+1}° 🥅 {p} — Punti: {pt} | Diff. Reti: {dr_p:+d} | Partite: {gioc}/{tot}")
 
+  st.markdown("<br>", unsafe_allow_html=True)
   sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
   for idx, (a, pt) in enumerate(sorted_a):
     gioc, tot = calcola_partite_giocate("attaccante", a)
-    st.write(f"{idx+1}° ⚽ {a} - Punti: {pt} - Partite: {gioc}")
+    dr_a = db["dr_attaccanti"].get(a, 0)
+    st.write(f"{idx+1}° ⚽ {a} — Punti: {pt} | Diff. Reti: {dr_a:+d} | Partite: {gioc}/{tot}")
