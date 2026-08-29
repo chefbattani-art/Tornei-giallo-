@@ -61,12 +61,10 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
-  # Se i portieri sono dispari, aggiungiamo la talpa
   usa_talpa_p = len(p_list) % 2 != 0
   if usa_talpa_p:
     p_list.append("⏳ [RIPOSO / TALPA]")
 
-  # Se gli attaccanti sono dispari, aggiungiamo la talpa
   usa_talpa_a = len(a_list) % 2 != 0
   if usa_talpa_a:
     a_list.append("⏳ [RIPOSO / TALPA]")
@@ -74,19 +72,15 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
   turni_partite = []
 
   for t in range(1, num_turni + 1):
-    # Mescoliamo casualmente per mantenere lo spirito del sorteggio "Giallo"
-    # ma facciamo ruotare i turni per equità
     p_curr = list(p_list)
     a_curr = list(a_list)
 
-    # Spostamento ciclico basato sul turno per evitare ripetizioni fisse
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
     offset_a = (t - 1) % len(a_curr)
     a_curr = a_curr[offset_a:] + a_curr[:offset_a]
 
-    # Bilanciamo le liste se hanno lunghezze diverse
     max_len = max(len(p_curr), len(a_curr))
     while len(p_curr) < max_len:
       p_curr.append("⏳ [RIPOSO / TALPA]")
@@ -101,7 +95,6 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
       p1, a1 = p_curr[i], a_curr[i]
       p2, a2 = p_curr[i + 1], a_curr[i + 1]
 
-      # Verifichiamo se la partita coinvolge una Talpa (turno di riposo)
       contiene_talpa = (
           "TALPA" in str(p1)
           or "TALPA" in str(p2)
@@ -116,7 +109,7 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
           "a1": a1,
           "p2": p2,
           "a2": a2,
-          "giocata": contiene_talpa,  # Se c'è la talpa, viene segnata come gestita/saltata
+          "giocata": contiene_talpa,  # Se c'è la talpa, viene marcata come automatica/gestita
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
@@ -435,7 +428,7 @@ st.markdown(
             border-radius: 14px;
             padding: 12px 16px;
             margin-bottom: 12px;
-            opacity: 0.85;
+            opacity: 0.9;
         }
     </style>
 """,
@@ -525,7 +518,7 @@ def genera_pdf_calendario():
     for idx, m in enumerate(turno_obj["partite"]):
       tavolo_num = (idx % num_tavoli) + 1
       if m.get("con_talpa", False):
-        riga = f"  - Turno di Riposo (Talpa) in questo abbinamento: {m['p1']}/{m['a1']} vs {m['p2']}/{m['a2']}"
+        riga = f"  - [RIPOSO / TALPA]: {m['p1']}/{m['a1']} vs {m['p2']}/{m['a2']}"
       else:
         risultato = (
             f"{m['gol1']} - {m['gol2']}"
@@ -651,47 +644,62 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
-  st.markdown("### 🔥 PARTITE ATTIVE:")
+  # Pulsante Download PDF Calendario visibile se il torneo è iniziato
+  if db["turni_partite"]:
+    pdf_bytes = genera_pdf_calendario()
+    st.download_button(
+        label="📥 Scarica Calendario PDF",
+        data=pdf_bytes,
+        file_name="calendario_torneo.pdf",
+        mime="application/pdf",
+        use_container_width=True,
+    )
+    st.markdown("---")
+
+  st.markdown("### 🔥 PARTITE E TURNI:")
   for t_obj in db["turni_partite"]:
+    st.markdown(f"#### 📌 Turno {t_obj['turno']}")
     for idx, m in enumerate(t_obj["partite"]):
       tavolo_num = (idx % num_tavoli) + 1
-      if not m.get("giocata", False):
-        if m.get("con_talpa", False):
-          st.html(
-              f"""
-                    <div class="talpa-match-box">
-                        <div style="font-weight: 700; color: #9ca3af;">⏳ TURNO DI RIPOSO (TALPA IN CORSO) - Turno {t_obj['turno']}</div>
-                        <div>Giocatori a riposo/fittizi in questo slot: <b>{m['p1']} / {m['a1']} vs {m['p2']} / {m['a2']}</b></div>
-                    </div>
-                """
-          )
-        else:
-          st.html(
-              f"""
-                    <div class="live-match-box">
-                        <div style="font-weight: 700; color: #fbbf24;">🏟️ BILIARDINO {tavolo_num} (Turno {t_obj['turno']})</div>
-                        <div>🥅 {m['p1']} / ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} / ⚽ {m['a2']}</div>
-                    </div>
-                """
-          )
-          if (
-              is_admin
-              or giocatore_selezionato in [m["p1"], m["a1"], m["p2"], m["a2"]]
+      if m.get("con_talpa", False):
+        st.html(
+            f"""
+                <div class="talpa-match-box">
+                    <div style="font-weight: 700; color: #9ca3af;">⏳ TURNO DI RIPOSO / TALPA</div>
+                    <div>A riposo in questo abbinamento: <b>{m['p1']} / {m['a1']}</b> vs <b>{m['p2']} / {m['a2']}</b></div>
+                </div>
+            """
+        )
+      else:
+        st.html(
+            f"""
+                <div class="live-match-box">
+                    <div style="font-weight: 700; color: #fbbf24;">🏟️ BILIARDINO {tavolo_num}</div>
+                    <div>🥅 {m['p1']} / ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} / ⚽ {m['a2']}</div>
+                </div>
+            """
+        )
+        if (
+            is_admin
+            or giocatore_selezionato in [m["p1"], m["a1"], m["p2"], m["a2"]]
+        ):
+          with st.expander(
+              f"Inserisci Risultato Biliardino {tavolo_num} (Turno"
+              f" {t_obj['turno']})"
           ):
-            with st.expander(f"Inserisci Risultato Biliardino {tavolo_num}"):
-              g1 = st.number_input(
-                  "Gol Coppia 1", 0, 10, int(m.get("gol1", 0)), key=f"g1_{m['id']}"
-              )
-              g2 = st.number_input(
-                  "Gol Coppia 2", 0, 10, int(m.get("gol2", 0)), key=f"g2_{m['id']}"
-              )
-              if st.button("Salva Risultato", key=f"save_{m['id']}"):
-                m["gol1"] = g1
-                m["gol2"] = g2
-                m["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.rerun()
+            g1 = st.number_input(
+                "Gol Coppia 1", 0, 10, int(m.get("gol1", 0)), key=f"g1_{m['id']}"
+            )
+            g2 = st.number_input(
+                "Gol Coppia 2", 0, 10, int(m.get("gol2", 0)), key=f"g2_{m['id']}"
+            )
+            if st.button("Salva Risultato", key=f"save_{m['id']}"):
+              m["gol1"] = g1
+              m["gol2"] = g2
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.rerun()
 
   st.markdown("---")
   st.markdown("### 🏆 CLASSIFICHE IN TEMPO REALE")
