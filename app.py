@@ -56,64 +56,100 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
-# --- GENERAZIONE CALENDARIO CORRETTA ---
+# --- GENERAZIONE CALENDARIO CORRETTA (ANTIDOPPIONI COMPAGNI/AVVERSARI) ---
 def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
   turni_partite = []
   attaccanti_che_hanno_riposato_per_turno = {}
+  
+  compagni_precedenti = set()
+  avversari_precedenti = set()
 
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
     a_curr = list(a_list)
 
-    # Rotazione dei portieri per ogni turno
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
-    # Scegliamo un attaccante che riposa in questo turno (rotazione ciclica)
     idx_riposo_a = (t - 1) % len(a_curr)
     attaccante_in_riposo = a_curr.pop(idx_riposo_a)
     attaccanti_che_hanno_riposato_per_turno[t] = attaccante_in_riposo
 
-    # Mescoliamo gli attaccanti rimanenti per variare gli abbinamenti
-    random.shuffle(a_curr)
+    miglior_partite = []
+    min_penalita = 999999
+
+    for _ in range(300):
+      a_temp = list(a_curr)
+      random.shuffle(a_temp)
+      
+      partite_tentative = []
+      penalita_tentativo = 0
+
+      i = 0
+      while i < len(p_curr) and i < len(a_temp):
+        p1 = p_curr[i]
+        a1 = a_temp[i]
+
+        if i + 1 < len(p_curr) and i + 1 < len(a_temp):
+          p2 = p_curr[i + 1]
+          a2 = a_temp[i + 1]
+        else:
+          p2 = p_curr[(i + 1) % len(p_curr)]
+          a2 = a_temp[(i + 1) % len(a_temp)]
+
+        squadra_1 = tuple(sorted([p1, a1]))
+        squadra_2 = tuple(sorted([p2, a2]))
+
+        if squadra_1 in compagni_precedenti or squadra_2 in compagni_precedenti:
+          penalita_tentativo += 10
+
+        giocatori_s1 = [p1, a1]
+        giocatori_s2 = [p2, a2]
+        
+        scontri_singoli = []
+        for g_a in giocatori_s1:
+          for g_b in giocatori_s2:
+            coppia_avversaria = tuple(sorted([g_a, g_b]))
+            if coppia_avversaria in avversari_precedenti:
+              penalita_tentativo += 5
+            scontri_singoli.append(coppia_avversaria)
+
+        partite_tentative.append({
+            "p1": p1, "a1": a1, "p2": p2, "a2": a2,
+            "compagni": [squadra_1, squadra_2],
+            "avversari": scontri_singoli
+        })
+        i += 2
+
+      if penalita_tentativo < min_penalita:
+        min_penalita = penalita_tentativo
+        miglior_partite = partite_tentative
+        if min_penalita == 0:
+          break
 
     partite_turno = []
-    match_idx = 0
-
-    # Creazione delle coppie per i tavoli
-    i = 0
-    while i < len(p_curr) and i < len(a_curr):
-      p1 = p_curr[i]
-      a1 = a_curr[i]
-
-      # Se c'è un secondo giocatore disponibile per fare la coppia
-      if i + 1 < len(p_curr) and i + 1 < len(a_curr):
-        p2 = p_curr[i + 1]
-        a2 = a_curr[i + 1]
-      else:
-        # Se i portieri sono in numero diverso dagli attaccanti attivi, gestiamo l'accoppiamento col portiere successivo o ruotato
-        p2 = p_curr[(i + 1) % len(p_curr)]
-        a2 = a_curr[(i + 1) % len(a_curr)]
+    for match_idx, m_data in enumerate(miglior_partite):
+      for comp in m_data["compagni"]:
+        compagni_precedenti.add(comp)
+      for avv in m_data["avversari"]:
+        avversari_precedenti.add(avv)
 
       match_id = f"t{t}_m{match_idx}"
       partite_turno.append({
           "id": match_id,
-          "p1": p1,
-          "a1": a1,
-          "p2": p2,
-          "a2": a2,
+          "p1": m_data["p1"],
+          "a1": m_data["a1"],
+          "p2": m_data["p2"],
+          "a2": m_data["a2"],
           "giocata": False,
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
       })
-      match_idx += 1
-      i += 2
 
-    # Box informativo per l'attaccante che riposa in questo turno
     partite_turno.append({
         "id": f"t{t}_riposo_a",
         "p1": "",
@@ -130,7 +166,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     turni_partite.append({"turno": t, "partite": partite_turno})
 
   # --- TURNO EXTRA VISIBILE FIN DALL'INIZIO ---
-  # Prende gli attaccanti che hanno riposato nei turni precedenti e li fa scontrare
   attaccanti_da_recuperare = list(
       attaccanti_che_hanno_riposato_per_turno.values()
   )
@@ -512,7 +547,6 @@ def ricalcola_classifiche():
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
-        # I portieri NON prendono punti nel turno extra recupero
         if not is_extra:
           p1_pulito = pulisci_nome(m["p1"])
           p2_pulito = pulisci_nome(m["p2"])
