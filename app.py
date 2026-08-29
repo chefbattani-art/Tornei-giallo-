@@ -326,7 +326,7 @@ if is_admin and db["stato"] != "setup":
       salva_dati(db)
       st.rerun()
 
-# --- CSS PERSONALIZZATO ---
+# --- CSS PERSONALIZZATO PER INgrandire I BOTTONI DEI RADIO ---
 st.markdown(
     """
     <style>
@@ -358,6 +358,15 @@ st.markdown(
             font-weight: 700 !important;
             font-size: 1.1rem !important;
             height: 48px !important;
+        }
+        /* Ingrandisce i pallini e il testo dei radio button */
+        div[row-widget="true"] label, div.stRadio label {
+            font-size: 1.25rem !important;
+            font-weight: 700 !important;
+        }
+        div.stRadio input[type="radio"] {
+            transform: scale(1.5);
+            margin-right: 8px;
         }
         .live-match-box {
             background: linear-gradient(135deg, #0f172a, #172554);
@@ -687,23 +696,31 @@ if db["stato"] == "gironi":
             or giocatore_selezionato in pulisci_nome(m["p2"])
         )
         if puoi_votare:
-          with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} (Turno {t_obj['turno']})"):
-            st.write("Seleziona i gol fatti dalle due coppie:")
-            opzioni_gol = list(range(8))
-            
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
-              g_s1 = st.radio("Gol Coppia 1", opzioni_gol, index=int(m.get("gol1", 0)), horizontal=True, key=f"radio_rec_g1_{m['id']}")
-            with col_g2:
-              g_s2 = st.radio("Gol Coppia 2", opzioni_gol, index=int(m.get("gol2", 0)), horizontal=True, key=f"radio_rec_g2_{m['id']}")
-            
-            if st.button("Salva Risultato", key=f"btn_save_rec_{m['id']}", use_container_width=True):
-              m["gol1"] = g_s1
-              m["gol2"] = g_s2
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.rerun()
+          # Usiamo l'argomento expanded controllato da session_state per chiudere la tendina al salvataggio
+          exp_key_open = f"exp_open_rec_{m['id']}"
+          if exp_key_open not in st.session_state:
+            st.session_state[exp_key_open] = False
+
+          with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
+            with st.form(key=f"form_rec_{m['id']}"):
+              st.write("Seleziona i gol fatti dalle due coppie:")
+              
+              st.markdown("<b>Gol Coppia 1:</b>", unsafe_allow_html=True)
+              g_s1 = st.radio("Gol Coppia 1", [0, 1, 2, 3, 4, 5, 6, 7], index=int(m.get("gol1", 0)), horizontal=True, key=f"r_rec_g1_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br><b>Gol Coppia 2:</b>", unsafe_allow_html=True)
+              g_s2 = st.radio("Gol Coppia 2", [0, 1, 2, 3, 4, 5, 6, 7], index=int(m.get("gol2", 0)), horizontal=True, key=f"r_rec_g2_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
+              if submitted:
+                m["gol1"] = g_s1
+                m["gol2"] = g_s2
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.session_state[exp_key_open] = False
+                st.rerun()
       else:
         tavolo_num = (idx % num_tavoli) + 1
         
@@ -728,23 +745,30 @@ if db["stato"] == "gironi":
             or giocatore_selezionato in [m["p1"], m["a1"], m["p2"], m["a2"]]
         )
         if puoi_votare:
-          with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})"):
-            st.write("Seleziona i gol fatti dalle due coppie:")
-            opzioni_gol = list(range(8))
-            
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
-              g_s1 = st.radio("Gol Coppia 1", opzioni_gol, index=int(m.get("gol1", 0)), horizontal=True, key=f"radio_g1_{m['id']}")
-            with col_g2:
-              g_s2 = st.radio("Gol Coppia 2", opzioni_gol, index=int(m.get("gol2", 0)), horizontal=True, key=f"radio_g2_{m['id']}")
-            
-            if st.button("Salva Risultato", key=f"btn_save_{m['id']}", use_container_width=True):
-              m["gol1"] = g_s1
-              m["gol2"] = g_s2
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.rerun()
+          exp_key_open = f"exp_open_{m['id']}"
+          if exp_key_open not in st.session_state:
+            st.session_state[exp_key_open] = False
+
+          with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
+            with st.form(key=f"form_{m['id']}"):
+              st.write("Seleziona i gol fatti dalle due coppie:")
+              
+              st.markdown("<b>Gol Coppia 1:</b>", unsafe_allow_html=True)
+              g_s1 = st.radio("Gol Coppia 1", [0, 1, 2, 3, 4, 5, 6, 7], index=int(m.get("gol1", 0)), horizontal=True, key=f"r_g1_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br><b>Gol Coppia 2:</b>", unsafe_allow_html=True)
+              g_s2 = st.radio("Gol Coppia 2", [0, 1, 2, 3, 4, 5, 6, 7], index=int(m.get("gol2", 0)), horizontal=True, key=f"r_g2_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
+              if submitted:
+                m["gol1"] = g_s1
+                m["gol2"] = g_s2
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.session_state[exp_key_open] = False
+                st.rerun()
 
   st.markdown("---")
   st.markdown("### 🏆 CLASSIFICHE IN TEMPO REALE")
