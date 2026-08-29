@@ -60,14 +60,11 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   a_list = list(attaccanti)
 
   turni_partite = []
-  ruoli_riposo_per_turno = {}  # Può tracciare chi riposa e se sono attaccanti o portieri
+  ruoli_riposo_per_turno = {}
   
   compagni_precedenti = set()
   avversari_precedenti = set()
 
-  # Determiniamo se gestiamo 11 attaccanti o 11 portieri in base alle liste
-  # Se ci sono meno portieri o configurato diversamente, gestiamo il riposo del ruolo in eccesso
-  # Di default il sistema gestiva il riposo degli attaccanti. Se i portieri sono di meno o uguali, gestiamo gli attaccanti, altrimenti invertiamo.
   is_portieri_in_eccesso = len(p_list) > len(a_list)
 
   for t in range(1, num_turni + 1):
@@ -194,7 +191,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # Turno Extra / Recupero
   elementi_da_recuperare = [val[1] for val in ruoli_riposo_per_turno.values()]
   if len(elementi_da_recuperare) > 0:
     random.shuffle(elementi_da_recuperare)
@@ -203,7 +199,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     match_idx = 0
 
     if is_portieri_in_eccesso:
-      # Recupero Portieri in eccesso, usiamo gli attaccanti come jolly
       attaccanti_jolly = list(attaccanti)
       random.shuffle(attaccanti_jolly)
       a_index = 0
@@ -233,7 +228,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
           })
           match_idx += 1
     else:
-      # Recupero Attaccanti in eccesso, usiamo i portieri come jolly
       portieri_jolly = list(portieri)
       random.shuffle(portieri_jolly)
       p_index = 0
@@ -552,7 +546,7 @@ st.markdown("""
             margin-bottom: 10px;
             text-align: center;
         }
-        /* CLASSIFICHE PRO STYLE (Verde / Rosso) */
+        /* CLASSIFICHE PRO STYLE */
         .rank-card-green {
             background: linear-gradient(135deg, rgba(6, 78, 59, 0.4), rgba(2, 44, 34, 0.6));
             border-left: 6px solid #34d399;
@@ -667,10 +661,10 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
-  # WIDGET RIEPILOGO PERSONALE GIOCATORE IN ALTO
+  # WIDGET RIEPILOGO PERSONALE GIOCATORE IN ALTO (Stile "La tua coppia")
   if tutti_i_giocatori:
-    st.markdown("### 🔎 Cerca il tuo Profilo Giocatore")
-    giocatore_selezionato = st.selectbox("Seleziona il tuo nome per vedere il riepilogo generale:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
+    st.markdown("### 🔎 Profilo Personale Giocatore")
+    giocatore_selezionato = st.selectbox("Seleziona il tuo nome:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
     
     if giocatore_selezionato != "-- Seleziona --":
       ruolo_p = "portiere" if giocatore_selezionato in db["portieri"] else "attaccante"
@@ -683,68 +677,131 @@ if db["stato"] == "gironi":
         sorted_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
       
       pos = next((i + 1 for i, item in enumerate(sorted_list) if item[0] == giocatore_selezionato), "-")
-      gioc, tot = calcola_partite_giocate(ruolo_p, giocatore_selezionato)
 
-      match_in_corso = None
+      st.markdown(f"""
+        <div style="background: linear-gradient(135deg, #0b0f19, #111827); border: 2px solid #fbbf24; border-radius: 20px; padding: 20px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(251,191,36,0.2);">
+          <div style="font-size: 0.85rem; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">IL TUO PROFILO</div>
+          <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 16px;">
+            {'🥅' if ruolo_p == 'portiere' else '⚽'} {giocatore_selezionato}
+          </div>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">POSIZIONE</div>
+              <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-top: 4px;">{pos}° POSTO</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">RUOLO</div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #60a5fa; margin-top: 4px;">{ruolo_p.capitalize()}</div>
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">PUNTI / DR</div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #fbbf24; margin-top: 4px;">{pts} PT <span style="font-size: 0.85rem; color: #94a3b8;">({dr:+d})</span></div>
+            </div>
+          </div>
+        </div>
+      """, unsafe_allow_html=True)
+
+      # RICERCA PARTITA IN CORSO O IN CODA PER IL GIOCATORE SELEZIONATO
+      match_trovato = None
+      stato_partita = None # "in_corso" oppure "in_coda"
+      tavolo_assegnato = None
+
+      partite_da_giocare_totali = []
       for t_obj in db["turni_partite"]:
-        for m in t_obj["partite"]:
+        for idx, m in enumerate(t_obj["partite"]):
           if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
             p1_p = pulisci_nome(m["p1"])
             p2_p = pulisci_nome(m["p2"])
             if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
-              match_in_corso = f"Turno {t_obj['turno']} — {m['p1']} & {m['a1']} vs {m['p2']} & {m['a2']}"
+              tavolo_num = (idx % num_tavoli) + 1
+              partite_da_giocare_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
+
+      if partite_da_giocare_totali:
+        # Le prime N partite (dove N = num_tavoli) sono considerate IN CORSO, le successive IN CODA
+        for pos_idx, p_item in enumerate(partite_da_giocare_totali):
+          if p_item["match"] == partite_da_giocare_totali[0]["match"] and pos_idx < num_tavoli:
+            # Semplificazione: verifichiamo se rientra nei tavoli attivi
+            pass
+
+      # Analisi pulita basata sull'ordine globale delle partite aperte
+      aperte_counter = 0
+      for t_obj in db["turni_partite"]:
+        for idx, m in enumerate(t_obj["partite"]):
+          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+            p1_p = pulisci_nome(m["p1"])
+            p2_p = pulisci_nome(m["p2"])
+            if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
+              tavolo_num = (idx % num_tavoli) + 1
+              if aperte_counter < num_tavoli:
+                match_trovato = m
+                stato_partita = "in_corso"
+                tavolo_assegnato = tavolo_num
+                turno_attivo = t_obj["turno"]
+              else:
+                match_trovato = m
+                stato_partita = "in_coda"
+                turno_attivo = t_obj["turno"]
               break
-        if match_in_corso:
+            aperte_counter += 1
+        if match_trovato:
           break
 
-      st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #111827, #1f2937); border: 2px solid #fbbf24; border-radius: 16px; padding: 18px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(251,191,36,0.15);">
-          <h3 style="margin: 0 0 10px 0; color: #fbbf24;">⚡ Riepilogo Generale: {giocatore_selezionato} ({ruolo_p.capitalize()})</h3>
-          <div style="display: flex; flex-wrap: wrap; gap: 20px; font-size: 1.1rem;">
-            <div>🏆 <b>Posizione:</b> {pos}°</div>
-            <div>⭐ <b>Punti:</b> {pts}</div>
-            <div>📊 <b>Differenza Reti:</b> {dr:+d}</div>
-            <div>⚽ <b>Partite:</b> {gioc} / {tot}</div>
-          </div>
-          {"<div style='margin-top: 12px; color: #34d399; background: rgba(52,211,153,0.1); padding: 8px 12px; border-radius: 8px;'>🟢 <b>Partita attiva:</b> " + match_in_corso + "</div>" if match_in_corso else "<div style='margin-top: 10px; color: #9ca3af;'>Nessuna partita attiva al momento.</div>"}
-        </div>
-      """, unsafe_allow_html=True)
+      st.markdown("### 🔍 La tua partita:")
+      if match_trovato:
+        if stato_partita == "in_corso":
+          st.markdown(f"""
+            <div class="live-match-box">
+                <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🟢 PARTITA IN CORSO (Biliardino {tavolo_assegnato} - Turno {turno_attivo})</div>
+                <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                    {match_trovato['p1']} e {match_trovato['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {match_trovato['p2']} e {match_trovato['a2']}
+                </div>
+                <div style="font-size: 0.95rem; color: #a7f3d0;">Mettiti comodo al biliardino!</div>
+            </div>
+          """, unsafe_allow_html=True)
+        else:
+          st.markdown(f"""
+            <div class="queue-match-box">
+                <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ PARTITA IN CODA (Turno {turno_attivo})</div>
+                <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
+                    {match_trovato['p1']} e {match_trovato['a1']} <span style="color: #60a5fa;">vs</span> {match_trovato['p2']} e {match_trovato['a2']}
+                </div>
+                <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
+            </div>
+          """, unsafe_allow_html=True)
+      else:
+        st.info("Nessuna partita attiva o in coda per te al momento.")
 
     st.markdown("---")
 
-  # ESTRAZIONE PARTITE IN CORSO E IN CODA (In base al numero di tavoli)
-  partite_attive = []
-  partite_in_coda = []
-  
+  # ESTRAZIONE PARTITE IN CORSO E IN CODA GENERALI (Vincolate al numero di biliardini)
+  partite_aperte_totali = []
   for t_obj in db["turni_partite"]:
-    for m in t_obj["partite"]:
+    for idx, m in enumerate(t_obj["partite"]):
       if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-        m_info = {"turno": t_obj["turno"], "match": m}
-        if len(partite_attive) < num_tavoli:
-          partite_attive.append(m_info)
-        else:
-          partite_in_coda.append(m_info)
+        tavolo_num = (idx % num_tavoli) + 1
+        partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
 
-  st.markdown(f"### 🟢 PARTITE IN CORSO (Live sui {num_tavoli} Biliardini)")
-  if partite_attive:
-    for idx, item in enumerate(partite_attive):
+  partite_in_corso_gen = partite_aperte_totali[:num_tavoli]
+  partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2] # Esattamente pari al numero di biliardini
+
+  st.markdown(f"### 🟢 PARTITE IN CORSO ( sui {num_tavoli} Biliardini )")
+  if partite_in_corso_gen:
+    for item in partite_in_corso_gen:
       m = item["match"]
-      tavolo_num = idx + 1
       st.markdown(f"""
         <div class="live-match-box">
-            <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {tavolo_num} (Turno {item['turno']}) — LIVE 🟢</div>
+            <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {item['tavolo']} (Turno {item['turno']}) — LIVE 🟢</div>
             <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
                 {m['p1']} e {m['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
             </div>
-            <div style="font-size: 0.95rem; color: #a7f3d0;">In corso... Inserisci il risultato dal tabellone del turno sotto.</div>
         </div>
       """, unsafe_allow_html=True)
   else:
     st.info("Nessuna partita in corso al momento.")
 
-  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi Match)")
-  if partite_in_coda:
-    for item in partite_in_coda:
+  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
+  if partite_in_coda_gen:
+    for item in partite_in_coda_gen:
       m = item["match"]
       st.markdown(f"""
         <div class="queue-match-box">
