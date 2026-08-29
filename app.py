@@ -31,6 +31,7 @@ def carica_dati():
       "dr_portieri": {},
       "dr_attaccanti": {},
       "fasi_finali": [],
+      "turno_extra_generato": False,
   }
   if os.path.exists(DB_FILE):
     try:
@@ -109,7 +110,7 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
           "a1": a1,
           "p2": p2,
           "a2": a2,
-          "giocata": contiene_talpa,  # Se c'è la talpa, viene marcata come automatica/gestita
+          "giocata": contiene_talpa,
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
@@ -121,6 +122,74 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
     turni_partite.append({"turno": t, "partite": partite_turno})
 
   return turni_partite
+
+
+# --- FUNZIONE AGGIUNTA TURNO EXTRA DI RECUPERO ---
+def aggiungi_turno_extra_recupero():
+  if db.get("turno_extra_generato", False):
+    return
+
+  # Conta le partite effettivamente giocate da ciascun attaccante nei turni regolari
+  partite_attaccanti = {a: 0 for a in db["attaccanti"]}
+  for turno_obj in db["turni_partite"]:
+    if turno_obj["turno"] > db.get("partite_per_giocatore", 6):
+      continue  # Evita di contare turni extra precedenti
+    for m in turno_obj["partite"]:
+      if m.get("giocata", False) and not m.get("con_talpa", False):
+        if m["a1"] in partite_attaccanti:
+          partite_attaccanti[m["a1"]] += 1
+        if m["a2"] in partite_attaccanti:
+          partite_attaccanti[m["a2"]] += 1
+
+  # Identifichiamo gli attaccanti che hanno meno partite rispetto al massimo (es. 5 invece di 6)
+  max_partite = max(partite_attaccanti.values()) if partite_attaccanti else 0
+  attaccanti_da_recuperare = [
+      a for a, count in partite_attaccanti.items() if count < max_partite
+  ]
+
+  if not attaccanti_da_recuperare:
+    return  # Tutti hanno già lo stesso numero di partite
+
+  random.shuffle(attaccanti_da_recuperare)
+  portieri_jolly = list(db["portieri"])
+  random.shuffle(portieri_jolly)
+
+  turno_num = len(db["turni_partite"]) + 1
+  partite_turno_extra = []
+  match_idx = 0
+  p_index = 0
+
+  for i in range(0, len(attaccanti_da_recuperare), 2):
+    if i + 1 < len(attaccanti_da_recuperare):
+      a1 = attaccanti_da_recuperare[i]
+      a2 = attaccanti_da_recuperare[i + 1]
+
+      pj1 = portieri_jolly[p_index % len(portieri_jolly)]
+      pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
+      p_index += 2
+
+      match_id = f"t{turno_num}_m{match_idx}"
+      partite_turno_extra.append({
+          "id": match_id,
+          "p1": f"🥅 {pj1} (Jolly)",
+          "a1": a1,
+          "p2": f"🥅 {pj2} (Jolly)",
+          "a2": a2,
+          "giocata": False,
+          "in_corso": False,
+          "gol1": 0,
+          "gol2": 0,
+          "con_talpa": False,
+          "è_extra_recupero": True,
+      })
+      match_idx += 1
+
+  if partite_turno_extra:
+    db["turni_partite"].append(
+        {"turno": turno_num, "partite": partite_turno_extra}
+    )
+    db["turno_extra_generato"] = True
+    salva_dati(db)
 
 
 # --- FUNZIONI DI GESTIONE AVANZAMENTO FASI ---
@@ -311,6 +380,28 @@ if modalita_admin:
 if is_admin and db["stato"] != "setup":
   st.sidebar.markdown("---")
   st.sidebar.subheader("🕹️ Avanzamento Fasi")
+
+  # Pulsante per generare il turno extra di recupero se i turni regolari sono finiti
+  partite_standard = db.get("partite_per_giocatore", 6)
+  turni_regolari_completati = all(
+      any(m.get("giocata", False) for m in t["partite"])
+      for t in db["turni_partite"]
+      if t["turno"] <= partite_standard
+  )
+
+  if (
+      turni_regolari_completati
+      and not db.get("turno_extra_generato", False)
+      and db["stato"] == "gironi"
+  ):
+    if st.sidebar.button(
+        "➕ Genera Turno Extra Recupero",
+        use_container_width=True,
+        key="sb_recupero",
+    ):
+      aggiungi_turno_extra_recupero()
+      st.rerun()
+
   if db["stato"] == "gironi":
     if st.sidebar.button(
         "🏆 Avvia Quarti di Finale", use_container_width=True, key="sb_quarti"
@@ -380,44 +471,16 @@ st.markdown(
             font-size: 1.1rem !important;
             height: 48px !important;
         }
-        .ranking-card {
-            background: linear-gradient(145deg, #080e1e, #030712);
-            border: 2px solid #00f2fe;
-            border-radius: 20px;
-            padding: 20px;
-            box-shadow: 0 0 25px rgba(0, 242, 254, 0.3);
-            margin-bottom: 20px;
-        }
-        .ranking-title {
-            text-align: center;
-            color: #00f2fe;
-            font-size: 1.4rem;
-            font-weight: 700;
-            margin-bottom: 16px;
-        }
-        .player-row-green {
-            background: linear-gradient(135deg, #064e3b, #022c22);
-            border: 2px solid #22c55e;
-            border-radius: 14px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .player-row-red {
-            background: linear-gradient(135deg, #7f1d1d, #450a0a);
-            border: 2px solid #ef4444;
-            border-radius: 14px;
-            padding: 12px 16px;
-            margin-bottom: 10px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
         .live-match-box {
             background: linear-gradient(135deg, #0f172a, #172554);
             border: 2px solid #fbbf24;
+            border-radius: 14px;
+            padding: 12px 16px;
+            margin-bottom: 12px;
+        }
+        .extra-match-box {
+            background: linear-gradient(135deg, #1e1b4b, #311042);
+            border: 2px solid #a855f7;
             border-radius: 14px;
             padding: 12px 16px;
             margin-bottom: 12px;
@@ -462,6 +525,9 @@ def ricalcola_classifiche():
         else:
           pt_s1, pt_s2 = 2, 2
 
+        # Se è una partita extra di recupero, i punti vanno SOLO agli attaccanti (i portieri sono jolly e non prendono punti)
+        is_extra = m.get("è_extra_recupero", False)
+
         if m["a1"] in a_punti:
           a_punti[m["a1"]] += pt_s1
           a_dr[m["a1"]] += g1 - g2
@@ -469,12 +535,15 @@ def ricalcola_classifiche():
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
-        if m["p1"] in p_punti:
-          p_punti[m["p1"]] += pt_s1
-          p_dr[m["p1"]] += g1 - g2
-        if m["p2"] in p_punti:
-          p_punti[m["p2"]] += pt_s2
-          p_dr[m["p2"]] += g2 - g1
+        if not is_extra:
+          p1_pulito = pulisci_nome(m["p1"])
+          p2_pulito = pulisci_nome(m["p2"])
+          if p1_pulito in p_punti:
+            p_punti[p1_pulito] += pt_s1
+            p_dr[p1_pulito] += g1 - g2
+          if p2_pulito in p_punti:
+            p_punti[p2_pulito] += pt_s2
+            p_dr[p2_pulito] += g2 - g1
 
   db["punti_portieri"] = p_punti
   db["dr_portieri"] = p_dr
@@ -488,10 +557,16 @@ def calcola_partite_giocate(ruolo, nome):
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
       is_presente = False
-      if ruolo == "portiere" and (m["p1"] == nome or m["p2"] == nome):
-        is_presente = True
-      elif ruolo == "attaccante" and (m["a1"] == nome or m["a2"] == nome):
-        is_presente = True
+      if ruolo == "portiere":
+        p1_pulito = pulisci_nome(m["p1"])
+        p2_pulito = pulisci_nome(m["p2"])
+        if (p1_pulito == nome or p2_pulito == nome) and not m.get(
+            "è_extra_recupero", False
+        ):
+          is_presente = True
+      elif ruolo == "attaccante":
+        if m["a1"] == nome or m["a2"] == nome:
+          is_presente = True
 
       if is_presente:
         totali += 1
@@ -512,7 +587,15 @@ def genera_pdf_calendario():
   for turno_obj in db["turni_partite"]:
     t_nome = turno_obj["turno"]
     pdf.set_font("Arial", "B", 12)
-    pdf.cell(0, 8, f"Turno {t_nome}", 0, 1, "L")
+    pdf.cell(
+        0,
+        8,
+        f"Turno {t_nome}"
+        + (" (Extra Recupero)" if t_nome > db.get("partite_per_giocatore", 6) else ""),
+        0,
+        1,
+        "L",
+    )
     pdf.set_font("Arial", "", 10)
 
     for idx, m in enumerate(turno_obj["partite"]):
@@ -632,6 +715,7 @@ if db["stato"] == "setup":
         db["punti_attaccanti"] = {a: 0 for a in attaccanti}
         db["dr_attaccanti"] = {a: 0 for a in attaccanti}
         db["stato"] = "gironi"
+        db["turno_extra_generato"] = False
         db["turni_partite"] = genera_calendario_con_talpa(
             portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
         )
@@ -644,7 +728,6 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
-  # Pulsante Download PDF Calendario visibile se il torneo è iniziato
   if db["turni_partite"]:
     pdf_bytes = genera_pdf_calendario()
     st.download_button(
@@ -658,7 +741,14 @@ if db["stato"] == "gironi":
 
   st.markdown("### 🔥 PARTITE E TURNI:")
   for t_obj in db["turni_partite"]:
-    st.markdown(f"#### 📌 Turno {t_obj['turno']}")
+    is_extra = t_obj["turno"] > db.get("partite_per_giocatore", 6)
+    titolo_turno = (
+        f"📌 Turno {t_obj['turno']} (Extra Recupero Attaccanti)"
+        if is_extra
+        else f"📌 Turno {t_obj['turno']}"
+    )
+    st.markdown(f"#### {titolo_turno}")
+
     for idx, m in enumerate(t_obj["partite"]):
       tavolo_num = (idx % num_tavoli) + 1
       if m.get("con_talpa", False):
@@ -670,6 +760,38 @@ if db["stato"] == "gironi":
                 </div>
             """
         )
+      elif m.get("è_extra_recupero", False):
+        st.html(
+            f"""
+                <div class="extra-match-box">
+                    <div style="font-weight: 700; color: #a855f7;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
+                    <div>{m['p1']} / ⚽ {m['a1']} <b>VS</b> {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Senza Punti)</span></div>
+                </div>
+            """
+        )
+        if (
+            is_admin
+            or giocatore_selezionato in [m["a1"], m["a2"]]
+            or giocatore_selezionato in pulisci_nome(m["p1"])
+            or giocatore_selezionato in pulisci_nome(m["p2"])
+        ):
+          with st.expander(
+              f"Inserisci Risultato Recupero Tavolo {tavolo_num} (Turno"
+              f" {t_obj['turno']})"
+          ):
+            g1 = st.number_input(
+                "Gol Coppia 1", 0, 10, int(m.get("gol1", 0)), key=f"g1_{m['id']}"
+            )
+            g2 = st.number_input(
+                "Gol Coppia 2", 0, 10, int(m.get("gol2", 0)), key=f"g2_{m['id']}"
+            )
+            if st.button("Salva Risultato", key=f"save_{m['id']}"):
+              m["gol1"] = g1
+              m["gol2"] = g2
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.rerun()
       else:
         st.html(
             f"""
@@ -711,7 +833,7 @@ if db["stato"] == "gironi":
   )
   for idx, (p, pt) in enumerate(sorted_p):
     gioc, tot = calcola_partite_giocate("portiere", p)
-    st.write(f"{idx+1}° 🥅 {p} - Punti: {pt} - Partite: {gioc}/{tot}")
+    st.write(f"{idx+1}° 🥅 {p} - Punti: {pt} - Partite: {gioc}")
 
   sorted_a = sorted(
       db["punti_attaccanti"].items(),
@@ -720,4 +842,4 @@ if db["stato"] == "gironi":
   )
   for idx, (a, pt) in enumerate(sorted_a):
     gioc, tot = calcola_partite_giocate("attaccante", a)
-    st.write(f"{idx+1}° ⚽ {a} - Punti: {pt} - Partite: {gioc}/{tot}")
+    st.write(f"{idx+1}° ⚽ {a} - Punti: {pt} - Partite: {gioc}")
