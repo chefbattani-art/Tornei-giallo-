@@ -56,37 +56,47 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
-# --- GENERAZIONE CALENDARIO CON TURNO EXTRA VISIBILE FIN DALL'INIZIO ---
-def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
+# --- GENERAZIONE CALENDARIO CORRETTA ---
+def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
-
-  if len(p_list) % 2 != 0:
-    p_list.append("⏳ [RIPOSO]")
 
   turni_partite = []
   attaccanti_che_hanno_riposato_per_turno = {}
 
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
-    a_curr = list(attaccanti)
+    a_curr = list(a_list)
 
+    # Rotazione dei portieri per ogni turno
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
+    # Scegliamo un attaccante che riposa in questo turno (rotazione ciclica)
     idx_riposo_a = (t - 1) % len(a_curr)
     attaccante_in_riposo = a_curr.pop(idx_riposo_a)
     attaccanti_che_hanno_riposato_per_turno[t] = attaccante_in_riposo
 
+    # Mescoliamo gli attaccanti rimanenti per variare gli abbinamenti
+    random.shuffle(a_curr)
+
     partite_turno = []
     match_idx = 0
 
+    # Creazione delle coppie per i tavoli
     i = 0
-    while i + 1 < len(p_curr) and i + 1 < len(a_curr):
-      p1, a1 = p_curr[i], a_curr[i]
-      p2, a2 = p_curr[i + 1], a_curr[i + 1]
+    while i < len(p_curr) and i < len(a_curr):
+      p1 = p_curr[i]
+      a1 = a_curr[i]
 
-      contiene_talpa_p = "RIPOSO" in str(p1) or "RIPOSO" in str(p2)
+      # Se c'è un secondo giocatore disponibile per fare la coppia
+      if i + 1 < len(p_curr) and i + 1 < len(a_curr):
+        p2 = p_curr[i + 1]
+        a2 = a_curr[i + 1]
+      else:
+        # Se i portieri sono in numero diverso dagli attaccanti attivi, gestiamo l'accoppiamento col portiere successivo o ruotato
+        p2 = p_curr[(i + 1) % len(p_curr)]
+        a2 = a_curr[(i + 1) % len(a_curr)]
 
       match_id = f"t{t}_m{match_idx}"
       partite_turno.append({
@@ -95,15 +105,15 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
           "a1": a1,
           "p2": p2,
           "a2": a2,
-          "giocata": contiene_talpa_p,
+          "giocata": False,
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa_p": contiene_talpa_p,
       })
       match_idx += 1
       i += 2
 
+    # Box informativo per l'attaccante che riposa in questo turno
     partite_turno.append({
         "id": f"t{t}_riposo_a",
         "p1": "",
@@ -119,8 +129,11 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # --- CREAZIONE TURNO EXTRA SUBITO DOPO IL TURNO 6 (VISIBILE DA SUBITO) ---
-  attaccanti_da_recuperare = list(attaccanti_che_hanno_riposato_per_turno.values())
+  # --- TURNO EXTRA VISIBILE FIN DALL'INIZIO ---
+  # Prende gli attaccanti che hanno riposato nei turni precedenti e li fa scontrare
+  attaccanti_da_recuperare = list(
+      attaccanti_che_hanno_riposato_per_turno.values()
+  )
   if len(attaccanti_da_recuperare) > 0:
     random.shuffle(attaccanti_da_recuperare)
     portieri_jolly = list(portieri)
@@ -143,15 +156,14 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
         match_id = f"t{turno_num}_m{match_idx}"
         partite_turno_extra.append({
             "id": match_id,
-            "p1": f"🥅 {pj1} (Jolly)",
+            "p1": f"{pj1} (Jolly)",
             "a1": a1,
-            "p2": f"🥅 {pj2} (Jolly)",
+            "p2": f"{pj2} (Jolly)",
             "a2": a2,
             "giocata": False,
             "in_corso": False,
             "gol1": 0,
             "gol2": 0,
-            "con_talpa_p": False,
             "è_extra_recupero": True,
         })
         match_idx += 1
@@ -163,16 +175,15 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
       match_id = f"t{turno_num}_m{match_idx}"
       partite_turno_extra.append({
           "id": match_id,
-          "p1": f"🥅 {pj1} (Jolly)",
+          "p1": f"{pj1} (Jolly)",
           "a1": a_singolo,
-          "p2": f"🥅 {pj2} (Jolly)",
-          "a2": "⏳ [RIPOSO]",
+          "p2": f"{pj2} (Jolly)",
+          "a2": "RIPOSO",
           "giocata": True,
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
           "è_extra_recupero": True,
-          "con_talpa_p": True,
       })
 
     if partite_turno_extra:
@@ -501,6 +512,7 @@ def ricalcola_classifiche():
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
+        # I portieri NON prendono punti nel turno extra recupero
         if not is_extra:
           p1_pulito = pulisci_nome(m["p1"])
           p2_pulito = pulisci_nome(m["p2"])
@@ -562,7 +574,9 @@ def genera_pdf_calendario():
         0,
         8,
         f"Turno {t_nome}"
-        + (" (Extra Recupero)" if t_nome > db.get("partite_per_giocatore", 6) else ""),
+        + (" (Turno Extra Recupero Attaccanti)"
+           if t_nome > db.get("partite_per_giocatore", 6)
+           else ""),
         0,
         1,
         "L",
@@ -686,7 +700,7 @@ if db["stato"] == "setup":
         db["punti_attaccanti"] = {a: 0 for a in attaccanti}
         db["dr_attaccanti"] = {a: 0 for a in attaccanti}
         db["stato"] = "gironi"
-        db["turni_partite"] = genera_calendario_con_talpa(
+        db["turni_partite"] = genera_calendario_corretto(
             portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
         )
         salva_dati(db)
@@ -724,7 +738,7 @@ if db["stato"] == "gironi":
         st.html(
             f"""
                 <div class="talpa-match-box">
-                    <div style="font-weight: 700; color: #9ca3af;">⏳ RIPOSA ATTACCANTE</div>
+                    <div style="font-weight: 700; color: #9ca3af;">⏳ RIPOSO ATTACCANTE</div>
                     <div><b>Riposa ATT: {m['a1']}</b></div>
                 </div>
             """
@@ -735,7 +749,7 @@ if db["stato"] == "gironi":
             f"""
                 <div class="extra-match-box">
                     <div style="font-weight: 700; color: #a855f7;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
-                    <div>{m['p1']} / ⚽ {m['a1']} <b>VS</b> {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Non prendono punti)</span></div>
+                    <div>🥅 {m['p1']} / ⚽ {m['a1']} <b>VS</b> 🥅 {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Non prendono punti)</span></div>
                 </div>
             """
         )
