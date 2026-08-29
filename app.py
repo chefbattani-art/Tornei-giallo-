@@ -56,6 +56,75 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
+# --- FUNZIONE GENERAZIONE CALENDARIO CON TALPA ---
+def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
+  # Creiamo copie locali per non sporcare le liste originali
+  p_list = list(portieri)
+  a_list = list(attaccanti)
+
+  # Se i portieri sono dispari, aggiungiamo una talpa (giocatore fittizio)
+  usa_talpa_p = len(p_list) % 2 != 0
+  if usa_talpa_p:
+    p_list.append("TALPA_PORTIERE")
+
+  # Se gli attaccanti sono dispari, aggiungiamo una talpa
+  usa_talpa_a = len(a_list) % 2 != 0
+  if usa_talpa_a:
+    a_list.append("TALPA_ATTACCANTE")
+
+  turni_partite = []
+
+  for t in range(1, num_turni + 1):
+    # Rotazione ciclica per evitare sempre gli stessi abbinamenti
+    p_curr = p_list[(t - 1) % len(p_list) :] + p_list[: (t - 1) % len(p_list)]
+    a_curr = a_list[(t - 1) % len(a_list) :] + a_list[: (t - 1) % len(a_list)]
+
+    # Se abbiamo un numero diverso tra portieri e attaccanti dopo l'aggiunta delle talpe,
+    # bilanciamo la lunghezza delle liste per quel turno
+    max_len = max(len(p_curr), len(a_curr))
+    while len(p_curr) < max_len:
+      p_curr.append("TALPA_PORTIERE")
+    while len(a_curr) < max_len:
+      a_curr.append("TALPA_ATTACCANTE")
+
+    partite_turno = []
+    i = 0
+    match_idx = 0
+
+    while i + 1 < len(p_curr) and i + 1 < len(a_curr):
+      p1, a1 = p_curr[i], a_curr[i]
+      p2, a2 = p_curr[i + 1], a_curr[i + 1]
+
+      # Escludiamo le partite in cui compare una Talpa (rappresentano il turno di riposo/pausa)
+      contiene_talpa = (
+          p1 == "TALPA_PORTIERE"
+          or p2 == "TALPA_PORTIERE"
+          or a1 == "TALPA_ATTACCANTE"
+          or a2 == "TALPA_ATTACCANTE"
+      )
+
+      if not contiene_talpa:
+        match_id = f"t{t}_m{match_idx}"
+        partite_turno.append({
+            "id": match_id,
+            "p1": p1,
+            "a1": a1,
+            "p2": p2,
+            "a2": a2,
+            "giocata": False,
+            "in_corso": False,
+            "gol1": 0,
+            "gol2": 0,
+        })
+        match_idx += 1
+
+      i += 2
+
+    turni_partite.append({"turno": t, "partite": partite_turno})
+
+  return turni_partite
+
+
 # --- FUNZIONI DI GESTIONE AVANZAMENTO FASI ---
 def avvia_quarti():
   sorted_p_list = sorted(
@@ -952,56 +1021,15 @@ if db["stato"] == "setup":
         db["stato"] = "gironi"
         db["fasi_finali"] = []
 
-        # --- GENERAZIONE TURNI BILANCIATI CON GESTIONE DISPARI (ROTAZIONE RIPOSO) ---
-        db["turni_partite"] = []
-        num_turni = db["partite_per_giocatore"]
-
-        for t in range(1, num_turni + 1):
-          p_shuff = portieri.copy()
-          a_shuff = attaccanti.copy()
-
-          if len(p_shuff) % 2 != 0:
-            p_shuff = (
-                p_shuff[(t - 1) % len(p_shuff) :]
-                + p_shuff[: (t - 1) % len(p_shuff)]
-            )
-          else:
-            random.shuffle(p_shuff)
-
-          if len(a_shuff) % 2 != 0:
-            a_shuff = (
-                a_shuff[(t - 1) % len(a_shuff) :]
-                + a_shuff[: (t - 1) % len(a_shuff)]
-            )
-          else:
-            random.shuffle(a_shuff)
-
-          partite_turno = []
-          i = 0
-          while i + 1 < len(p_shuff) and i + 1 < len(a_shuff):
-            match_id = f"t{t}_m{i//2}"
-            p1_val, a1_val = p_shuff[i], a_shuff[i]
-            p2_val, a2_val = p_shuff[i + 1], a_shuff[i + 1]
-
-            partite_turno.append({
-                "id": match_id,
-                "p1": p1_val,
-                "a1": a1_val,
-                "p2": p2_val,
-                "a2": a2_val,
-                "giocata": False,
-                "in_corso": False,
-                "gol1": 0,
-                "gol2": 0,
-            })
-            i += 2
-
-          db["turni_partite"].append({"turno": t, "partite": partite_turno})
+        # --- GENERAZIONE TURNI UTILIZZANDO LA NUOVA FUNZIONE CON LA TALPA ---
+        db["turni_partite"] = genera_calendario_con_talpa(
+            portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
+        )
 
         salva_dati(db)
         st.success(
-            "Calendario generato con successo! I turni di riposo per i numeri"
-            " dispari sono distribuiti a rotazione equa."
+            "Calendario generato con successo gestendo equamente i turni di"
+            " riposo con il sistema della 'talpa'!"
         )
         st.rerun()
 
@@ -1555,6 +1583,7 @@ if db["stato"] == "eliminatorie":
               if st.button(
                   "💾 Salva Modifica",
                   key=f"ef_save_{match_id}",
+                  use_keyword_arguments=None,
                   use_container_width=True,
               ):
                 m["giocata"] = True
