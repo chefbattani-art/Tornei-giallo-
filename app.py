@@ -31,7 +31,6 @@ def carica_dati():
       "dr_portieri": {},
       "dr_attaccanti": {},
       "fasi_finali": [],
-      "turno_extra_generato": False,
   }
   if os.path.exists(DB_FILE):
     try:
@@ -57,51 +56,42 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
-# --- FUNZIONE GENERAZIONE CALENDARIO CON GESTIONE EQUA DELLA TALPA E TURNO EXTRA AUTOMATICO ---
+# --- GENERAZIONE CALENDARIO CON ROTAZIONE SINGOLA E TURNO EXTRA AUTOMATICO ---
 def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
-  usa_talpa_p = len(p_list) % 2 != 0
-  if usa_talpa_p:
+  # Gestione portieri dispari se necessario
+  if len(p_list) % 2 != 0:
     p_list.append("⏳ [RIPOSO]")
 
-  usa_talpa_a = len(a_list) % 2 != 0
-  if usa_talpa_a:
-    a_list.append("⏳ [RIPOSO]")
-
   turni_partite = []
+  attaccanti_che_hanno_riposato_per_turno = {}
 
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
-    a_curr = list(a_list)
+    a_curr = list(attaccanti)
 
+    # Rotazione portieri
     offset_p = (t - 1) % len(p_curr)
     p_curr = p_curr[offset_p:] + p_curr[:offset_p]
 
-    offset_a = (t - 1) % len(a_curr)
-    a_curr = a_curr[offset_a:] + a_curr[:offset_a]
+    # Scegliamo un attaccante che riposa in questo turno (rotazione ciclica per equità)
+    idx_riposo_a = (t - 1) % len(a_curr)
+    attaccante_in_riposo = a_curr.pop(idx_riposo_a)
+    attaccanti_che_hanno_riposato_per_turno[t] = attaccante_in_riposo
 
-    max_len = max(len(p_curr), len(a_curr))
-    while len(p_curr) < max_len:
-      p_curr.append("⏳ [RIPOSO]")
-    while len(a_curr) < max_len:
-      a_curr.append("⏳ [RIPOSO]")
-
+    # Ora a_curr ha un numero dispari (se il totale era pari, ora è dispari)
+    # Creiamo gli accoppiamenti
     partite_turno = []
-    i = 0
     match_idx = 0
 
+    i = 0
     while i + 1 < len(p_curr) and i + 1 < len(a_curr):
       p1, a1 = p_curr[i], a_curr[i]
       p2, a2 = p_curr[i + 1], a_curr[i + 1]
 
-      contiene_talpa = (
-          "RIPOSO" in str(p1)
-          or "RIPOSO" in str(p2)
-          or "RIPOSO" in str(a1)
-          or "RIPOSO" in str(a2)
-      )
+      contiene_talpa_p = "RIPOSO" in str(p1) or "RIPOSO" in str(p2)
 
       match_id = f"t{t}_m{match_idx}"
       partite_turno.append({
@@ -110,33 +100,35 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
           "a1": a1,
           "p2": p2,
           "a2": a2,
-          "giocata": contiene_talpa,
-          "in_corso": False,
+          "giocata": contiene_talpa_p,
+          "in_corso": false,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa": contiene_talpa,
+          "con_talpa_p": contiene_talpa_p,
       })
       match_idx += 1
       i += 2
 
+    # Aggiungiamo l'attaccante che riposa come box dedicato nel turno
+    partite_turno.append({
+        "id": f"t{t}_riposo_a",
+        "p1": "",
+        "a1": attaccante_in_riposo,
+        "p2": "",
+        "a2": "",
+        "giocata": True,
+        "in_corso": False,
+        "gol1": 0,
+        "gol2": 0,
+        "è_riposo_attaccante": True,
+    })
+
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # --- AGGIUNTA AUTOMATICA DEL TURNO EXTRA DI RECUPERO SUBITO DOPO IL TURNO 6 ---
-  partite_attaccanti = {a: 0 for a in attaccanti}
-  for turno_obj in turni_partite:
-    for m in turno_obj["partite"]:
-      if not m.get("con_talpa", False):
-        if m["a1"] in partite_attaccanti:
-          partite_attaccanti[m["a1"]] += 1
-        if m["a2"] in partite_attaccanti:
-          partite_attaccanti[m["a2"]] += 1
-
-  max_partite = max(partite_attaccanti.values()) if partite_attaccanti else 0
-  attaccanti_da_recuperare = [
-      a for a, count in partite_attaccanti.items() if count < max_partite
-  ]
-
-  if attaccanti_da_recuperare:
+  # --- TURNO EXTRA AUTOMATICO SUBITO DOPO IL TURNO 6 ---
+  # Prende gli attaccanti che hanno riposato nei vari turni e li fa scontrare
+  attaccanti_da_recuperare = list(attaccanti_che_hanno_riposato_per_turno.values())
+  if len(attaccanti_da_recuperare) > 0:
     random.shuffle(attaccanti_da_recuperare)
     portieri_jolly = list(portieri)
     random.shuffle(portieri_jolly)
@@ -166,10 +158,30 @@ def genera_calendario_con_talpa(portieri, attaccanti, num_turni, num_tavoli):
             "in_corso": False,
             "gol1": 0,
             "gol2": 0,
-            "con_talpa": False,
+            "con_talpa_p": False,
             "è_extra_recupero": True,
         })
         match_idx += 1
+
+    # Gestione eventuale attaccante singolo rimasto nel turno extra se dispari
+    if len(attaccanti_da_recuperare) % 2 != 0:
+      a_singolo = attaccanti_da_recuperare[-1]
+      pj1 = portieri_jolly[p_index % len(portieri_jolly)]
+      pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
+      match_id = f"t{turno_num}_m{match_idx}"
+      partite_turno_extra.append({
+          "id": match_id,
+          "p1": f"🥅 {pj1} (Jolly)",
+          "a1": a_singolo,
+          "p2": f"🥅 {pj2} (Jolly)",
+          "a2": "⏳ [RIPOSO]",
+          "giocata": True,
+          "in_corso": False,
+          "gol1": 0,
+          "gol2": 0,
+          "è_extra_recupero": True,
+          "con_talpa_p": True,
+      })
 
     if partite_turno_extra:
       turni_partite.append(
@@ -206,7 +218,6 @@ def avvia_quarti():
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa": False,
       },
       {
           "id": "ef_t1_m2",
@@ -218,7 +229,6 @@ def avvia_quarti():
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa": False,
       },
       {
           "id": "ef_t1_m3",
@@ -230,7 +240,6 @@ def avvia_quarti():
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa": False,
       },
       {
           "id": "ef_t1_m4",
@@ -242,7 +251,6 @@ def avvia_quarti():
           "in_corso": False,
           "gol1": 0,
           "gol2": 0,
-          "con_talpa": False,
       },
   ]
   db["fasi_finali"] = [
@@ -278,7 +286,6 @@ def genera_semifinali():
               "in_corso": False,
               "gol1": 0,
               "gol2": 0,
-              "con_talpa": False,
           },
           {
               "id": "ef_t2_m2",
@@ -290,7 +297,6 @@ def genera_semifinali():
               "in_corso": False,
               "gol1": 0,
               "gol2": 0,
-              "con_talpa": False,
           },
       ]
       db["fasi_finali"].append(
@@ -328,7 +334,6 @@ def genera_finali():
               "in_corso": False,
               "gol1": 0,
               "gol2": 0,
-              "con_talpa": False,
           },
           {
               "id": "ef_t3_m2",
@@ -340,7 +345,6 @@ def genera_finali():
               "in_corso": False,
               "gol1": 0,
               "gol2": 0,
-              "con_talpa": False,
           },
       ]
       db["fasi_finali"].append({
@@ -471,15 +475,9 @@ def pulisci_nome(testo):
       .replace("⚽", "")
       .replace("⏳", "")
       .replace("[RIPOSO]", "")
+      .replace("(Jolly)", "")
   )
   return testo.strip()
-
-
-def trova_giocatore_in_riposo(m):
-  for el in [m["p1"], m["a1"], m["p2"], m["a2"]]:
-    if "RIPOSO" in str(el):
-      return pulisci_nome(str(el))
-  return ""
 
 
 def ricalcola_classifiche():
@@ -490,7 +488,7 @@ def ricalcola_classifiche():
 
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
-      if m.get("giocata", False) and not m.get("con_talpa", False):
+      if m.get("giocata", False) and not m.get("è_riposo_attaccante", False):
         g1 = m["gol1"]
         g2 = m["gol2"]
         diff = abs(g1 - g2)
@@ -504,6 +502,7 @@ def ricalcola_classifiche():
 
         is_extra = m.get("è_extra_recupero", False)
 
+        # Aggiorna attaccanti (prendono sempre punti)
         if m["a1"] in a_punti:
           a_punti[m["a1"]] += pt_s1
           a_dr[m["a1"]] += g1 - g2
@@ -511,6 +510,7 @@ def ricalcola_classifiche():
           a_punti[m["a2"]] += pt_s2
           a_dr[m["a2"]] += g2 - g1
 
+        # I portieri NON prendono punti nel turno extra recupero
         if not is_extra:
           p1_pulito = pulisci_nome(m["p1"])
           p2_pulito = pulisci_nome(m["p2"])
@@ -532,6 +532,11 @@ def calcola_partite_giocate(ruolo, nome):
   totali = 0
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
+      if m.get("è_riposo_attaccante", False):
+        if ruolo == "attaccante" and m["a1"] == nome:
+          totali += 1  # figurava nel turno ma riposava
+        continue
+
       is_presente = False
       if ruolo == "portiere":
         p1_pulito = pulisci_nome(m["p1"])
@@ -546,7 +551,7 @@ def calcola_partite_giocate(ruolo, nome):
 
       if is_presente:
         totali += 1
-        if m.get("giocata", False) and not m.get("con_talpa", False):
+        if m.get("giocata", False):
           giocate += 1
   return giocate, totali
 
@@ -575,15 +580,10 @@ def genera_pdf_calendario():
     pdf.set_font("Arial", "", 10)
 
     for idx, m in enumerate(turno_obj["partite"]):
-      tavolo_num = (idx % num_tavoli) + 1
-      if m.get("con_talpa", False):
-        nom_riposo = trova_giocatore_in_riposo(m)
-        riga = (
-            f"  - Riposa ATT: {nom_riposo}"
-            if nom_riposo
-            else "  - Turno di Riposo"
-        )
+      if m.get("è_riposo_attaccante", False):
+        riga = f"  - Riposa ATT: {m['a1']}"
       else:
+        tavolo_num = (idx % num_tavoli) + 1
         risultato = (
             f"{m['gol1']} - {m['gol2']}"
             if m.get("giocata", False)
@@ -723,31 +723,29 @@ if db["stato"] == "gironi":
   for t_obj in db["turni_partite"]:
     is_extra = t_obj["turno"] > db.get("partite_per_giocatore", 6)
     titolo_turno = (
-        f"📌 Turno {t_obj['turno']} (Extra Recupero Attaccanti)"
+        f"📌 Turno {t_obj['turno']} (Turno Extra Recupero Attaccanti)"
         if is_extra
         else f"📌 Turno {t_obj['turno']}"
     )
     st.markdown(f"#### {titolo_turno}")
 
     for idx, m in enumerate(t_obj["partite"]):
-      tavolo_num = (idx % num_tavoli) + 1
-      if m.get("con_talpa", False):
-        nom_riposo = trova_giocatore_in_riposo(m)
-        testo_riposo = f"Riposa ATT: {nom_riposo}" if nom_riposo else "Riposo"
+      if m.get("è_riposo_attaccante", False):
         st.html(
             f"""
                 <div class="talpa-match-box">
-                    <div style="font-weight: 700; color: #9ca3af;">⏳ TURNO DI RIPOSO</div>
-                    <div><b>{testo_riposo}</b></div>
+                    <div style="font-weight: 700; color: #9ca3af;">⏳ RIPOSA ATTACCANTE</div>
+                    <div><b>Riposa ATT: {m['a1']}</b></div>
                 </div>
             """
         )
       elif m.get("è_extra_recupero", False):
+        tavolo_num = (idx % num_tavoli) + 1
         st.html(
             f"""
                 <div class="extra-match-box">
                     <div style="font-weight: 700; color: #a855f7;">🔄 RECUPERO ATTACCANTI (Tavolo {tavolo_num})</div>
-                    <div>{m['p1']} / ⚽ {m['a1']} <b>VS</b> {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Senza Punti)</span></div>
+                    <div>{m['p1']} / ⚽ {m['a1']} <b>VS</b> {m['p2']} / ⚽ {m['a2']} <span style="font-size:0.85rem; color:#d8b4fe;">(Portieri Jolly - Non prendono punti)</span></div>
                 </div>
             """
         )
@@ -775,6 +773,7 @@ if db["stato"] == "gironi":
               salva_dati(db)
               st.rerun()
       else:
+        tavolo_num = (idx % num_tavoli) + 1
         st.html(
             f"""
                 <div class="live-match-box">
