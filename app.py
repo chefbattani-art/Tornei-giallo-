@@ -703,27 +703,10 @@ if db["stato"] == "gironi":
 
       # RICERCA PARTITA IN CORSO O IN CODA PER IL GIOCATORE SELEZIONATO
       match_trovato = None
-      stato_partita = None # "in_corso" oppure "in_coda"
+      stato_partita = None
       tavolo_assegnato = None
+      turno_attivo = None
 
-      partite_da_giocare_totali = []
-      for t_obj in db["turni_partite"]:
-        for idx, m in enumerate(t_obj["partite"]):
-          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-            p1_p = pulisci_nome(m["p1"])
-            p2_p = pulisci_nome(m["p2"])
-            if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
-              tavolo_num = (idx % num_tavoli) + 1
-              partite_da_giocare_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
-
-      if partite_da_giocare_totali:
-        # Le prime N partite (dove N = num_tavoli) sono considerate IN CORSO, le successive IN CODA
-        for pos_idx, p_item in enumerate(partite_da_giocare_totali):
-          if p_item["match"] == partite_da_giocare_totali[0]["match"] and pos_idx < num_tavoli:
-            # Semplificazione: verifichiamo se rientra nei tavoli attivi
-            pass
-
-      # Analisi pulita basata sull'ordine globale delle partite aperte
       aperte_counter = 0
       for t_obj in db["turni_partite"]:
         for idx, m in enumerate(t_obj["partite"]):
@@ -755,9 +738,51 @@ if db["stato"] == "gironi":
                 <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
                     {match_trovato['p1']} e {match_trovato['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {match_trovato['p2']} e {match_trovato['a2']}
                 </div>
-                <div style="font-size: 0.95rem; color: #a7f3d0;">Mettiti comodo al biliardino!</div>
             </div>
           """, unsafe_allow_html=True)
+          
+          # Form inserimento risultato direttamente sotto la partita in corso personale
+          exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
+          if exp_key_open_pers not in st.session_state:
+            st.session_state[exp_key_open_pers] = False
+
+          with st.expander(f"⚙️ Inserisci il Risultato (Biliardino {tavolo_assegnato})", expanded=st.session_state[exp_key_open_pers]):
+            with st.form(key=f"form_pers_{match_trovato['id']}"):
+              st.write("Inserisci i goal assegnati a ciascuna squadra:")
+              curr_g1 = int(match_trovato.get("gol1", 0))
+              curr_g2 = int(match_trovato.get("gol2", 0))
+              
+              st.markdown(f'<div class="team-section"><b>🥅 Coppia 1: {match_trovato["p1"]} & {match_trovato["a1"]}</b></div>', unsafe_allow_html=True)
+              col_g1_1, col_g1_2 = st.columns(2)
+              with col_g1_1:
+                  g1_sup = st.radio("C1_s_p", [0, 1, 2, 3], index=curr_g1 if curr_g1 <= 3 else 0, horizontal=True, key=f"r_pers_g1_s_{match_trovato['id']}", label_visibility="collapsed")
+              with col_g1_2:
+                  g1_inf = st.radio("C1_i_p", [4, 5, 6, 7], index=(curr_g1 - 4) if curr_g1 >= 4 else 0, horizontal=True, key=f"r_pers_g1_i_{match_trovato['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              st.markdown(f'<div class="team-section"><b>🥅 Coppia 2: {match_trovato["p2"]} & {match_trovato["a2"]}</b></div>', unsafe_allow_html=True)
+              col_g2_1, col_g2_2 = st.columns(2)
+              with col_g2_1:
+                  g2_sup = st.radio("C2_s_p", [0, 1, 2, 3], index=curr_g2 if curr_g2 <= 3 else 0, horizontal=True, key=f"r_pers_g2_s_{match_trovato['id']}", label_visibility="collapsed")
+              with col_g2_2:
+                  g2_inf = st.radio("C2_i_p", [4, 5, 6, 7], index=(curr_g2 - 4) if curr_g2 >= 4 else 0, horizontal=True, key=f"r_pers_g2_i_{match_trovato['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              submitted_pers = st.form_submit_button("Salva Risultato", use_container_width=True)
+              if submitted_pers:
+                r_s1 = st.session_state.get(f"r_pers_g1_s_{match_trovato['id']}", 0)
+                r_i1 = st.session_state.get(f"r_pers_g1_i_{match_trovato['id']}", 4)
+                match_trovato["gol1"] = r_i1 if curr_g1 >= 4 else r_s1
+                
+                r_s2 = st.session_state.get(f"r_pers_g2_s_{match_trovato['id']}", 0)
+                r_i2 = st.session_state.get(f"r_pers_g2_i_{match_trovato['id']}", 4)
+                match_trovato["gol2"] = r_i2 if curr_g2 >= 4 else r_s2
+                
+                match_trovato["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.session_state[exp_key_open_pers] = False
+                st.rerun()
         else:
           st.markdown(f"""
             <div class="queue-match-box">
@@ -782,20 +807,64 @@ if db["stato"] == "gironi":
         partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
 
   partite_in_corso_gen = partite_aperte_totali[:num_tavoli]
-  partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2] # Esattamente pari al numero di biliardini
+  partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2]
 
   st.markdown(f"### 🟢 PARTITE IN CORSO ( sui {num_tavoli} Biliardini )")
   if partite_in_corso_gen:
     for item in partite_in_corso_gen:
       m = item["match"]
+      tav_num = item["tavolo"]
       st.markdown(f"""
         <div class="live-match-box">
-            <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {item['tavolo']} (Turno {item['turno']}) — LIVE 🟢</div>
+            <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {tav_num} (Turno {item['turno']}) — LIVE 🟢</div>
             <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
                 {m['p1']} e {m['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {m['p2']} e {m['a2']}
             </div>
         </div>
       """, unsafe_allow_html=True)
+
+      # Possibilità di inserire il risultato anche direttamente dalla sezione partite in corso
+      exp_key_gen = f"exp_open_gen_{m['id']}"
+      if exp_key_gen not in st.session_state:
+        st.session_state[exp_key_gen] = False
+
+      with st.expander(f"⚙️ Inserisci Risultato Biliardino {tav_num} (Turno {item['turno']})", expanded=st.session_state[exp_key_gen]):
+        with st.form(key=f"form_gen_{m['id']}"):
+          st.write("Inserisci i goal assegnati a ciascuna squadra:")
+          curr_g1 = int(m.get("gol1", 0))
+          curr_g2 = int(m.get("gol2", 0))
+          
+          st.markdown(f'<div class="team-section"><b>🥅 Coppia 1: {m["p1"]} & {m["a1"]}</b></div>', unsafe_allow_html=True)
+          col_g1_1, col_g1_2 = st.columns(2)
+          with col_g1_1:
+              g1_sup = st.radio("C1_s_g", [0, 1, 2, 3], index=curr_g1 if curr_g1 <= 3 else 0, horizontal=True, key=f"r_gen_g1_s_{m['id']}", label_visibility="collapsed")
+          with col_g1_2:
+              g1_inf = st.radio("C1_i_g", [4, 5, 6, 7], index=(curr_g1 - 4) if curr_g1 >= 4 else 0, horizontal=True, key=f"r_gen_g1_i_{m['id']}", label_visibility="collapsed")
+          
+          st.markdown("<br>", unsafe_allow_html=True)
+          st.markdown(f'<div class="team-section"><b>🥅 Coppia 2: {m["p2"]} & {m["a2"]}</b></div>', unsafe_allow_html=True)
+          col_g2_1, col_g2_2 = st.columns(2)
+          with col_g2_1:
+              g2_sup = st.radio("C2_s_g", [0, 1, 2, 3], index=curr_g2 if curr_g2 <= 3 else 0, horizontal=True, key=f"r_gen_g2_s_{m['id']}", label_visibility="collapsed")
+          with col_g2_2:
+              g2_inf = st.radio("C2_i_g", [4, 5, 6, 7], index=(curr_g2 - 4) if curr_g2 >= 4 else 0, horizontal=True, key=f"r_gen_g2_i_{m['id']}", label_visibility="collapsed")
+          
+          st.markdown("<br>", unsafe_allow_html=True)
+          submitted_gen = st.form_submit_button("Salva Risultato", use_container_width=True)
+          if submitted_gen:
+            r_s1 = st.session_state.get(f"r_gen_g1_s_{m['id']}", 0)
+            r_i1 = st.session_state.get(f"r_gen_g1_i_{m['id']}", 4)
+            m["gol1"] = r_i1 if curr_g1 >= 4 else r_s1
+            
+            r_s2 = st.session_state.get(f"r_gen_g2_s_{m['id']}", 0)
+            r_i2 = st.session_state.get(f"r_gen_g2_i_{m['id']}", 4)
+            m["gol2"] = r_i2 if curr_g2 >= 4 else r_s2
+            
+            m["giocata"] = True
+            ricalcola_classifiche()
+            salva_dati(db)
+            st.session_state[exp_key_gen] = False
+            st.rerun()
   else:
     st.info("Nessuna partita in corso al momento.")
 
