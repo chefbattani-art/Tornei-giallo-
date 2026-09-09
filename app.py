@@ -413,6 +413,8 @@ def calcola_partite_giocate(ruolo, nome):
 
 
 def posticipa_partita_turno(turno_num, match_id):
+  # Estrae la partita e la sposta in fondo alla lista delle partite del suo turno,
+  # oppure la sposta direttamente in coda al turno successivo se si vuole scorrere la programmazione.
   for t_obj in db["turni_partite"]:
     if t_obj["turno"] == turno_num:
       partite = t_obj["partite"]
@@ -424,6 +426,7 @@ def posticipa_partita_turno(turno_num, match_id):
       
       if idx_target != -1:
         match_da_spostare = partite.pop(idx_target)
+        # Rimettiamo il match alla fine delle partite attive di questo turno
         inserito = False
         for i in range(len(partite) - 1, -1, -1):
           p = partite[i]
@@ -434,7 +437,6 @@ def posticipa_partita_turno(turno_num, match_id):
         
         if not inserito:
           partite.insert(0, match_da_spostare)
-          
       break
   salva_dati(db)
 
@@ -519,16 +521,6 @@ st.markdown("""
             color: #fef08a !important;
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
         }
-        .btn-posticipa {
-            background: linear-gradient(135deg, #9333ea, #6b21a8) !important;
-            color: #ffffff !important;
-            border: 1px solid #c084fc !important;
-            border-radius: 12px !important;
-            font-weight: 700 !important;
-            height: 48px !important;
-            width: 100% !important;
-            box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4);
-        }
         .live-match-box {
             background: linear-gradient(135deg, #064e3b, #022c22);
             border: 2px solid #34d399;
@@ -554,15 +546,6 @@ st.markdown("""
             padding: 14px 18px;
             margin-bottom: 10px;
             box-shadow: 0 4px 12px rgba(96, 165, 250, 0.25);
-        }
-        .extra-match-box {
-            background: linear-gradient(135deg, #451a03, #78350f);
-            border: 2px solid #fbbf24;
-            border-radius: 16px;
-            padding: 16px;
-            margin-bottom: 14px;
-            text-align: center;
-            box-shadow: 0 4px 20px rgba(251, 191, 36, 0.25);
         }
         .riposo-match-box {
             background: linear-gradient(135deg, #0c4a6e, #0369a1);
@@ -724,24 +707,21 @@ if db["stato"] == "gironi":
       </div>
     """, unsafe_allow_html=True)
 
+  # CODA GLOBALE UNICA PER TUTTI I CONTROLLI
+  partite_aperte_totali = []
+  for t_obj in db["turni_partite"]:
+    for idx, m in enumerate(t_obj["partite"]):
+      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+        tavolo_num = (idx % num_tavoli) + 1
+        partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
+
+  if giocatore_selezionato:
     match_trovato = None
     stato_partita = None
     tavolo_assegnato = None
     turno_attivo = None
 
-    posticipati_key = f"posticipati_{giocatore_selezionato}"
-    if posticipati_key not in st.session_state:
-      st.session_state[posticipati_key] = []
-
-    # Creiamo l'elenco completo di tutte le partite aperte globalmente in ordine di turno e indice
-    partite_aperte_totali = []
-    for t_obj in db["turni_partite"]:
-      for idx, m in enumerate(t_obj["partite"]):
-        if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-          tavolo_num = (idx % num_tavoli) + 1
-          partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
-
-    # Cerchiamo la prima partita in cui il giocatore è coinvolto scorrendo la coda ufficiale
+    # Cerchiamo la PRIMA partita in assoluto nella coda globale in cui il giocatore è coinvolto
     for idx_globale, item in enumerate(partite_aperte_totali):
       m = item["match"]
       t_num = item["turno"]
@@ -760,9 +740,6 @@ if db["stato"] == "gironi":
       )
       
       if coinvolto:
-        if m["id"] in st.session_state[posticipati_key]:
-          continue
-          
         match_trovato = m
         turno_attivo = t_num
         
@@ -787,8 +764,7 @@ if db["stato"] == "gironi":
         
         if st.button("⏱️ Posticipa questa partita in coda", key=f"posticipa_pers_{match_trovato['id']}", use_container_width=True):
           posticipa_partita_turno(turno_attivo, match_trovato["id"])
-          st.session_state[posticipati_key].append(match_trovato["id"])
-          st.success("Partita posticipata correttamente!")
+          st.success("Partita posticipata correttamente in coda!")
           st.rerun()
 
         exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
@@ -838,7 +814,6 @@ if db["stato"] == "gironi":
         with col_btn_2:
           if st.button("⏱️ POSTICIPA QUESTA PARTITA IN CODA", key=f"posticipa_coda_pers_{match_trovato['id']}", use_container_width=True):
             posticipa_partita_turno(turno_attivo, match_trovato["id"])
-            st.session_state[posticipati_key].append(match_trovato["id"])
             st.success("Partita posticipata in coda con successo!")
             st.rerun()
     else:
@@ -846,7 +821,7 @@ if db["stato"] == "gironi":
 
   st.markdown("---")
 
-  # SEZIONE PARTITE IN CORSO GENERALI
+  # SEZIONE PARTITE IN CORSO E IN CODA GENERALI BASATE SULLA STESSA CODA GLOBALE
   partite_in_corso_gen = partite_aperte_totali[:num_tavoli]
   partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2]
 
@@ -872,8 +847,6 @@ if db["stato"] == "gironi":
       if utente_coinvolto or is_admin:
         if st.button("⏱️ Posticipa match", key=f"posticipa_gen_{m['id']}", use_container_width=True):
           posticipa_partita_turno(item["turno"], m["id"])
-          if utente_coinvolto:
-            st.session_state[f"posticipati_{giocatore_selezionato}"].append(m["id"])
           st.success("Partita posticipata!")
           st.rerun()
 
@@ -932,8 +905,6 @@ if db["stato"] == "gironi":
       if utente_coinvolto or is_admin:
         if st.button("⏱️ Posticipa match in coda", key=f"posticipa_coda_gen_{m['id']}", use_container_width=True):
           posticipa_partita_turno(item["turno"], m["id"])
-          if utente_coinvolto:
-            st.session_state[f"posticipati_{giocatore_selezionato}"].append(m["id"])
           st.success("Partita posticipata in coda!")
           st.rerun()
   else:
