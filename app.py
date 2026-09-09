@@ -412,32 +412,34 @@ def calcola_partite_giocate(ruolo, nome):
   return giocate, totali
 
 
-def posticipa_partita_turno(turno_num, match_id):
-  # Estrae la partita e la sposta in fondo alla lista delle partite del suo turno,
-  # oppure la sposta direttamente in coda al turno successivo se si vuole scorrere la programmazione.
+def posticipa_partita_in_corso(match_id):
+  # Prende la partita attiva (in corso) e la sposta alla fine del suo turno 
+  # o in fondo alla lista delle partite non giocate, permettendo alle altre di avanzare.
+  match_trovato = None
+  turno_trovato = None
+  
   for t_obj in db["turni_partite"]:
-    if t_obj["turno"] == turno_num:
-      partite = t_obj["partite"]
-      idx_target = -1
-      for i, m in enumerate(partite):
-        if m["id"] == match_id:
-          idx_target = i
-          break
-      
-      if idx_target != -1:
-        match_da_spostare = partite.pop(idx_target)
-        # Rimettiamo il match alla fine delle partite attive di questo turno
-        inserito = False
-        for i in range(len(partite) - 1, -1, -1):
-          p = partite[i]
-          if not p.get("giocata", False) and not p.get("è_riposo_attaccante", False) and not p.get("è_riposo_portiere", False):
-            partite.insert(i + 1, match_da_spostare)
-            inserito = True
-            break
-        
-        if not inserito:
-          partite.insert(0, match_da_spostare)
+    for m in t_obj["partite"]:
+      if m["id"] == match_id:
+        match_trovato = m
+        turno_trovato = t_obj
+        break
+    if match_trovato:
       break
+      
+  if match_trovato and turno_trovato:
+    turno_trovato["partite"].remove(match_trovato)
+    # Inseriamo il match in fondo alle partite non giocate dello stesso turno (prima dei riposi)
+    inserito = False
+    for i in range(len(turno_trovato["partite"]) - 1, -1, -1):
+      p = turno_trovato["partite"][i]
+      if not p.get("giocata", False) and not p.get("è_riposo_attaccante", False) and not p.get("è_riposo_portiere", False):
+        turno_trovato["partite"].insert(i + 1, match_trovato)
+        inserito = True
+        break
+    if not inserito:
+      turno_trovato["partite"].insert(0, match_trovato)
+      
   salva_dati(db)
 
 
@@ -721,7 +723,6 @@ if db["stato"] == "gironi":
     tavolo_assegnato = None
     turno_attivo = None
 
-    # Cerchiamo la PRIMA partita in assoluto nella coda globale in cui il giocatore è coinvolto
     for idx_globale, item in enumerate(partite_aperte_totali):
       m = item["match"]
       t_num = item["turno"]
@@ -763,8 +764,8 @@ if db["stato"] == "gironi":
         """, unsafe_allow_html=True)
         
         if st.button("⏱️ Posticipa questa partita in coda", key=f"posticipa_pers_{match_trovato['id']}", use_container_width=True):
-          posticipa_partita_turno(turno_attivo, match_trovato["id"])
-          st.success("Partita posticipata correttamente in coda!")
+          posticipa_partita_in_corso(match_trovato["id"])
+          st.success("Partita posticipata in coda e prossimi match avanzati!")
           st.rerun()
 
         exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
@@ -809,21 +810,21 @@ if db["stato"] == "gironi":
               <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
           </div>
         """, unsafe_allow_html=True)
-        
-        col_btn_1, col_btn_2, col_btn_3 = st.columns([1, 4, 1])
-        with col_btn_2:
-          if st.button("⏱️ POSTICIPA QUESTA PARTITA IN CODA", key=f"posticipa_coda_pers_{match_trovato['id']}", use_container_width=True):
-            posticipa_partita_turno(turno_attivo, match_trovato["id"])
-            st.success("Partita posticipata in coda con successo!")
-            st.rerun()
     else:
       st.info("Nessuna partita attiva o in coda per te al momento.")
 
   st.markdown("---")
 
-  # SEZIONE PARTITE IN CORSO E IN CODA GENERALI BASATE SULLA STESSA CODA GLOBALE
-  partite_in_corso_gen = partite_aperte_totali[:num_tavoli]
-  partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2]
+  # AGGIORNAMENTO DINAMICO DEGLI INDICI DOPO LA POSTICIPAZIONE
+  partite_aperte_totali_aggiornate = []
+  for t_obj in db["turni_partite"]:
+    for idx, m in enumerate(t_obj["partite"]):
+      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+        tavolo_num = (idx % num_tavoli) + 1
+        partite_aperte_totali_aggiornate.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
+
+  partite_in_corso_gen = partite_aperte_totali_aggiornate[:num_tavoli]
+  partite_in_coda_gen = partite_aperte_totali_aggiornate[num_tavoli:num_tavoli * 2]
 
   st.markdown(f"### 🟢 PARTITE IN CORSO ( sui {num_tavoli} Biliardini )")
   if partite_in_corso_gen:
@@ -846,8 +847,8 @@ if db["stato"] == "gironi":
 
       if utente_coinvolto or is_admin:
         if st.button("⏱️ Posticipa match", key=f"posticipa_gen_{m['id']}", use_container_width=True):
-          posticipa_partita_turno(item["turno"], m["id"])
-          st.success("Partita posticipata!")
+          posticipa_partita_in_corso(m["id"])
+          st.success("Partita posticipata e slot avanzato!")
           st.rerun()
 
         exp_key_gen = f"exp_open_gen_{m['id']}"
@@ -889,10 +890,6 @@ if db["stato"] == "gironi":
   if partite_in_coda_gen:
     for item in partite_in_coda_gen:
       m = item["match"]
-      p1_p = pulisci_nome(m["p1"])
-      p2_p = pulisci_nome(m["p2"])
-      utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
-
       st.markdown(f"""
         <div class="queue-match-box">
             <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
@@ -901,12 +898,6 @@ if db["stato"] == "gironi":
             </div>
         </div>
       """, unsafe_allow_html=True)
-
-      if utente_coinvolto or is_admin:
-        if st.button("⏱️ Posticipa match in coda", key=f"posticipa_coda_gen_{m['id']}", use_container_width=True):
-          posticipa_partita_turno(item["turno"], m["id"])
-          st.success("Partita posticipata in coda!")
-          st.rerun()
   else:
     st.info("Nessuna partita in coda.")
 
