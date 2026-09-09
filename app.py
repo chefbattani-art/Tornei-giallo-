@@ -333,7 +333,7 @@ st.markdown("""
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
 
 def pulisci_nome(testo):
-  testo = testo.replace("🥅", "").replace("🚪", "").replace("⚽", "").replace("⏳", "").replace("[RIPOSO]", "").replace("(Jolly)", "")
+  testo = str(testo).replace("🥅", "").replace("🚪", "").replace("⚽", "").replace("⏳", "").replace("[RIPOSO]", "").replace("(Jolly)", "")
   return testo.strip()
 
 
@@ -360,12 +360,15 @@ def ricalcola_classifiche():
         is_extra = m.get("è_extra_recupero", False)
         is_portieri_jolly = m.get("is_portieri_jolly", False)
 
-        if m["a1"] in a_punti and not is_portieri_jolly:
-          a_punti[m["a1"]] += pt_s1
-          a_dr[m["a1"]] += g1 - g2
-        if m["a2"] in a_punti and not is_portieri_jolly:
-          a_punti[m["a2"]] += pt_s2
-          a_dr[m["a2"]] += g2 - g1
+        a1_pulito = pulisci_nome(m["a1"])
+        a2_pulito = pulisci_nome(m["a2"])
+
+        if a1_pulito in a_punti and not is_portieri_jolly:
+          a_punti[a1_pulito] += pt_s1
+          a_dr[a1_pulito] += g1 - g2
+        if a2_pulito in a_punti and not is_portieri_jolly:
+          a_punti[a2_pulito] += pt_s2
+          a_dr[a2_pulito] += g2 - g1
 
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
@@ -389,9 +392,9 @@ def calcola_partite_giocate(ruolo, nome):
   for turno_obj in db["turni_partite"]:
     for m in turno_obj["partite"]:
       if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False):
-        if ruolo == "attaccante" and m["a1"] == nome:
+        if ruolo == "attaccante" and pulisci_nome(m["a1"]) == nome:
           totali += 1
-        if ruolo == "portiere" and m["p1"] == nome:
+        if ruolo == "portiere" and pulisci_nome(m["p1"]) == nome:
           totali += 1
         continue
 
@@ -402,7 +405,9 @@ def calcola_partite_giocate(ruolo, nome):
         if (p1_pulito == nome or p2_pulito == nome) and not (m.get("è_extra_recupero", False) and m.get("is_portieri_jolly", False)):
           is_presente = True
       elif ruolo == "attaccante":
-        if (m["a1"] == nome or m["a2"] == nome) and not (m.get("è_extra_recupero", False) and not m.get("is_portieri_jolly", False)):
+        a1_pulito = pulisci_nome(m["a1"])
+        a2_pulito = pulisci_nome(m["a2"])
+        if (a1_pulito == nome or a2_pulito == nome) and not (m.get("è_extra_recupero", False) and not m.get("is_portieri_jolly", False)):
           is_presente = True
 
       if is_presente:
@@ -829,7 +834,9 @@ if db["stato"] == "gironi":
       
       p1_p = pulisci_nome(m["p1"])
       p2_p = pulisci_nome(m["p2"])
-      utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
+      a1_p = pulisci_nome(m["a1"])
+      a2_p = pulisci_nome(m["a2"])
+      utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, a1_p, a2_p]
 
       st.markdown(f"""
         <div class="live-match-box">
@@ -881,7 +888,6 @@ if db["stato"] == "gironi":
   else:
     st.info("Nessuna partita in corso al momento.")
 
-  # Mostriamo la lista generale delle code SOLO se l'utente non ha selezionato un profilo personale (o se è admin)
   if not giocatore_selezionato or is_admin:
     st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
     if partite_in_coda_gen:
@@ -950,7 +956,9 @@ if db["stato"] == "gironi":
         
         p1_p = pulisci_nome(m["p1"])
         p2_p = pulisci_nome(m["p2"])
-        utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
+        a1_p = pulisci_nome(m["a1"])
+        a2_p = pulisci_nome(m["a2"])
+        utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, a1_p, a2_p]
 
         if is_admin and is_giocata:
           if st.button(f"↩️ Annulla Risultato (Rimanda in coda)", key=f"annulla_{m['id']}", use_container_width=True):
