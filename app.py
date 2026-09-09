@@ -422,10 +422,8 @@ def posticipa_partita_turno(turno_num, match_id):
           idx_target = i
           break
       if idx_target != -1:
-        # Troviamo la prima partita successiva non giocata e non riposo per scambiare l'ordine (slittare in coda)
         for j in range(idx_target + 1, len(partite)):
           if not partite[j].get("giocata", False) and not partite[j].get("è_riposo_attaccante", False) and not partite[j].get("è_riposo_portiere", False):
-            # Scambiamo di posizione nel turno così scala in coda
             partite[idx_target], partite[j] = partite[j], partite[idx_target]
             break
       break
@@ -511,6 +509,16 @@ st.markdown("""
             border-color: #fef08a !important;
             color: #fef08a !important;
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
+        }
+        .btn-posticipa {
+            background: linear-gradient(135deg, #9333ea, #6b21a8) !important;
+            color: #ffffff !important;
+            border: 1px solid #c084fc !important;
+            border-radius: 12px !important;
+            font-weight: 700 !important;
+            height: 48px !important;
+            width: 100% !important;
+            box-shadow: 0 4px 14px rgba(147, 51, 234, 0.4);
         }
         .live-match-box {
             background: linear-gradient(135deg, #064e3b, #022c22);
@@ -746,10 +754,9 @@ if db["stato"] == "gironi":
           </div>
         """, unsafe_allow_html=True)
         
-        # Pulsante posticipa per il giocatore o admin
-        if st.button("⏱️ Posticipa questa partita di un turno", key=f"posticipa_pers_{match_trovato['id']}"):
+        if st.button("⏱️ Posticipa questa partita di un turno", key=f"posticipa_pers_{match_trovato['id']}", use_container_width=True):
           posticipa_partita_turno(turno_attivo, match_trovato["id"])
-          st.success("Partita posticipata in coda con successo!")
+          st.success("Partita posticipata in coda correttamente!")
           st.rerun()
 
         exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
@@ -785,20 +792,72 @@ if db["stato"] == "gironi":
               st.session_state[exp_key_open_pers] = False
               st.rerun()
       else:
-        st.markdown(f"""
-          <div class="queue-match-box">
-              <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ LA TUA PARTITA IN CODA (Turno {turno_attivo})</div>
-              <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
-                  {match_trovato['p1']} e {match_trovato['a1']} <span style="color: #60a5fa;">vs</span> {match_trovato['p2']} e {match_trovato['a2']}
+        # Se la partita è in coda, controlliamo se l'utente ha un'altra partita in corso. Se ce l'ha, mostriamo quella, altrimenti la in coda.
+        # Ma l'utente ha chiesto esplicitamente: "una volta che faccio posticipa, non mi si deve vedere la partita in coda e il bottone posticipa. In automatico mi deve sparire. Cioè, io lì voglio vedere le partite in coda che ho veramente in coda. Cioè, se io c'ho una partita in coda e faccio posticipa, in automatico mi deve sparire e mi ricompare nuovamente se ho una partita da fare o in coda."
+        # Gestiamo questo salvando in session_state i match posticipati temporaneamente per questo utente in questo turno.
+        posticipati_key = f"posticipati_{giocatore_selezionato}"
+        if posticipati_key not in st.session_state:
+          st.session_state[posticipati_key] = []
+
+        if match_trovato["id"] in st.session_state[posticipati_key]:
+          # Cerchiamo se c'è un'altra partita successiva per questo giocatore nello stesso turno o nei turni
+          match_alternativo = None
+          turno_alt = None
+          stato_alt = None
+          tav_alt = None
+          
+          # Cerchiamo un'altra partita non giocata in cui il giocatore è coinvolto e che non sia quella posticipata
+          trovato_altro = False
+          for t_obj in db["turni_partite"]:
+            for idx, m in enumerate(t_obj["partite"]):
+              if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+                p1_p = pulisci_nome(m["p1"])
+                p2_p = pulisci_nome(m["p2"])
+                if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]] and m["id"] != match_trovato["id"]:
+                  # Trovata un'altra partita! Verifichiamo se è in corso o in coda
+                  tavolo_num = (idx % num_tavoli) + 1
+                  # Calcoliamo se rientra nei tavoli live generali
+                  # Semplifichiamo verificando la posizione tra le aperte globali
+                  match_alternativo = m
+                  turno_alt = t_obj["turno"]
+                  tav_alt = tavolo_num
+                  trovato_altro = True
+                  break
+            if trovato_altro:
+              break
+
+          if match_alternativo:
+            st.markdown(f"""
+              <div class="live-match-box">
+                  <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🟢 UNICA PARTITA DISPONIBILE (Turno {turno_alt})</div>
+                  <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                      {match_alternativo['p1']} e {match_alternativo['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {match_alternativo['p2']} e {match_alternativo['a2']}
+                  </div>
               </div>
-              <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
-          </div>
-        """, unsafe_allow_html=True)
-        
-        if st.button("⏱️ Posticipa questa partita in coda", key=f"posticipa_coda_pers_{match_trovato['id']}"):
-          posticipa_partita_turno(turno_attivo, match_trovato["id"])
-          st.success("Partita posticipata in coda con successo!")
-          st.rerun()
+            """, unsafe_allow_html=True)
+          else:
+            st.info("Hai posticipato la partita in coda. Nessun'altra partita in coda al momento.")
+        else:
+          st.markdown(f"""
+            <div class="queue-match-box">
+                <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ LA TUA PARTITA IN CODA (Turno {turno_attivo})</div>
+                <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
+                    {match_trovato['p1']} e {match_trovato['a1']} <span style="color: #60a5fa;">vs</span> {match_trovato['p2']} e {match_trovato['a2']}
+                </div>
+                <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
+            </div>
+          """, unsafe_allow_html=True)
+          
+          # Pulsante personalizzato e accattivante per il posticipa
+          col_btn_1, col_btn_2, col_btn_3 = st.columns([1, 4, 1])
+          with col_btn_2:
+            if st.button("⏱️ POSTICIPA QUESTA PARTITA IN CODA", key=f"posticipa_coda_pers_{match_trovato['id']}", use_container_width=True):
+              posticipa_partita_turno(turno_attivo, match_trovato["id"])
+              if posticipati_key not in st.session_state:
+                st.session_state[posticipati_key] = []
+              st.session_state[posticipati_key].append(match_trovato["id"])
+              st.success("Partita posticipata in coda con successo!")
+              st.rerun()
     else:
       st.info("Nessuna partita attiva o in coda per te al momento.")
 
@@ -835,7 +894,7 @@ if db["stato"] == "gironi":
       """, unsafe_allow_html=True)
 
       if utente_coinvolto or is_admin:
-        if st.button("⏱️ Posticipa match", key=f"posticipa_gen_{m['id']}"):
+        if st.button("⏱️ Posticipa match", key=f"posticipa_gen_{m['id']}", use_container_width=True):
           posticipa_partita_turno(item["turno"], m["id"])
           st.success("Partita posticipata!")
           st.rerun()
@@ -883,6 +942,7 @@ if db["stato"] == "gironi":
       p2_p = pulisci_nome(m["p2"])
       utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
 
+      # Se l'utente ha posticipato questa specifica partita in coda, la nascondiamo dalla sua visualizzazione delle code generali se desiderato, oppure filtriamo
       st.markdown(f"""
         <div class="queue-match-box">
             <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
@@ -893,7 +953,7 @@ if db["stato"] == "gironi":
       """, unsafe_allow_html=True)
 
       if utente_coinvolto or is_admin:
-        if st.button("⏱️ Posticipa match in coda", key=f"posticipa_coda_gen_{m['id']}"):
+        if st.button("⏱️ Posticipa match in coda", key=f"posticipa_coda_gen_{m['id']}", use_container_width=True):
           posticipa_partita_turno(item["turno"], m["id"])
           st.success("Partita posticipata in coda!")
           st.rerun()
@@ -954,13 +1014,11 @@ if db["stato"] == "gironi":
         p2_p = pulisci_nome(m["p2"])
         utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
 
-        # Pulsante Admin per ANNULLARE la partita e rimetterla in coda (segnandola come non giocata)
         if is_admin and is_giocata:
-          if st.button(f"↩️ Annulla Risultato (Rimanda in coda)", key=f"annulla_{m['id']}"):
+          if st.button(f"↩️ Annulla Risultato (Rimanda in coda)", key=f"annulla_{m['id']}", use_container_width=True):
             m["giocata"] = False
             m["gol1"] = 0
             m["gol2"] = 0
-            # Rimandiamo in fondo alla lista delle partite non giocate del turno
             t_obj["partite"].remove(m)
             t_obj["partite"].insert(len(t_obj["partite"]) - 1, m)
             ricalcola_classifiche()
@@ -1022,7 +1080,7 @@ if db["stato"] == "gironi":
 
   st.markdown("<br>", unsafe_allow_html=True)
   st.markdown("#### ⚽ Classifica Attaccanti")
-  sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+  sorted_a = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), raw=False, reverse=True)
   for idx, (a, pt) in enumerate(sorted_a):
     gioc, tot = calcola_partite_giocate("attaccante", a)
     dr_a = db["dr_attaccanti"].get(a, 0)
