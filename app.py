@@ -324,6 +324,48 @@ if is_admin and db["stato"] != "setup":
       salva_dati(db)
       st.rerun()
 
+  # Funzionalità per rinominare un giocatore
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("✏️ Modifica Nome Giocatore")
+  tutti_giocatori_admin = sorted(list(set(db["portieri"] + db["attaccanti"])))
+  if tutti_giocatori_admin:
+    giocatore_da_modificare = st.sidebar.selectbox("Seleziona giocatore", tutti_giocatori_admin, key="admin_sel_mod_giocatore")
+    nuovo_nome = st.sidebar.text_input("Nuovo nome", key="admin_nuovo_nome_giocatore")
+    if st.sidebar.button("Conferma Modifica Nome", use_container_width=True):
+      nuovo_nome_clean = nuovo_nome.strip()
+      if not nuovo_nome_clean:
+        st.sidebar.error("Inserisci un nome valido.")
+      elif nuovo_nome_clean in tutti_giocatori_admin:
+        st.sidebar.error("Esiste già un giocatore con questo nome.")
+      else:
+        # Aggiorna liste portieri/attaccanti
+        if giocatore_da_modificare in db["portieri"]:
+          idx_p = db["portieri"].index(giocatore_da_modificare)
+          db["portieri"][idx_p] = nuovo_nome_clean
+        if giocatore_da_modificare in db["attaccanti"]:
+          idx_a = db["attaccanti"].index(giocatore_da_modificare)
+          db["attaccanti"][idx_a] = nuovo_nome_clean
+
+        # Aggiorna dizionari punti e DR
+        for diz_chiave in ["punti_portieri", "dr_portieri"]:
+          if giocatore_da_modificare in db[diz_chiave]:
+            db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(giocatore_da_modificare)
+        for diz_chiave in ["punti_attaccanti", "dr_attaccanti"]:
+          if giocatore_da_modificare in db[diz_chiave]:
+            db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(giocatore_da_modificare)
+
+        # Aggiorna tutte le partite nei turni
+        for t_obj in db["turni_partite"]:
+          for m in t_obj["partite"]:
+            for campo in ["p1", "p2", "a1", "a2"]:
+              valore_attuale = str(m.get(campo, ""))
+              if giocatore_da_modificare in valore_attuale:
+                m[campo] = valore_attuale.replace(giocatore_da_modificare, nuovo_nome_clean)
+
+        salva_dati(db)
+        st.sidebar.success(f"Nome modificato da '{giocatore_da_modificare}' a '{nuovo_nome_clean}' con successo!")
+        st.rerun()
+
 st.markdown("""
     <div style="text-align: center; margin-bottom: 14px; background: linear-gradient(135deg, #0b0f19, #111827); padding: 22px; border-radius: 20px; border: 2px solid #fbbf24; box-shadow: 0 0 20px rgba(251, 191, 36, 0.2);">
         <h1 style="margin: 0; color: #fbbf24; font-size: 2rem; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">🏆 Torneo Biliardino 'Giallo' Live</h1>
@@ -752,8 +794,9 @@ if db["stato"] == "gironi":
           stato_partita = "in_coda"
         break
 
-    st.markdown("### 🔍 La tua partita:")
+    # Correzione del bug: la scritta e il box appaiono SOLO se match_trovato esiste realmente
     if match_trovato:
+      st.markdown("### 🔍 La tua partita:")
       if stato_partita == "in_corso":
         st.markdown(f"""
           <div class="live-match-box">
@@ -811,8 +854,6 @@ if db["stato"] == "gironi":
               <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
           </div>
         """, unsafe_allow_html=True)
-    else:
-      st.info("Nessuna partita attiva o in coda per te al momento.")
 
   st.markdown("---")
 
