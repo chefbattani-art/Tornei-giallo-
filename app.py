@@ -60,7 +60,7 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
   turni_partite = []
   ruoli_riposo_per_turno = {}
-  
+
   compagni_precedenti = set()
   avversari_precedenti = set()
 
@@ -85,7 +85,7 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     miglior_partite = []
     min_penalita = 999999
 
-    for _ in range(300):
+    for _ in range(1500):
       if is_portieri_in_eccesso:
         p_temp = list(p_curr)
         random.shuffle(p_temp)
@@ -94,9 +94,10 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         p_temp = list(p_curr)
         a_temp = list(a_curr)
         random.shuffle(a_temp)
-      
+
       partite_tentative = []
       penalita_tentativo = 0
+      coppie_questo_turno = set()
 
       i = 0
       while i < len(p_temp) and i < len(a_temp):
@@ -113,12 +114,23 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         squadra_1 = tuple(sorted([p1, a1]))
         squadra_2 = tuple(sorted([p2, a2]))
 
-        if squadra_1 in compagni_precedenti or squadra_2 in compagni_precedenti:
-          penalita_tentativo += 10
+        if (
+            squadra_1 in compagni_precedenti
+            or squadra_1 in coppie_questo_turno
+        ):
+          penalita_tentativo += 1000
+        if (
+            squadra_2 in compagni_precedenti
+            or squadra_2 in coppie_questo_turno
+        ):
+          penalita_tentativo += 1000
+
+        coppie_questo_turno.add(squadra_1)
+        coppie_questo_turno.add(squadra_2)
 
         giocatori_s1 = [p1, a1]
         giocatori_s2 = [p2, a2]
-        
+
         scontri_singoli = []
         for g_a in giocatori_s1:
           for g_b in giocatori_s2:
@@ -128,9 +140,12 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
             scontri_singoli.append(coppia_avversaria)
 
         partite_tentative.append({
-            "p1": p1, "a1": a1, "p2": p2, "a2": a2,
+            "p1": p1,
+            "a1": a1,
+            "p2": p2,
+            "a2": a2,
             "compagni": [squadra_1, squadra_2],
-            "avversari": scontri_singoli
+            "avversari": scontri_singoli,
         })
         i += 2
 
@@ -192,24 +207,60 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
   elementi_da_recuperare = [val[1] for val in ruoli_riposo_per_turno.values()]
   if len(elementi_da_recuperare) > 0:
-    random.shuffle(elementi_da_recuperare)
     turno_num = num_turni + 1
     partite_turno_extra = []
     match_idx = 0
 
     if is_portieri_in_eccesso:
-      attaccanti_jolly = list(attaccanti)
-      random.shuffle(attaccanti_jolly)
-      a_index = 0
+      attaccanti_disponibili = list(attaccanti)
 
-      for i in range(0, len(elementi_da_recuperare), 2):
-        if i + 1 < len(elementi_da_recuperare):
-          p1_r = elementi_da_recuperare[i]
-          p2_r = elementi_da_recuperare[i + 1]
+      miglior_jolly_assegnazione = None
+      min_penalita_jolly = 999999
 
-          aj1 = attaccanti_jolly[a_index % len(attaccanti_jolly)]
-          aj2 = attaccanti_jolly[(a_index + 1) % len(attaccanti_jolly)]
-          a_index += 2
+      for _ in range(2000):
+        a_temp = list(attaccanti_disponibili)
+        random.shuffle(a_temp)
+        p_temp = list(elementi_da_recuperare)
+
+        tentativo_coppie = []
+        penalita_t = 0
+        coppie_usate_questo_turno = set()
+
+        i = 0
+        while i < len(p_temp) and i + 1 < len(a_temp):
+          p1_r = p_temp[i]
+          p2_r = p_temp[i + 1] if i + 1 < len(p_temp) else None
+
+          aj1 = a_temp[i]
+          aj2 = a_temp[i + 1] if i + 1 < len(a_temp) else None
+
+          if p2_r and aj2:
+            s1 = tuple(sorted([p1_r, aj1]))
+            s2 = tuple(sorted([p2_r, aj2]))
+
+            if (
+                s1 in compagni_precedenti
+                or s1 in coppie_usate_questo_turno
+                or s2 in compagni_precedenti
+                or s2 in coppie_usate_questo_turno
+            ):
+              penalita_t += 1000
+
+            coppie_usate_questo_turno.add(s1)
+            coppie_usate_questo_turno.add(s2)
+            tentativo_coppie.append((p1_r, aj1, p2_r, aj2, s1, s2))
+          i += 2
+
+        if penalita_t < min_penalita_jolly:
+          min_penalita_jolly = penalita_t
+          miglior_jolly_assegnazione = tentativo_coppie
+          if min_penalita_jolly == 0:
+            break
+
+      if miglior_jolly_assegnazione:
+        for p1_r, aj1, p2_r, aj2, s1, s2 in miglior_jolly_assegnazione:
+          compagni_precedenti.add(s1)
+          compagni_precedenti.add(s2)
 
           match_id = f"t{turno_num}_m{match_idx}"
           partite_turno_extra.append({
@@ -223,22 +274,59 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
               "gol1": 0,
               "gol2": 0,
               "è_extra_recupero": True,
-              "is_portieri_jolly": True
+              "is_portieri_jolly": True,
           })
           match_idx += 1
+
     else:
-      portieri_jolly = list(portieri)
-      random.shuffle(portieri_jolly)
-      p_index = 0
+      portieri_disponibili = list(portieri)
+      miglior_jolly_assegnazione = None
+      min_penalita_jolly = 999999
 
-      for i in range(0, len(elementi_da_recuperare), 2):
-        if i + 1 < len(elementi_da_recuperare):
-          a1 = elementi_da_recuperare[i]
-          a2 = elementi_da_recuperare[i + 1]
+      for _ in range(2000):
+        p_temp = list(portieri_disponibili)
+        random.shuffle(p_temp)
+        a_temp = list(elementi_da_recuperare)
 
-          pj1 = portieri_jolly[p_index % len(portieri_jolly)]
-          pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
-          p_index += 2
+        tentativo_coppie = []
+        penalita_t = 0
+        coppie_usate_questo_turno = set()
+
+        i = 0
+        while i < len(a_temp) and i + 1 < len(p_temp):
+          a1 = a_temp[i]
+          a2 = a_temp[i + 1] if i + 1 < len(a_temp) else None
+
+          pj1 = p_temp[i]
+          pj2 = p_temp[i + 1] if i + 1 < len(p_temp) else None
+
+          if a2 and pj2:
+            s1 = tuple(sorted([pj1, a1]))
+            s2 = tuple(sorted([pj2, a2]))
+
+            if (
+                s1 in compagni_precedenti
+                or s1 in coppie_usate_questo_turno
+                or s2 in compagni_precedenti
+                or s2 in coppie_usate_questo_turno
+            ):
+              penalita_t += 1000
+
+            coppie_usate_questo_turno.add(s1)
+            coppie_usate_questo_turno.add(s2)
+            tentativo_coppie.append((pj1, a1, pj2, a2, s1, s2))
+          i += 2
+
+        if penalita_t < min_penalita_jolly:
+          min_penalita_jolly = penalita_t
+          miglior_jolly_assegnazione = tentativo_coppie
+          if min_penalita_jolly == 0:
+            break
+
+      if miglior_jolly_assegnazione:
+        for pj1, a1, pj2, a2, s1, s2 in miglior_jolly_assegnazione:
+          compagni_precedenti.add(s1)
+          compagni_precedenti.add(s2)
 
           match_id = f"t{turno_num}_m{match_idx}"
           partite_turno_extra.append({
@@ -252,27 +340,27 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
               "gol1": 0,
               "gol2": 0,
               "è_extra_recupero": True,
-              "is_portieri_jolly": False
+              "is_portieri_jolly": False,
           })
           match_idx += 1
 
       if len(elementi_da_recuperare) % 2 != 0:
         a_singolo = elementi_da_recuperare[-1]
-        pj1 = portieri_jolly[p_index % len(portieri_jolly)]
-        pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
+        pj1 = portieri_disponibili[0] if len(portieri_disponibili) > 0 else ""
+        pj2 = portieri_disponibili[1] if len(portieri_disponibili) > 1 else ""
         match_id = f"t{turno_num}_m{match_idx}"
         partite_turno_extra.append({
             "id": match_id,
-            "p1": f"{pj1} (Jolly)",
+            "p1": f"{pj1} (Jolly)" if pj1 else "",
             "a1": a_singolo,
-            "p2": f"{pj2} (Jolly)",
+            "p2": f"{pj2} (Jolly)" if pj2 else "RIPOSO",
             "a2": "RIPOSO",
             "giocata": True,
             "in_corso": False,
             "gol1": 0,
             "gol2": 0,
             "è_extra_recupero": True,
-            "is_portieri_jolly": False
+            "is_portieri_jolly": False,
         })
 
     if partite_turno_extra:
@@ -289,10 +377,10 @@ def avvia_quarti():
   top_a = [a[0] for a in sorted_a_list[:8]]
 
   quarti_partite = [
-      {"id": "ef_t1_m1", "p1": top_p[0], "a1": top_a[0], "p2": top_p[7], "a2": top_a[7], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-      {"id": "ef_t1_m2", "p1": top_p[1], "a1": top_a[1], "p2": top_p[6], "a2": top_a[6], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-      {"id": "ef_t1_m3", "p1": top_p[2], "a1": top_a[2], "p2": top_p[5], "a2": top_a[5], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
-      {"id": "ef_t1_m4", "p1": top_p[3], "a1": top_a[3], "p2": top_p[4], "a2": top_a[4], "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+      {"id": "ef_t1_m1", "p1": top_p[0] if len(top_p) > 0 else "", "a1": top_a[0] if len(top_a) > 0 else "", "p2": top_p[7] if len(top_p) > 7 else "", "a2": top_a[7] if len(top_a) > 7 else "", "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+      {"id": "ef_t1_m2", "p1": top_p[1] if len(top_p) > 1 else "", "a1": top_a[1] if len(top_a) > 1 else "", "p2": top_p[6] if len(top_p) > 6 else "", "a2": top_a[6] if len(top_a) > 6 else "", "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+      {"id": "ef_t1_m3", "p1": top_p[2] if len(top_p) > 2 else "", "a1": top_a[2] if len(top_a) > 2 else "", "p2": top_p[5] if len(top_p) > 5 else "", "a2": top_a[5] if len(top_a) > 5 else "", "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
+      {"id": "ef_t1_m4", "p1": top_p[3] if len(top_p) > 3 else "", "a1": top_a[3] if len(top_a) > 3 else "", "p2": top_p[4] if len(top_p) > 4 else "", "a2": top_a[4] if len(top_a) > 4 else "", "giocata": False, "in_corso": False, "gol1": 0, "gol2": 0},
   ]
   db["fasi_finali"] = [{"turno": 1, "nome": "Quarti di Finale", "partite": quarti_partite}]
   db["stato"] = "eliminatorie"
@@ -601,7 +689,6 @@ if db["stato"] == "setup":
     if st.button("🚀 Avvia il Torneo e Genera Calendario"):
       portieri, attaccanti = [], []
       for line in whatsapp_text.split("\n"):
-        # MODIFICA QUI: Riconosce sia 🚪 che 🥅 come portieri
         if "🚪" in line or "🥅" in line:
           n = pulisci_nome(line)
           if n:
