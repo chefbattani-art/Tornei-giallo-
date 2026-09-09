@@ -888,21 +888,21 @@ if db["stato"] == "gironi":
   else:
     st.info("Nessuna partita in corso al momento.")
 
-  if not giocatore_selezionato or is_admin:
-    st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
-    if partite_in_coda_gen:
-      for item in partite_in_coda_gen:
-        m = item["match"]
-        st.markdown(f"""
-          <div class="queue-match-box">
-              <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
-              <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
-                  {m['p1']} e {m['a1']} <span style="color: #60a5fa;">vs</span> {m['p2']} e {m['a2']}
-              </div>
-          </div>
-        """, unsafe_allow_html=True)
-    else:
-      st.info("Nessuna partita in coda.")
+  # SEZIONE VISIBILE A TUTTI I GIOCATORI E ALL'ADMIN
+  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} Match)")
+  if partite_in_coda_gen:
+    for item in partite_in_coda_gen:
+      m = item["match"]
+      st.markdown(f"""
+        <div class="queue-match-box">
+            <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">Turno {item['turno']} (In attesa di un tavolo libero)</div>
+            <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
+                {m['p1']} e {m['a1']} <span style="color: #60a5fa;">vs</span> {m['p2']} e {m['a2']}
+            </div>
+        </div>
+      """, unsafe_allow_html=True)
+  else:
+    st.info("Nessuna partita in coda.")
 
   st.markdown("---")
 
