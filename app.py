@@ -824,7 +824,7 @@ if db["stato"] == "gironi":
         partite_aperte_totali_aggiornate.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
 
   partite_in_corso_gen = partite_aperte_totali_aggiornate[:num_tavoli]
-  partite_in_coda_gen = partite_aperte_totali_aggiornate[num_tavoli:]
+  partite_in_coda_gen = partite_aperte_totali_aggiornate[num_tavoli:num_tavoli * 2]
 
   st.markdown(f"### 🟢 PARTITE IN CORSO ( sui {num_tavoli} Biliardini )")
   if partite_in_corso_gen:
@@ -888,8 +888,7 @@ if db["stato"] == "gironi":
   else:
     st.info("Nessuna partita in corso al momento.")
 
-  # SEZIONE VISIBILE A TUTTI I GIOCATORI E ALL'ADMIN (MOSTRA TUTTA LA CODA)
-  st.markdown(f"### ⏳ PARTITE IN CODA (Tutte le successive)")
+  st.markdown(f"### ⏳ PARTITE IN CODA (Prossimi {num_tavoli} match)")
   if partite_in_coda_gen:
     for item in partite_in_coda_gen:
       m = item["match"]
