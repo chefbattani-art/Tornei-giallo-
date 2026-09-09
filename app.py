@@ -401,20 +401,26 @@ def ricalcola_classifiche():
         a1_pulito = pulisci_nome(m["a1"])
         a2_pulito = pulisci_nome(m["a2"])
 
-        if a1_pulito in a_punti and not is_portieri_jolly:
+        # I jolly non devono prendere punteggio nella classifica
+        is_jolly_a1 = "(Jolly)" in str(m["a1"])
+        is_jolly_a2 = "(Jolly)" in str(m["a2"])
+        is_jolly_p1 = "(Jolly)" in str(m["p1"])
+        is_jolly_p2 = "(Jolly)" in str(m["p2"])
+
+        if a1_pulito in a_punti and not is_portieri_jolly and not is_jolly_a1:
           a_punti[a1_pulito] += pt_s1
           a_dr[a1_pulito] += g1 - g2
-        if a2_pulito in a_punti and not is_portieri_jolly:
+        if a2_pulito in a_punti and not is_portieri_jolly and not is_jolly_a2:
           a_punti[a2_pulito] += pt_s2
           a_dr[a2_pulito] += g2 - g1
 
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
 
-        if p1_pulito in p_punti and not (is_extra and is_portieri_jolly):
+        if p1_pulito in p_punti and not (is_extra and is_portieri_jolly) and not is_jolly_p1:
           p_punti[p1_pulito] += pt_s1
           p_dr[p1_pulito] += g1 - g2
-        if p2_pulito in p_punti and not (is_extra and is_portieri_jolly):
+        if p2_pulito in p_punti and not (is_extra and is_portieri_jolly) and not is_jolly_p2:
           p_punti[p2_pulito] += pt_s2
           p_dr[p2_pulito] += g2 - g1
 
