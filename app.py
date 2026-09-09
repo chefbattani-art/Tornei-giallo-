@@ -413,8 +413,6 @@ def calcola_partite_giocate(ruolo, nome):
 
 
 def posticipa_partita_in_corso(match_id):
-  # Prende la partita attiva (in corso) e la sposta alla fine del suo turno 
-  # o in fondo alla lista delle partite non giocate, permettendo alle altre di avanzare.
   match_trovato = None
   turno_trovato = None
   
@@ -429,7 +427,6 @@ def posticipa_partita_in_corso(match_id):
       
   if match_trovato and turno_trovato:
     turno_trovato["partite"].remove(match_trovato)
-    # Inseriamo il match in fondo alle partite non giocate dello stesso turno (prima dei riposi)
     inserito = False
     for i in range(len(turno_trovato["partite"]) - 1, -1, -1):
       p = turno_trovato["partite"][i]
@@ -604,7 +601,8 @@ if db["stato"] == "setup":
     if st.button("🚀 Avvia il Torneo e Genera Calendario"):
       portieri, attaccanti = [], []
       for line in whatsapp_text.split("\n"):
-        if "🚪" in line:
+        # MODIFICA QUI: Riconosce sia 🚪 che 🥅 come portieri
+        if "🚪" in line or "🥅" in line:
           n = pulisci_nome(line)
           if n:
             portieri.append(n)
@@ -614,7 +612,7 @@ if db["stato"] == "setup":
             attaccanti.append(n)
 
       if len(portieri) < 2 or len(attaccanti) < 2:
-        st.error("Inserisci almeno 2 portieri e 2 attaccanti.")
+        st.error(f"Inserisci almeno 2 portieri e 2 attaccanti. Rilevati: {len(portieri)} portieri e {len(attaccanti)} attaccanti.")
       else:
         db["portieri"] = portieri
         db["attaccanti"] = attaccanti
@@ -690,7 +688,7 @@ if db["stato"] == "gironi":
       <div style="background: linear-gradient(135deg, #0b0f19, #111827); border: 2px solid #fbbf24; border-radius: 20px; padding: 20px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(251,191,36,0.2);">
         <div style="font-size: 0.85rem; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">IL TUO PROFILO SALVATO</div>
         <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 16px;">
-          {'🚪' if ruolo_p == 'portiere' else '⚽'} {giocatore_selezionato}
+          {'🥅' if ruolo_p == 'portiere' else '⚽'} {giocatore_selezionato}
         </div>
         <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
           <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
@@ -709,7 +707,6 @@ if db["stato"] == "gironi":
       </div>
     """, unsafe_allow_html=True)
 
-  # CODA GLOBALE UNICA PER TUTTI I CONTROLLI
   partite_aperte_totali = []
   for t_obj in db["turni_partite"]:
     for idx, m in enumerate(t_obj["partite"]):
@@ -780,10 +777,10 @@ if db["stato"] == "gironi":
             
             col_pers_1, col_pers_2 = st.columns(2)
             with col_pers_1:
-                st.markdown(f'<b>🚪 {match_trovato["p1"]} & {match_trovato["a1"]}</b>', unsafe_allow_html=True)
+                st.markdown(f'<b>🥅 {match_trovato["p1"]} & {match_trovato["a1"]}</b>', unsafe_allow_html=True)
                 str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_pers_g1_{match_trovato['id']}", label_visibility="collapsed")
             with col_pers_2:
-                st.markdown(f'<b>🚪 {match_trovato["p2"]} & {match_trovato["a2"]}</b>', unsafe_allow_html=True)
+                st.markdown(f'<b>🥅 {match_trovato["p2"]} & {match_trovato["a2"]}</b>', unsafe_allow_html=True)
                 str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_pers_g2_{match_trovato['id']}", label_visibility="collapsed")
             
             st.markdown("<br>", unsafe_allow_html=True)
@@ -815,7 +812,6 @@ if db["stato"] == "gironi":
 
   st.markdown("---")
 
-  # AGGIORNAMENTO DINAMICO DEGLI INDICI DOPO LA POSTICIPAZIONE
   partite_aperte_totali_aggiornate = []
   for t_obj in db["turni_partite"]:
     for idx, m in enumerate(t_obj["partite"]):
@@ -863,10 +859,10 @@ if db["stato"] == "gironi":
             
             col_gen_1, col_gen_2 = st.columns(2)
             with col_gen_1:
-                st.markdown(f'<b>🚪 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
+                st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
                 str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_gen_g1_{m['id']}", label_visibility="collapsed")
             with col_gen_2:
-                st.markdown(f'<b>🚪 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
+                st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
                 str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_gen_g2_{m['id']}", label_visibility="collapsed")
             
             st.markdown("<br>", unsafe_allow_html=True)
@@ -981,10 +977,10 @@ if db["stato"] == "gironi":
               
               col_g1, col_g2 = st.columns(2)
               with col_g1:
-                  st.markdown(f'<b>🚪 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
+                  st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
                   str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_g1_{m['id']}", label_visibility="collapsed")
               with col_g2:
-                  st.markdown(f'<b>🚪 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
+                  st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
                   str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_g2_{m['id']}", label_visibility="collapsed")
               
               st.markdown("<br>", unsafe_allow_html=True)
@@ -1006,7 +1002,7 @@ if db["stato"] == "gironi":
   st.markdown("### 🏆 CLASSIFICHE PROFESSIONALI IN TEMPO REALE")
   st.markdown("<div style='font-size: 0.9rem; color: #9ca3af; margin-bottom: 12px;'>🟢 Prime 8 posizioni in zona qualificazione Quarti | 🔴 Ultime posizioni in zona eliminazione</div>", unsafe_allow_html=True)
 
-  st.markdown("#### 🚪 Classifica Portieri")
+  st.markdown("#### 🥅 Classifica Portieri")
   sorted_p = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
   for idx, (p, pt) in enumerate(sorted_p):
     gioc, tot = calcola_partite_giocate("portiere", p)
@@ -1014,7 +1010,7 @@ if db["stato"] == "gironi":
     card_class = "rank-card-green" if idx < 8 else "rank-card-red"
     st.markdown(f"""
       <div class="{card_class}">
-        <div><b>{idx+1}°</b> &nbsp; 🚪 &nbsp; <b>{p}</b></div>
+        <div><b>{idx+1}°</b> &nbsp; 🥅 &nbsp; <b>{p}</b></div>
         <div style="color: #cbd5e1; font-size: 0.95rem;">Punti: <b>{pt}</b> &nbsp;|&nbsp; Diff. Reti: <b>{dr_p:+d}</b> &nbsp;|&nbsp; Partite: {gioc}/{tot}</div>
       </div>
     """, unsafe_allow_html=True)
