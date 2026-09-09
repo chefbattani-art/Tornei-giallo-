@@ -85,18 +85,17 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     miglior_partite = []
     min_penalita = 999999
 
-    for _ in range(300):
-      if is_portieri_in_eccesso:
-        p_temp = list(p_curr)
-        random.shuffle(p_temp)
-        a_temp = list(a_curr)
-      else:
-        p_temp = list(p_curr)
-        a_temp = list(a_curr)
-        random.shuffle(a_temp)
+    for _ in range(2000):
+      p_temp = list(p_curr)
+      a_temp = list(a_curr)
+      random.shuffle(p_temp)
+      random.shuffle(a_temp)
       
       partite_tentative = []
       penalita_tentativo = 0
+      coppie_questo_turno = set()
+      scontri_questo_turno = set()
+      turno_possibile = True
 
       i = 0
       while i < len(p_temp) and i < len(a_temp):
@@ -113,9 +112,16 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         squadra_1 = tuple(sorted([p1, a1]))
         squadra_2 = tuple(sorted([p2, a2]))
 
-        if squadra_1 in compagni_precedenti or squadra_2 in compagni_precedenti:
-          penalita_tentativo += 10
+        # REGOLA FERREA 1: Vietato far giocare insieme la stessa coppia portiere-attaccante più di una volta
+        if squadra_1 in compagni_precedenti or squadra_1 in coppie_questo_turno or \
+           squadra_2 in compagni_precedenti or squadra_2 in coppie_questo_turno:
+          turno_possibile = False
+          break
 
+        coppie_questo_turno.add(squadra_1)
+        coppie_questo_turno.add(squadra_2)
+
+        # REGOLA 2: Penalizzazione forte per gli avversari ripetuti
         giocatori_s1 = [p1, a1]
         giocatori_s2 = [p2, a2]
         
@@ -124,7 +130,10 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
           for g_b in giocatori_s2:
             coppia_avversaria = tuple(sorted([g_a, g_b]))
             if coppia_avversaria in avversari_precedenti:
-              penalita_tentativo += 5
+              penalita_tentativo += 100
+            if coppia_avversaria in scontri_questo_turno:
+              penalita_tentativo += 500
+            scontri_questo_turno.add(coppia_avversaria)
             scontri_singoli.append(coppia_avversaria)
 
         partite_tentative.append({
@@ -134,17 +143,38 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         })
         i += 2
 
-      if penalita_tentativo < min_penalita:
-        min_penalita = penalita_tentativo
-        miglior_partite = partite_tentative
-        if min_penalita == 0:
-          break
+      if turno_possibile:
+        if penalita_tentativo < min_penalita:
+          min_penalita = penalita_tentativo
+          miglior_partite = partite_tentative
+          if min_penalita == 0:
+            break
+
+    # Fallback di sicurezza estrema se lo spazio combinatorio è saturo
+    if not miglior_partite:
+      p_temp = list(p_curr)
+      a_temp = list(a_curr)
+      random.shuffle(p_temp)
+      random.shuffle(a_temp)
+      i = 0
+      while i < len(p_temp) and i < len(a_temp):
+        p1, a1 = p_temp[i], a_temp[i]
+        p2 = p_temp[(i + 1) % len(p_temp)]
+        a2 = a_temp[(i + 1) % len(a_temp)]
+        squadra_1 = tuple(sorted([p1, a1]))
+        squadra_2 = tuple(sorted([p2, a2]))
+        miglior_partite.append({
+            "p1": p1, "a1": a1, "p2": p2, "a2": a2,
+            "compagni": [squadra_1, squadra_2],
+            "avversari": []
+        })
+        i += 2
 
     partite_turno = []
     for match_idx, m_data in enumerate(miglior_partite):
       for comp in m_data["compagni"]:
         compagni_precedenti.add(comp)
-      for avv in m_data["avversari"]:
+      for avv in m_data.get("avversari", []):
         avversari_precedenti.add(avv)
 
       match_id = f"t{t}_m{match_idx}"
@@ -401,7 +431,6 @@ def ricalcola_classifiche():
         a1_pulito = pulisci_nome(m["a1"])
         a2_pulito = pulisci_nome(m["a2"])
 
-        # I jolly non devono prendere punteggio nella classifica
         is_jolly_a1 = "(Jolly)" in str(m["a1"])
         is_jolly_a2 = "(Jolly)" in str(m["a2"])
         is_jolly_p1 = "(Jolly)" in str(m["p1"])
