@@ -733,30 +733,38 @@ if db["stato"] == "gironi":
     if posticipati_key not in st.session_state:
       st.session_state[posticipati_key] = []
 
-    aperte_counter = 0
+    # Creiamo prima di tutto l'elenco completo di tutte le partite aperte globalmente
+    partite_aperte_totali = []
     for t_obj in db["turni_partite"]:
       for idx, m in enumerate(t_obj["partite"]):
         if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-          p1_p = pulisci_nome(m["p1"])
-          p2_p = pulisci_nome(m["p2"])
-          if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
-            # Se l'utente ha posticipato questa specifica partita, la saltiamo per trovare la successiva
-            if m["id"] in st.session_state[posticipati_key]:
-              continue
+          tavolo_num = (idx % num_tavoli) + 1
+          partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
 
-            tavolo_num = (idx % num_tavoli) + 1
-            if aperte_counter < num_tavoli:
-              match_trovato = m
-              stato_partita = "in_corso"
-              tavolo_assegnato = tavolo_num
-              turno_attivo = t_obj["turno"]
-            else:
-              match_trovato = m
-              stato_partita = "in_coda"
-              turno_attivo = t_obj["turno"]
-            break
-          aperte_counter += 1
-      if match_trovato:
+    # Cerchiamo la partita scorrendo la lista globale delle partite aperte (uguale alla coda generale)
+    for item in partite_aperte_totali:
+      m = item["match"]
+      t_num = item["turno"]
+      tav_num = item["tavolo"]
+      
+      p1_p = pulisci_nome(m["p1"])
+      p2_p = pulisci_nome(m["p2"])
+      
+      if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
+        # Se l'utente ha posticipato questa specifica partita, la saltiamo
+        if m["id"] in st.session_state[posticipati_key]:
+          continue
+          
+        match_trovato = m
+        turno_attivo = t_num
+        
+        # Verifichiamo se è tra quelle in corso (nei primi `num_tavoli` posti) o in coda
+        idx_globale = partite_aperte_totali.index(item)
+        if idx_globale < num_tavoli:
+          stato_partita = "in_corso"
+          tavolo_assegnato = tav_num
+        else:
+          stato_partita = "in_coda"
         break
 
     st.markdown("### 🔍 La tua partita:")
@@ -833,13 +841,6 @@ if db["stato"] == "gironi":
   st.markdown("---")
 
   # SEZIONE PARTITE IN CORSO GENERALI
-  partite_aperte_totali = []
-  for t_obj in db["turni_partite"]:
-    for idx, m in enumerate(t_obj["partite"]):
-      if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-        tavolo_num = (idx % num_tavoli) + 1
-        partite_aperte_totali.append({"turno": t_obj["turno"], "match": m, "tavolo": tavolo_num})
-
   partite_in_corso_gen = partite_aperte_totali[:num_tavoli]
   partite_in_coda_gen = partite_aperte_totali[num_tavoli:num_tavoli * 2]
 
