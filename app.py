@@ -324,7 +324,6 @@ if is_admin and db["stato"] != "setup":
       salva_dati(db)
       st.rerun()
 
-  # Funzionalità per rinominare un giocatore
   st.sidebar.markdown("---")
   st.sidebar.subheader("✏️ Modifica Nome Giocatore")
   tutti_giocatori_admin = sorted(list(set(db["portieri"] + db["attaccanti"])))
@@ -338,7 +337,6 @@ if is_admin and db["stato"] != "setup":
       elif nuovo_nome_clean in tutti_giocatori_admin:
         st.sidebar.error("Esiste già un giocatore con questo nome.")
       else:
-        # Aggiorna liste portieri/attaccanti
         if giocatore_da_modificare in db["portieri"]:
           idx_p = db["portieri"].index(giocatore_da_modificare)
           db["portieri"][idx_p] = nuovo_nome_clean
@@ -346,7 +344,6 @@ if is_admin and db["stato"] != "setup":
           idx_a = db["attaccanti"].index(giocatore_da_modificare)
           db["attaccanti"][idx_a] = nuovo_nome_clean
 
-        # Aggiorna dizionari punti e DR
         for diz_chiave in ["punti_portieri", "dr_portieri"]:
           if giocatore_da_modificare in db[diz_chiave]:
             db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(giocatore_da_modificare)
@@ -354,7 +351,6 @@ if is_admin and db["stato"] != "setup":
           if giocatore_da_modificare in db[diz_chiave]:
             db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(giocatore_da_modificare)
 
-        # Aggiorna tutte le partite nei turni
         for t_obj in db["turni_partite"]:
           for m in t_obj["partite"]:
             for campo in ["p1", "p2", "a1", "a2"]:
@@ -784,17 +780,17 @@ if db["stato"] == "gironi":
       )
       
       if coinvolto:
-        match_trovato = m
-        turno_attivo = t_num
-        
         if idx_globale < num_tavoli:
+          match_trovato = m
+          turno_attivo = t_num
           stato_partita = "in_corso"
           tavolo_assegnato = tav_num
-        else:
+        elif idx_globale < num_tavoli * 2:
+          match_trovato = m
+          turno_attivo = t_num
           stato_partita = "in_coda"
         break
 
-    # Correzione del bug: la scritta e il box appaiono SOLO se match_trovato esiste realmente
     if match_trovato:
       st.markdown("### 🔍 La tua partita:")
       if stato_partita == "in_corso":
@@ -844,7 +840,7 @@ if db["stato"] == "gironi":
               salva_dati(db)
               st.session_state[exp_key_open_pers] = False
               st.rerun()
-      else:
+      elif stato_partita == "in_coda":
         st.markdown(f"""
           <div class="queue-match-box">
               <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ LA TUA PARTITA IN CODA (Turno {turno_attivo})</div>
