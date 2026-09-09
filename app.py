@@ -1,4 +1,3 @@
-from base64 import b64encode
 from datetime import datetime, timedelta
 from fpdf import FPDF
 import json
@@ -493,7 +492,6 @@ st.markdown("""
             color: #fef08a !important;
             box-shadow: 0 0 15px rgba(251, 191, 36, 0.4);
         }
-        /* SCHEDE PARTITE */
         .live-match-box {
             background: linear-gradient(135deg, #064e3b, #022c22);
             border: 2px solid #34d399;
@@ -538,15 +536,6 @@ st.markdown("""
             text-align: center;
             box-shadow: 0 4px 15px rgba(56, 189, 248, 0.2);
         }
-        .team-section {
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid #334155;
-            padding: 12px;
-            border-radius: 10px;
-            margin-bottom: 10px;
-            text-align: center;
-        }
-        /* CLASSIFICHE PRO STYLE */
         .rank-card-green {
             background: linear-gradient(135deg, rgba(6, 78, 59, 0.4), rgba(2, 44, 34, 0.6));
             border-left: 6px solid #34d399;
@@ -622,131 +611,169 @@ if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
-  if tutti_i_giocatori:
-    st.markdown("### 🔎 Profilo Personale Giocatore")
-    giocatore_selezionato = st.selectbox("Seleziona il tuo nome:", ["-- Seleziona --"] + tutti_i_giocatori, label_visibility="collapsed")
-    
-    if giocatore_selezionato != "-- Seleziona --":
-      ruolo_p = "portiere" if giocatore_selezionato in db["portieri"] else "attaccante"
-      pts = db["punti_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["punti_attaccanti"].get(giocatore_selezionato, 0)
-      dr = db["dr_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["dr_attaccanti"].get(giocatore_selezionato, 0)
-      
-      if ruolo_p == "portiere":
-        sorted_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
-      else:
-        sorted_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
-      
-      pos = next((i + 1 for i, item in enumerate(sorted_list) if item[0] == giocatore_selezionato), "-")
+  # Gestione persistenza tramite URL query params
+  params = st.query_params
+  giocatore_salvato = params.get("giocatore", "-- Seleziona --")
+  
+  if giocatore_salvato not in ["-- Seleziona --"] + tutti_i_giocatori:
+    giocatore_salvato = "-- Seleziona --"
 
-      st.markdown(f"""
-        <div style="background: linear-gradient(135deg, #0b0f19, #111827); border: 2px solid #fbbf24; border-radius: 20px; padding: 20px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(251,191,36,0.2);">
-          <div style="font-size: 0.85rem; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">IL TUO PROFILO</div>
-          <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 16px;">
-            {'🥅' if ruolo_p == 'portiere' else '⚽'} {giocatore_selezionato}
+  # SCHERMATA DI BENVENUTO / ACCESSO GIOCATORE (Gate di ingresso)
+  if giocatore_salvato == "-- Seleziona --" and not is_admin:
+    st.markdown("""
+        <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #0b0f19, #111827); border-radius: 24px; border: 2px solid #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.25); max-width: 600px; margin: 40px auto;">
+            <div style="font-size: 3rem; margin-bottom: 10px;">🏓</div>
+            <h1 style="color: #fbbf24; font-size: 1.8rem; font-weight: 800; text-transform: uppercase; margin-bottom: 10px;">Benvenuto nel Torneo Giallo!</h1>
+            <p style="color: #94a3b8; font-size: 1.05rem; margin-bottom: 30px;">Seleziona il tuo nome dall'elenco sottostante per accedere al tuo profilo, vedere le tue partite e inserire i tuoi risultati.</p>
+        </div>
+    """, unsafe_allow_html=True)
+    
+    st.markdown("<div style='max-width: 500px; margin: 0 auto;'>", unsafe_allow_html=True)
+    scelta_iniziale = st.selectbox(
+        "Il tuo nome:", 
+        ["-- Seleziona --"] + tutti_i_giocatori,
+        key="selettore_ingresso_giocatore"
+    )
+    
+    if scelta_iniziale != "-- Seleziona --":
+      st.query_params["giocatore"] = scelta_iniziale
+      st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+    
+    st.stop()
+
+  giocatore_selezionato = giocatore_salvato if giocatore_salvato != "-- Seleziona --" else None
+
+  if giocatore_selezionato:
+    col_cambia_1, col_cambia_2 = st.columns([6, 1])
+    with col_cambia_2:
+      if st.button("🔄 Esci", use_container_width=True, help="Torna alla schermata di scelta nome"):
+        if "giocatore" in st.query_params:
+          del st.query_params["giocatore"]
+        st.rerun()
+
+  if giocatore_selezionato:
+    ruolo_p = "portiere" if giocatore_selezionato in db["portieri"] else "attaccante"
+    pts = db["punti_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["punti_attaccanti"].get(giocatore_selezionato, 0)
+    dr = db["dr_portieri"].get(giocatore_selezionato, 0) if ruolo_p == "portiere" else db["dr_attaccanti"].get(giocatore_selezionato, 0)
+    
+    if ruolo_p == "portiere":
+      sorted_list = sorted(db["punti_portieri"].items(), key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)), reverse=True)
+    else:
+      sorted_list = sorted(db["punti_attaccanti"].items(), key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)), reverse=True)
+    
+    pos = next((i + 1 for i, item in enumerate(sorted_list) if item[0] == giocatore_selezionato), "-")
+
+    st.markdown(f"""
+      <div style="background: linear-gradient(135deg, #0b0f19, #111827); border: 2px solid #fbbf24; border-radius: 20px; padding: 20px; margin-top: 10px; margin-bottom: 20px; box-shadow: 0 0 20px rgba(251,191,36,0.2);">
+        <div style="font-size: 0.85rem; color: #fbbf24; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px;">IL TUO PROFILO SALVATO</div>
+        <div style="font-size: 1.6rem; font-weight: 800; color: #ffffff; margin-bottom: 16px;">
+          {'🥅' if ruolo_p == 'portiere' else '⚽'} {giocatore_selezionato}
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
+          <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">POSIZIONE</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-top: 4px;">{pos}° POSTO</div>
           </div>
-          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;">
-            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">POSIZIONE</div>
-              <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; margin-top: 4px;">{pos}° POSTO</div>
-            </div>
-            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">RUOLO</div>
-              <div style="font-size: 1.15rem; font-weight: 800; color: #60a5fa; margin-top: 4px;">{ruolo_p.capitalize()}</div>
-            </div>
-            <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
-              <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">PUNTI / DR</div>
-              <div style="font-size: 1.15rem; font-weight: 800; color: #fbbf24; margin-top: 4px;">{pts} PT <span style="font-size: 0.85rem; color: #94a3b8;">({dr:+d})</span></div>
-            </div>
+          <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">RUOLO</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #60a5fa; margin-top: 4px;">{ruolo_p.capitalize()}</div>
+          </div>
+          <div style="background: rgba(15, 23, 42, 0.8); border: 1px solid #334155; padding: 12px; border-radius: 12px; text-align: center;">
+            <div style="font-size: 0.75rem; color: #94a3b8; font-weight: 700; text-transform: uppercase;">PUNTI / DR</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: #fbbf24; margin-top: 4px;">{pts} PT <span style="font-size: 0.85rem; color: #94a3b8;">({dr:+d})</span></div>
           </div>
         </div>
-      """, unsafe_allow_html=True)
+      </div>
+    """, unsafe_allow_html=True)
 
-      match_trovato = None
-      stato_partita = None
-      tavolo_assegnato = None
-      turno_attivo = None
+    match_trovato = None
+    stato_partita = None
+    tavolo_assegnato = None
+    turno_attivo = None
 
-      aperte_counter = 0
-      for t_obj in db["turni_partite"]:
-        for idx, m in enumerate(t_obj["partite"]):
-          if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
-            p1_p = pulisci_nome(m["p1"])
-            p2_p = pulisci_nome(m["p2"])
-            if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
-              tavolo_num = (idx % num_tavoli) + 1
-              if aperte_counter < num_tavoli:
-                match_trovato = m
-                stato_partita = "in_corso"
-                tavolo_assegnato = tavolo_num
-                turno_attivo = t_obj["turno"]
-              else:
-                match_trovato = m
-                stato_partita = "in_coda"
-                turno_attivo = t_obj["turno"]
-              break
-            aperte_counter += 1
-        if match_trovato:
-          break
-
-      st.markdown("### 🔍 La tua partita:")
+    aperte_counter = 0
+    for t_obj in db["turni_partite"]:
+      for idx, m in enumerate(t_obj["partite"]):
+        if not m.get("giocata", False) and not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+          p1_p = pulisci_nome(m["p1"])
+          p2_p = pulisci_nome(m["p2"])
+          if giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]:
+            tavolo_num = (idx % num_tavoli) + 1
+            if aperte_counter < num_tavoli:
+              match_trovato = m
+              stato_partita = "in_corso"
+              tavolo_assegnato = tavolo_num
+              turno_attivo = t_obj["turno"]
+            else:
+              match_trovato = m
+              stato_partita = "in_coda"
+              turno_attivo = t_obj["turno"]
+            break
+          aperte_counter += 1
       if match_trovato:
-        if stato_partita == "in_corso":
-          st.markdown(f"""
-            <div class="live-match-box">
-                <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🟢 PARTITA IN CORSO (Biliardino {tavolo_assegnato} - Turno {turno_attivo})</div>
-                <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
-                    {match_trovato['p1']} e {match_trovato['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {match_trovato['p2']} e {match_trovato['a2']}
-                </div>
-            </div>
-          """, unsafe_allow_html=True)
-          
-          exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
-          if exp_key_open_pers not in st.session_state:
-            st.session_state[exp_key_open_pers] = False
+        break
 
-          with st.expander(f"⚙️ Inserisci il Risultato (Biliardino {tavolo_assegnato})", expanded=st.session_state[exp_key_open_pers]):
-            with st.form(key=f"form_pers_{match_trovato['id']}"):
-              st.write("Inserisci i goal assegnati a ciascuna squadra:")
-              curr_g1 = str(match_trovato.get("gol1", 0))
-              curr_g2 = str(match_trovato.get("gol2", 0))
-              
-              col_pers_1, col_pers_2 = st.columns(2)
-              with col_pers_1:
-                  st.markdown(f'<b>🥅 {match_trovato["p1"]} & {match_trovato["a1"]}</b>', unsafe_allow_html=True)
-                  str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_pers_g1_{match_trovato['id']}", label_visibility="collapsed")
-              with col_pers_2:
-                  st.markdown(f'<b>🥅 {match_trovato["p2"]} & {match_trovato["a2"]}</b>', unsafe_allow_html=True)
-                  str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_pers_g2_{match_trovato['id']}", label_visibility="collapsed")
-              
-              st.markdown("<br>", unsafe_allow_html=True)
-              submitted_pers = st.form_submit_button("Salva Risultato", use_container_width=True)
-              if submitted_pers:
-                try:
-                  match_trovato["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
-                  match_trovato["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
-                except ValueError:
-                  match_trovato["gol1"] = 0
-                  match_trovato["gol2"] = 0
-                match_trovato["giocata"] = True
-                ricalcola_classifiche()
-                salva_dati(db)
-                st.session_state[exp_key_open_pers] = False
-                st.rerun()
-        else:
-          st.markdown(f"""
-            <div class="queue-match-box">
-                <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ PARTITA IN CODA (Turno {turno_attivo})</div>
-                <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
-                    {match_trovato['p1']} e {match_trovato['a1']} <span style="color: #60a5fa;">vs</span> {match_trovato['p2']} e {match_trovato['a2']}
-                </div>
-                <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
-            </div>
-          """, unsafe_allow_html=True)
+    st.markdown("### 🔍 La tua partita:")
+    if match_trovato:
+      if stato_partita == "in_corso":
+        st.markdown(f"""
+          <div class="live-match-box">
+              <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🟢 LA TUA PARTITA (Biliardino {tavolo_assegnato} - Turno {turno_attivo})</div>
+              <div style="font-size: 1.25rem; font-weight: 700; color: #f8fafc; margin: 6px 0;">
+                  {match_trovato['p1']} e {match_trovato['a1']} <span style="color:#34d399; font-weight:400;">VS</span> {match_trovato['p2']} e {match_trovato['a2']}
+              </div>
+          </div>
+        """, unsafe_allow_html=True)
+        
+        exp_key_open_pers = f"exp_open_pers_{match_trovato['id']}"
+        if exp_key_open_pers not in st.session_state:
+          st.session_state[exp_key_open_pers] = False
+
+        with st.expander(f"⚙️ Inserisci il Risultato (Biliardino {tavolo_assegnato})", expanded=st.session_state[exp_key_open_pers]):
+          with st.form(key=f"form_pers_{match_trovato['id']}"):
+            st.write("Inserisci i goal assegnati a ciascuna squadra:")
+            curr_g1 = str(match_trovato.get("gol1", 0))
+            curr_g2 = str(match_trovato.get("gol2", 0))
+            
+            col_pers_1, col_pers_2 = st.columns(2)
+            with col_pers_1:
+                st.markdown(f'<b>🥅 {match_trovato["p1"]} & {match_trovato["a1"]}</b>', unsafe_allow_html=True)
+                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_pers_g1_{match_trovato['id']}", label_visibility="collapsed")
+            with col_pers_2:
+                st.markdown(f'<b>🥅 {match_trovato["p2"]} & {match_trovato["a2"]}</b>', unsafe_allow_html=True)
+                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_pers_g2_{match_trovato['id']}", label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            submitted_pers = st.form_submit_button("Salva Risultato", use_container_width=True)
+            if submitted_pers:
+              try:
+                match_trovato["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                match_trovato["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+              except ValueError:
+                match_trovato["gol1"] = 0
+                match_trovato["gol2"] = 0
+              match_trovato["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.session_state[exp_key_open_pers] = False
+              st.rerun()
       else:
-        st.info("Nessuna partita attiva o in coda per te al momento.")
+        st.markdown(f"""
+          <div class="queue-match-box">
+              <div style="font-size: 0.9rem; color: #93c5fd; font-weight: 700;">⏳ LA TUA PARTITA IN CODA (Turno {turno_attivo})</div>
+              <div style="font-size: 1.15rem; font-weight: 700; color: #ffffff; margin-top: 4px;">
+                  {match_trovato['p1']} e {match_trovato['a1']} <span style="color: #60a5fa;">vs</span> {match_trovato['p2']} e {match_trovato['a2']}
+              </div>
+              <div style="font-size: 0.9rem; color: #94a3b8; margin-top: 4px;">In attesa che si liberi un biliardino.</div>
+          </div>
+        """, unsafe_allow_html=True)
+    else:
+      st.info("Nessuna partita attiva o in coda per te al momento.")
 
-    st.markdown("---")
+  st.markdown("---")
 
+  # SEZIONE PARTITE IN CORSO GENERALI
   partite_aperte_totali = []
   for t_obj in db["turni_partite"]:
     for idx, m in enumerate(t_obj["partite"]):
@@ -762,6 +789,11 @@ if db["stato"] == "gironi":
     for item in partite_in_corso_gen:
       m = item["match"]
       tav_num = item["tavolo"]
+      
+      p1_p = pulisci_nome(m["p1"])
+      p2_p = pulisci_nome(m["p2"])
+      utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
+
       st.markdown(f"""
         <div class="live-match-box">
             <div style="font-weight: 800; color: #34d399; font-size: 1.1rem; margin-bottom: 4px;">🏟️ BILIARDINO {tav_num} (Turno {item['turno']}) — LIVE 🟢</div>
@@ -771,38 +803,41 @@ if db["stato"] == "gironi":
         </div>
       """, unsafe_allow_html=True)
 
-      exp_key_gen = f"exp_open_gen_{m['id']}"
-      if exp_key_gen not in st.session_state:
-        st.session_state[exp_key_gen] = False
+      if utente_coinvolto or is_admin:
+        exp_key_gen = f"exp_open_gen_{m['id']}"
+        if exp_key_gen not in st.session_state:
+          st.session_state[exp_key_gen] = False
 
-      with st.expander(f"⚙️ Inserisci Risultato Biliardino {tav_num} (Turno {item['turno']})", expanded=st.session_state[exp_key_gen]):
-        with st.form(key=f"form_gen_{m['id']}"):
-          st.write("Inserisci i goal assegnati a ciascuna squadra:")
-          curr_g1 = str(m.get("gol1", 0))
-          curr_g2 = str(m.get("gol2", 0))
-          
-          col_gen_1, col_gen_2 = st.columns(2)
-          with col_gen_1:
-              st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-              str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_gen_g1_{m['id']}", label_visibility="collapsed")
-          with col_gen_2:
-              st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-              str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_gen_g2_{m['id']}", label_visibility="collapsed")
-          
-          st.markdown("<br>", unsafe_allow_html=True)
-          submitted_gen = st.form_submit_button("Salva Risultato", use_container_width=True)
-          if submitted_gen:
-            try:
-              m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
-              m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
-            except ValueError:
-              m["gol1"] = 0
-              m["gol2"] = 0
-            m["giocata"] = True
-            ricalcola_classifiche()
-            salva_dati(db)
-            st.session_state[exp_key_gen] = False
-            st.rerun()
+        with st.expander(f"⚙️ Inserisci Risultato Biliardino {tav_num} (Turno {item['turno']})", expanded=st.session_state[exp_key_gen]):
+          with st.form(key=f"form_gen_{m['id']}"):
+            st.write("Inserisci i goal assegnati a ciascuna squadra:")
+            curr_g1 = str(m.get("gol1", 0))
+            curr_g2 = str(m.get("gol2", 0))
+            
+            col_gen_1, col_gen_2 = st.columns(2)
+            with col_gen_1:
+                st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
+                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_gen_g1_{m['id']}", label_visibility="collapsed")
+            with col_gen_2:
+                st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
+                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_gen_g2_{m['id']}", label_visibility="collapsed")
+            
+            st.markdown("<br>", unsafe_allow_html=True)
+            submitted_gen = st.form_submit_button("Salva Risultato", use_container_width=True)
+            if submitted_gen:
+              try:
+                m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+              except ValueError:
+                m["gol1"] = 0
+                m["gol2"] = 0
+              m["giocata"] = True
+              ricalcola_classifiche()
+              salva_dati(db)
+              st.session_state[exp_key_gen] = False
+              st.rerun()
+      else:
+        st.markdown("<div style='text-align: center; font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px;'>🔒 Puoi inserire il risultato solo se sei un giocatore di questo match</div>", unsafe_allow_html=True)
   else:
     st.info("Nessuna partita in corso al momento.")
 
@@ -884,39 +919,44 @@ if db["stato"] == "gironi":
             </div>
         """, unsafe_allow_html=True)
         
-        exp_key_open = f"exp_open_rec_{m['id']}"
-        if exp_key_open not in st.session_state:
-          st.session_state[exp_key_open] = False
+        p1_p = pulisci_nome(m["p1"])
+        p2_p = pulisci_nome(m["p2"])
+        utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
 
-        with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} [JOLLY] (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
-          with st.form(key=f"form_rec_{m['id']}"):
-            st.write("Inserisci i goal assegnati a ciascuna squadra:")
-            
-            curr_g1 = str(m.get("gol1", 0))
-            curr_g2 = str(m.get("gol2", 0))
-            
-            col_rec_1, col_rec_2 = st.columns(2)
-            with col_rec_1:
-                st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_rec_g1_{m['id']}", label_visibility="collapsed")
-            with col_rec_2:
-                st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_rec_g2_{m['id']}", label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
-            if submitted:
-              try:
-                m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
-                m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
-              except ValueError:
-                m["gol1"] = 0
-                m["gol2"] = 0
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.session_state[exp_key_open] = False
-              st.rerun()
+        if utente_coinvolto or is_admin:
+          exp_key_open = f"exp_open_rec_{m['id']}"
+          if exp_key_open not in st.session_state:
+            st.session_state[exp_key_open] = False
+
+          with st.expander(f"⚙️ Inserisci Risultato Tavolo {tavolo_num} [JOLLY] (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
+            with st.form(key=f"form_rec_{m['id']}"):
+              st.write("Inserisci i goal assegnati a ciascuna squadra:")
+              
+              curr_g1 = str(m.get("gol1", 0))
+              curr_g2 = str(m.get("gol2", 0))
+              
+              col_rec_1, col_rec_2 = st.columns(2)
+              with col_rec_1:
+                  st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
+                  str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_rec_g1_{m['id']}", label_visibility="collapsed")
+              with col_rec_2:
+                  st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
+                  str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_rec_g2_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
+              if submitted:
+                try:
+                  m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                  m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+                except ValueError:
+                  m["gol1"] = 0
+                  m["gol2"] = 0
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.session_state[exp_key_open] = False
+                st.rerun()
       else:
         tavolo_num = (idx % num_tavoli) + 1
         is_giocata = m.get("giocata", False)
@@ -933,39 +973,44 @@ if db["stato"] == "gironi":
             </div>
         """, unsafe_allow_html=True)
         
-        exp_key_open = f"exp_open_{m['id']}"
-        if exp_key_open not in st.session_state:
-          st.session_state[exp_key_open] = False
+        p1_p = pulisci_nome(m["p1"])
+        p2_p = pulisci_nome(m["p2"])
+        utente_coinvolto = giocatore_selezionato is not None and giocatore_selezionato in [p1_p, p2_p, m["a1"], m["a2"]]
 
-        with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
-          with st.form(key=f"form_{m['id']}"):
-            st.write("Inserisci i goal assegnati a ciascuna squadra:")
-            
-            curr_g1 = str(m.get("gol1", 0))
-            curr_g2 = str(m.get("gol2", 0))
-            
-            col_g1, col_g2 = st.columns(2)
-            with col_g1:
-                st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
-                str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_g1_{m['id']}", label_visibility="collapsed")
-            with col_g2:
-                st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
-                str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_g2_{m['id']}", label_visibility="collapsed")
-            
-            st.markdown("<br>", unsafe_allow_html=True)
-            submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
-            if submitted:
-              try:
-                m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
-                m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
-              except ValueError:
-                m["gol1"] = 0
-                m["gol2"] = 0
-              m["giocata"] = True
-              ricalcola_classifiche()
-              salva_dati(db)
-              st.session_state[exp_key_open] = False
-              st.rerun()
+        if utente_coinvolto or is_admin:
+          exp_key_open = f"exp_open_{m['id']}"
+          if exp_key_open not in st.session_state:
+            st.session_state[exp_key_open] = False
+
+          with st.expander(f"⚙️ Inserisci Risultato Biliardino {tavolo_num} (Turno {t_obj['turno']})", expanded=st.session_state[exp_key_open]):
+            with st.form(key=f"form_{m['id']}"):
+              st.write("Inserisci i goal assegnati a ciascuna squadra:")
+              
+              curr_g1 = str(m.get("gol1", 0))
+              curr_g2 = str(m.get("gol2", 0))
+              
+              col_g1, col_g2 = st.columns(2)
+              with col_g1:
+                  st.markdown(f'<b>🥅 {m["p1"]} & {m["a1"]}</b>', unsafe_allow_html=True)
+                  str_g1 = st.text_input("Gol S1", value=curr_g1, key=f"num_g1_{m['id']}", label_visibility="collapsed")
+              with col_g2:
+                  st.markdown(f'<b>🥅 {m["p2"]} & {m["a2"]}</b>', unsafe_allow_html=True)
+                  str_g2 = st.text_input("Gol S2", value=curr_g2, key=f"num_g2_{m['id']}", label_visibility="collapsed")
+              
+              st.markdown("<br>", unsafe_allow_html=True)
+              submitted = st.form_submit_button("Salva Risultato", use_container_width=True)
+              if submitted:
+                try:
+                  m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
+                  m["gol2"] = int(str_g2) if str_g2.strip() != "" else 0
+                except ValueError:
+                  m["gol1"] = 0
+                  m["gol2"] = 0
+                m["giocata"] = True
+                ricalcola_classifiche()
+                salva_dati(db)
+                st.session_state[exp_key_open] = False
+                st.rerun()
 
   st.markdown("---")
   st.markdown("### 🏆 CLASSIFICHE PROFESSIONALI IN TEMPO REALE")
