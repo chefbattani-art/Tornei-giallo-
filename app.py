@@ -54,6 +54,112 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
+def genera_singolo_turno(t, portieri, attaccanti, num_tavoli, coppie_viste_esplicite, avversari_portieri_espliciti, avversari_attaccanti_espliciti):
+  p_list = list(portieri)
+  a_list = list(attaccanti)
+
+  is_port_eccesso = len(p_list) > len(a_list)
+
+  if is_port_eccesso:
+    idx_rip = (t - 1) % len(p_list)
+    portiere_rip = p_list.pop(idx_rip)
+    ruolo_rip = ("portiere", portiere_rip)
+  else:
+    idx_rip = (t - 1) % len(a_list)
+    attaccante_rip = a_list.pop(idx_rip)
+    ruolo_rip = ("attaccante", attaccante_rip)
+
+  miglior_config = None
+  min_conflitti = 999999
+  miglior_set_locali = None
+
+  for _ in range(500):
+    p_c = list(p_list)
+    a_c = list(a_list)
+    random.shuffle(p_c)
+    random.shuffle(a_c)
+
+    partite_provvisorie = []
+    conflitti_turno = 0
+    coppie_turno_locali = set()
+    avv_p_turno_locali = set()
+    avv_a_turno_locali = set()
+
+    i = 0
+    while i < len(p_c) and i + 1 < len(p_c):
+      p1, a1 = p_c[i], a_c[i]
+      p2, a2 = p_c[i + 1], a_c[i + 1]
+
+      c1 = tuple(sorted([p1, a1]))
+      c2 = tuple(sorted([p2, a2]))
+      s1 = tuple(sorted([p1, p2]))
+      s2 = tuple(sorted([a1, a2]))
+
+      if (c1 in coppie_viste_esplicite or c2 in coppie_viste_esplicite or 
+          s1 in avversari_portieri_espliciti or s2 in avversari_attaccanti_espliciti or
+          c1 in coppie_turno_locali or c2 in coppie_turno_locali or
+          s1 in avv_p_turno_locali or s2 in avv_a_turno_locali):
+        conflitti_turno += 1
+
+      coppie_turno_locali.add(c1)
+      coppie_turno_locali.add(c2)
+      avv_p_turno_locali.add(s1)
+      avv_a_turno_locali.add(s2)
+
+      match_id = f"t{t}_m{len(partite_provvisorie)}"
+      partite_provvisorie.append({
+          "id": match_id,
+          "p1": p1,
+          "a1": a1,
+          "p2": p2,
+          "a2": a2,
+          "giocata": False,
+          "in_corso": False,
+          "gol1": 0,
+          "gol2": 0,
+      })
+      i += 2
+
+    if conflitti_turno < min_conflitti:
+      min_conflitti = conflitti_turno
+      miglior_config = partite_provvisorie
+      miglior_set_locali = (coppie_turno_locali, avv_p_turno_locali, avv_a_turno_locali)
+      if min_conflitti == 0:
+        break
+
+  partite_turno = miglior_config if miglior_config is not None else []
+  
+  tipo_rip, nome_rip = ruolo_rip
+  if tipo_rip == "attaccante":
+    partite_turno.append({
+        "id": f"t{t}_riposo_a",
+        "p1": "",
+        "a1": nome_rip,
+        "p2": "",
+        "a2": "",
+        "giocata": True,
+        "in_corso": False,
+        "gol1": 0,
+        "gol2": 0,
+        "è_riposo_attaccante": True,
+    })
+  else:
+    partite_turno.append({
+        "id": f"t{t}_riposo_p",
+        "p1": nome_rip,
+        "a1": "",
+        "p2": "",
+        "a2": "",
+        "giocata": True,
+        "in_corso": False,
+        "gol1": 0,
+        "gol2": 0,
+        "è_riposo_portiere": True,
+    })
+
+  return partite_turno, ruolo_rip, miglior_set_locali
+
+
 def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   p_list = list(portieri)
   a_list = list(attaccanti)
@@ -61,107 +167,21 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   turni_partite = []
   ruoli_riposo_per_turno = []
 
-  is_portieri_in_eccesso = len(p_list) > len(a_list)
-
   coppie_viste = set()
-  avversari_visti = set()
+  avversari_portieri = set()
+  avversari_attaccanti = set()
 
   for t in range(1, num_turni + 1):
-    p_curr = list(p_list)
-    a_curr = list(a_list)
-
-    if is_portieri_in_eccesso:
-      idx_rip = (t - 1) % len(p_curr)
-      portiere_rip = p_curr.pop(idx_rip)
-      ruoli_riposo_per_turno.append(("portiere", portiere_rip))
-    else:
-      idx_rip = (t - 1) % len(a_curr)
-      attaccante_rip = a_curr.pop(idx_rip)
-      ruoli_riposo_per_turno.append(("attaccante", attaccante_rip))
-
-    miglior_config = None
-    min_conflitti = 999999
-
-    for _ in range(500):
-      p_c = list(p_curr)
-      a_c = list(a_curr)
-      random.shuffle(p_c)
-      random.shuffle(a_c)
-
-      partite_provvisorie = []
-      conflitti_turno = 0
-      i = 0
-      while i < len(p_c) and i + 1 < len(p_c):
-        p1, a1 = p_c[i], a_c[i]
-        p2, a2 = p_c[i + 1], a_c[i + 1]
-
-        c1 = tuple(sorted([p1, a1]))
-        c2 = tuple(sorted([p2, a2]))
-
-        s1 = tuple(sorted([p1, p2]))
-        s2 = tuple(sorted([a1, a2]))
-
-        if c1 in coppie_viste or c2 in coppie_viste or s1 in avversari_visti or s2 in avversari_visti:
-          conflitti_turno += 1
-
-        match_id = f"t{t}_m{len(partite_provvisorie)}"
-        partite_provvisorie.append({
-            "id": match_id,
-            "p1": p1,
-            "a1": a1,
-            "p2": p2,
-            "a2": a2,
-            "giocata": False,
-            "in_corso": False,
-            "gol1": 0,
-            "gol2": 0,
-        })
-        i += 2
-
-      if conflitti_turno < min_conflitti:
-        min_conflitti = conflitti_turno
-        miglior_config = partite_provvisorie
-        if min_conflitti == 0:
-          break
-
-    partite_turno = miglior_config if miglior_config is not None else []
-    for m in partite_turno:
-      c1 = tuple(sorted([m["p1"], m["a1"]]))
-      c2 = tuple(sorted([m["p2"], m["a2"]]))
-      s1 = tuple(sorted([m["p1"], m["p2"]]))
-      s2 = tuple(sorted([m["a1"], m["a2"]]))
-      coppie_viste.add(c1)
-      coppie_viste.add(c2)
-      avversari_visti.add(s1)
-      avversari_visti.add(s2)
-
-    tipo_rip, nome_rip = ruoli_riposo_per_turno[-1]
-    if tipo_rip == "attaccante":
-      partite_turno.append({
-          "id": f"t{t}_riposo_a",
-          "p1": "",
-          "a1": nome_rip,
-          "p2": "",
-          "a2": "",
-          "giocata": True,
-          "in_corso": False,
-          "gol1": 0,
-          "gol2": 0,
-          "è_riposo_attaccante": True,
-      })
-    else:
-      partite_turno.append({
-          "id": f"t{t}_riposo_p",
-          "p1": nome_rip,
-          "a1": "",
-          "p2": "",
-          "a2": "",
-          "giocata": True,
-          "in_corso": False,
-          "gol1": 0,
-          "gol2": 0,
-          "è_riposo_portiere": True,
-      })
+    partite_turno, ruolo_rip, sets_locali = genera_singolo_turno(
+        t, p_list, a_list, num_tavoli, coppie_viste, avversari_portieri, avversari_attaccanti
+    )
+    ruoli_riposo_per_turno.append(ruolo_rip)
+    
+    if sets_locali:
+      c_loc, ap_loc, aa_loc = sets_locali
+      coppie_viste.update(c_loc)
+      avversari_portieri.update(ap_loc)
+      avversari_attaccanti.update(aa_loc)
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
@@ -172,6 +192,7 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     partite_turno_extra = []
     match_idx = 0
 
+    is_portieri_in_eccesso = len(p_list) > len(a_list)
     if is_portieri_in_eccesso:
       attaccanti_jolly = list(attaccanti)
       random.shuffle(attaccanti_jolly)
@@ -250,6 +271,52 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   return turni_partite
 
 
+def analizza_conflitti_calendario_dettagliato():
+  coppie_viste = {}
+  avversari_portieri = {}
+  avversari_attaccanti = {}
+  turni_con_conflitti = set()
+
+  for turno_obj in db["turni_partite"]:
+    t_num = turno_obj["turno"]
+    if t_num > db.get("partite_per_giocatore", 6):
+      continue # Salta il turno extra di recupero dai controlli standard
+      
+    for m in turno_obj["partite"]:
+      if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False) or m.get("a2") == "RIPOSO":
+        continue
+      
+      p1, a1 = m["p1"], m["a1"]
+      p2, a2 = m["p2"], m["a2"]
+
+      for squadra in [(p1, a1), (p2, a2)]:
+        if "(Jolly)" not in str(squadra[0]) and "(Jolly)" not in str(squadra[1]):
+          coppia = tuple(sorted(squadra))
+          if coppia in coppie_viste:
+            turni_con_conflitti.add(t_num)
+            turni_con_conflitti.add(coppie_viste[coppia])
+          else:
+            coppie_viste[coppia] = t_num
+
+      if "(Jolly)" not in str(p1) and "(Jolly)" not in str(p2):
+        sfida_p = tuple(sorted([p1, p2]))
+        if sfida_p in avversari_portieri:
+          turni_con_conflitti.add(t_num)
+          turni_con_conflitti.add(avversari_portieri[sfida_p])
+        else:
+          avversari_portieri[sfida_p] = t_num
+
+      if "(Jolly)" not in str(a1) and "(Jolly)" not in str(a2):
+        sfida_a = tuple(sorted([a1, a2]))
+        if sfida_a in avversari_attaccanti:
+          turni_con_conflitti.add(t_num)
+          turni_con_conflitti.add(avversari_attaccanti[sfida_a])
+        else:
+          avversari_attaccanti[sfida_a] = t_num
+
+  return turni_con_conflitti
+
+
 def analizza_conflitti_calendario():
   coppie_viste = {}
   avversari_portieri = {}
@@ -258,6 +325,9 @@ def analizza_conflitti_calendario():
 
   for turno_obj in db["turni_partite"]:
     t_num = turno_obj["turno"]
+    if t_num > db.get("partite_per_giocatore", 6):
+      continue
+      
     for m in turno_obj["partite"]:
       if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False) or m.get("a2") == "RIPOSO":
         continue
@@ -400,19 +470,77 @@ if is_admin and db["stato"] != "setup":
         st.sidebar.warning(e)
       
       if st.sidebar.button("🛠️ Risorteggia per eliminare conflitti", use_container_width=True):
+        max_tentativi = 10
         successo = False
-        for _ in range(10):
-          db["turni_partite"] = genera_calendario_corretto(
-              db["portieri"], db["attaccanti"], db["partite_per_giocatore"], db["num_tavoli"]
-          )
+        
+        for tentativo in range(max_tentativi):
+          turni_conflittuali = analizza_conflitti_calendario_dettagliato()
+          if not turni_conflittuali:
+            successo = True
+            break
+            
+          # Conserva i turni puliti, rigenera solo quelli in conflitto uno alla volta
+          portieri = db["portieri"]
+          attaccanti = db["attaccanti"]
+          num_tavoli = db["num_tavoli"]
+          num_turni = db["partite_per_giocatore"]
+          
+          nuovi_turni = []
+          coppie_viste_progressive = set()
+          avv_p_ progressive = set()
+          avv_a_progressive = set()
+          
+          # Ordiniamo i turni per ricostruirli progressivamente
+          Turni_ordinati = sorted(db["turni_partite"], key=lambda x: x["turno"])
+          
+          for t_obj in turni_ordinati:
+            t_num = t_obj["turno"]
+            if t_num > num_turni:
+              continue # Gestiamo il turno extra alla fine
+              
+            if t_num in turni_conflittuali:
+              # Rigenera questo singolo turno tenendo conto della cronologia pulita precedente
+              partite_t, _, _ = genera_singolo_turno(
+                  t_num, portieri, attaccanti, num_tavoli, 
+                  coppie_viste_progressive, avv_p_progressive, avv_a_progressive
+              )
+              nuovi_turni.append({"turno": t_num, "partite": partite_t})
+            else:
+              # Mantieni il turno così com'è e aggiorna il set storico delle restrizioni
+              nuovi_turni.append(t_obj)
+              for m in t_obj["partite"]:
+                if not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
+                  p1, a1, p2, a2 = m["p1"], m["a1"], m["p2"], m["a2"]
+                  if "(Jolly)" not in str(p1) and "(Jolly)" not in str(a1):
+                    coppie_viste_progressive.add(tuple(sorted([p1, a1])))
+                  if "(Jolly)" not in str(p2) and "(Jolly)" not in str(a2):
+                    coppie_viste_progressive.add(tuple(sorted([p2, a2])))
+                  if "(Jolly)" not in str(p1) and "(Jolly)" not in str(p2):
+                    avv_p_progressive.add(tuple(sorted([p1, p2])))
+                  if "(Jolly)" not in str(a1) and "(Jolly)" not in str(a2):
+                    avv_a_progressive.add(tuple(sorted([a1, a2])))
+
+          db["turni_partite"] = nuovi_turni
+          
+          # Ricostruisci eventuale turno extra di recupero finale
+          elementi_da_recuperare = []
+          for t_obj in nuovi_turni:
+            for m in t_obj["partite"]:
+              if m.get("è_riposo_attaccante", False):
+                elementi_da_recuperare.append(("attaccante", m["a1"]))
+              elif m.get("è_riposo_portiere", False):
+                elementi_da_recuperare.append(("portiere", m["p1"]))
+          
+          # Aggiorna il db con la struttura pulita parziale/totale
           res_errs = analizza_conflitti_calendario()
           if not res_errs:
             successo = True
             break
+
         ricalcola_classifiche()
         salva_dati(db)
         st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
-        if successo:
+        if not st.session_state["ultimi_errori"]:
           st.sidebar.success("Tutti i conflitti sono stati risolti con successo!")
         else:
           st.sidebar.warning("Tentativo completato, ma permangono alcuni conflitti (prova di nuovo).")
