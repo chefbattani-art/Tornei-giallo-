@@ -56,7 +56,6 @@ if not st.session_state.get("is_loading_conflitti", False):
   st_autorefresh(interval=3000, debounce=True, key="auto_refresh_torneo")
 
 # --- GESTIONE DEI RUOLI TRAMITE URL (QUERY PARAMS) ---
-# ?role=admin, ?role=giocatore, ?role=spettatore
 query_params = st.query_params
 ruolo_corrente = query_params.get("role", "giocatore")
 
@@ -428,7 +427,6 @@ def avvia_quarti():
   salva_dati(db)
 
 
-# --- BARRA LATERALE UNIFICATA CON GESTIONE RUOLI (LINK DINAMICI) ---
 st.sidebar.header("⚙️ Navigazione Ruoli")
 st.sidebar.markdown(
     "Usa questi link o seleziona la vista per accedere alle diverse aree:"
@@ -714,28 +712,22 @@ def ricalcola_classifiche():
         is_jolly_p1 = "(Jolly)" in str(m["p1"])
         is_jolly_p2 = "(Jolly)" in str(m["p2"])
 
-        if a1_pulito in a_punti and not is_portieri_jolly and not is_jolly_a1:
+        # Aggiornamento Attaccanti (esclude i punti se fanno da jolly)
+        if a1_pulito in a_punti and not is_jolly_a1:
           a_punti[a1_pulito] += pt_s1
           a_dr[a1_pulito] += g1 - g2
-        if a2_pulito in a_punti and not is_portieri_jolly and not is_jolly_a2:
+        if a2_pulito in a_punti and not is_jolly_a2:
           a_punti[a2_pulito] += pt_s2
           a_dr[a2_pulito] += g2 - g1
 
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
 
-        if (
-            p1_pulito in p_punti
-            and not (is_extra and is_portieri_jolly)
-            and not is_jolly_p1
-        ):
+        # Aggiornamento Portieri (esclude i punti se fanno da jolly)
+        if p1_pulito in p_punti and not is_jolly_p1:
           p_punti[p1_pulito] += pt_s1
           p_dr[p1_pulito] += g1 - g2
-        if (
-            p2_pulito in p_punti
-            and not (is_extra and is_portieri_jolly)
-            and not is_jolly_p2
-        ):
+        if p2_pulito in p_punti and not is_jolly_p2:
           p_punti[p2_pulito] += pt_s2
           p_dr[p2_pulito] += g2 - g1
 
@@ -764,24 +756,29 @@ def calcola_partite_giocate(ruolo, nome):
         continue
 
       is_presente = False
+      is_jolly_match = False
+
       if ruolo == "portiere":
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
-        if (p1_pulito == nome or p2_pulito == nome) and not (
-            m.get("è_extra_recupero", False)
-            and m.get("is_portieri_jolly", False)
-        ):
+        if p1_pulito == nome or p2_pulito == nome:
           is_presente = True
+          if "(Jolly)" in str(m["p1"]) or "(Jolly)" in str(m["p2"]):
+            is_jolly_match = True
       elif ruolo == "attaccante":
         a1_pulito = pulisci_nome(m["a1"])
         a2_pulito = pulisci_nome(m["a2"])
-        if (a1_pulito == nome or a2_pulito == nome) and not (
-            m.get("è_extra_recupero", False)
-            and not m.get("is_portieri_jolly", False)
-        ):
+        if a1_pulito == nome or a2_pulito == nome:
           is_presente = True
+          if "(Jolly)" in str(m["a1"]) or "(Jolly)" in str(m["a2"]):
+            is_jolly_match = True
 
       if is_presente:
+        # Se il giocatore ha fatto da jolly in questa partita extra,
+        # non la contiamo né nel totale né nelle giocate ufficiali.
+        if is_jolly_match:
+          continue
+
         totali += 1
         if m.get("giocata", False):
           giocate += 1
@@ -988,9 +985,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ==========================================
-# GESTIONE SCHERMATA SPETTATORE (?role=spettatore)
-# ==========================================
 if ruolo_corrente == "spettatore":
   st.subheader("👀 Modalità Spettatore (Sola Lettura)")
   st.info(
@@ -1072,9 +1066,6 @@ if ruolo_corrente == "spettatore":
   st.stop()
 
 
-# ==========================================
-# GESTIONE SCHERMATA SETUP / ADMIN / GIOCATORE
-# ==========================================
 if db["stato"] == "setup":
   st.subheader("1. Configurazione Iniziale del Torneo")
   if not is_admin:
