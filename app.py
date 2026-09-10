@@ -13,9 +13,6 @@ st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 
 DB_FILE = "torneo_data.json"
 
-# URL base della tua applicazione (sostituisci con il tuo link effettivo di Streamlit Cloud)
-BASE_URL = "https://2quznathuywvfcskgfjhk.streamlit.app"
-
 
 def carica_dati():
   dati_default = {
@@ -59,9 +56,9 @@ if not st.session_state.get("is_loading_conflitti", False):
   st_autorefresh(interval=3000, debounce=True, key="auto_refresh_torneo")
 
 # --- GESTIONE DEI RUOLI TRAMITE URL (QUERY PARAMS) ---
-# Utilizziamo ?ruolo=giocatore oppure ?ruolo=spettatore
+# ?role=admin, ?role=giocatore, ?role=spettatore
 query_params = st.query_params
-ruolo_corrente = query_params.get("ruolo", None)
+ruolo_corrente = query_params.get("role", "giocatore")
 
 
 def genera_singolo_turno(
@@ -431,224 +428,230 @@ def avvia_quarti():
   salva_dati(db)
 
 
-# --- GESTIONE BARRA LATERALE ADMIN ---
-# La barra laterale si attiva solo se l'utente è amministratore o se sta configurando il PIN
-is_admin = False
-pin_inserito_sidebar = st.sidebar.text_input(
-    "🔑 PIN Amministratore", type="password"
+# --- BARRA LATERALE UNIFICATA CON GESTIONE RUOLI (LINK DINAMICI) ---
+st.sidebar.header("⚙️ Navigazione Ruoli")
+st.sidebar.markdown(
+    "Usa questi link o seleziona la vista per accedere alle diverse aree:"
 )
-if pin_inserito_sidebar == db["admin_pin"]:
-  is_admin = True
-  st.sidebar.success("Accesso Admin OK ✅")
-elif pin_inserito_sidebar:
-  st.sidebar.error("PIN errato.")
 
-if is_admin:
+st.sidebar.markdown("- **[Admin](./?role=admin)**")
+st.sidebar.markdown("- **[Area Giocatore](./?role=giocatore)**")
+st.sidebar.markdown("- **[Spettatore](./?role=spettatore)**")
+
+st.sidebar.markdown("---")
+scelta_ruolo_manuale = st.sidebar.selectbox(
+    "Cambia vista corrente:",
+    ["giocatore", "admin", "spettatore"],
+    index=(
+        0
+        if ruolo_corrente == "giocatore"
+        else (1 if ruolo_corrente == "admin" else 2)
+    ),
+)
+if scelta_ruolo_manuale != ruolo_corrente:
+  st.query_params["role"] = scelta_ruolo_manuale
+  st.rerun()
+
+is_admin = False
+if ruolo_corrente == "admin":
+  pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
+  if pin_inserito == db["admin_pin"]:
+    is_admin = True
+    st.sidebar.success("Accesso Admin OK ✅")
+  else:
+    st.sidebar.error("PIN errato.")
+
+if is_admin and db["stato"] != "setup":
   st.sidebar.markdown("---")
-  st.sidebar.subheader("🔗 Link Condivisibili")
-  st.sidebar.code(f"{BASE_URL}/?ruolo=giocatore", language="markdown")
-  st.sidebar.code(f"{BASE_URL}/?ruolo=spettatore", language="markdown")
+  st.sidebar.subheader("🎲 Gestione Sorteggi")
+  if st.sidebar.button(
+      "🔄 Rigenera/Risorteggia Calendario", use_container_width=True
+  ):
+    if db["portieri"] and db["attaccanti"]:
+      db["turni_partite"] = genera_calendario_corretto(
+          db["portieri"],
+          db["attaccanti"],
+          db["partite_per_giocatore"],
+          db["num_tavoli"],
+      )
+      ricalcola_classifiche()
+      salva_dati(db)
+      if "ultimi_errori" in st.session_state:
+        del st.session_state["ultimi_errori"]
+      st.sidebar.success("Calendario rigenerato con successo!")
+      st.rerun()
 
-  if db["stato"] != "setup":
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🎲 Gestione Sorteggi")
-    if st.sidebar.button(
-        "🔄 Rigenera/Risorteggia Calendario", use_container_width=True
-    ):
-      if db["portieri"] and db["attaccanti"]:
-        db["turni_partite"] = genera_calendario_corretto(
-            db["portieri"],
-            db["attaccanti"],
-            db["partite_per_giocatore"],
-            db["num_tavoli"],
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🔍 Verifica e Risoluzione Conflitti")
+
+  if "is_loading_conflitti" not in st.session_state:
+    st.session_state["is_loading_conflitti"] = False
+
+  if st.sidebar.button(
+      "🧹 Verifica e Pulisci Conflitti (Auto)", use_container_width=True
+  ):
+    st.session_state["is_loading_conflitti"] = True
+    st.rerun()
+
+  if st.session_state["is_loading_conflitti"]:
+    portieri = db["portieri"]
+    attaccanti = db["attaccanti"]
+    num_tavoli = db["num_tavoli"]
+    num_turni = db["partite_per_giocatore"]
+
+    errori_iniziali = len(analizza_conflitti_calendario())
+
+    with st.sidebar.status(
+        "⏳ Ricerca della combinazione perfetta...", expanded=True
+    ) as status:
+      timer_placeholder = st.empty()
+
+      max_tentativi = 2000
+      successo = False
+      start_time = time.time()
+
+      for tentativo in range(1, max_tentativi + 1):
+        tempo_trascorso = int(time.time() - start_time)
+        timer_placeholder.markdown(
+            f"⏱️ Tempo trascorso: **{tempo_trascorso}s** (Tentativo:"
+            f" {tentativo}/{max_tentativi})"
         )
-        ricalcola_classifiche()
+
+        nuovi_turni = genera_calendario_corretto(
+            portieri, attaccanti, num_turni, num_tavoli
+        )
+        db["turni_partite"] = nuovi_turni
+
+        res_errs = analizza_conflitti_calendario()
+        if not res_errs:
+          successo = True
+          tempo_totale = int(time.time() - start_time)
+          status.update(
+              label=(
+                  f"Trovata combinazione pulita al tentativo {tentativo} in"
+                  f" {tempo_totale}s!"
+              ),
+              state="complete",
+              expanded=False,
+          )
+          break
+
+      if not successo:
+        status.update(
+            label=(
+                "Raggiunti i tentativi massimi senza azzerare tutto. Riprova o"
+                " riduci i turni."
+            ),
+            state="error",
+            expanded=True,
+        )
+
+    ricalcola_classifiche()
+    salva_dati(db)
+    st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
+    conflitti_finali = len(st.session_state["ultimi_errori"])
+    st.session_state["is_loading_conflitti"] = False
+
+    if conflitti_finali == 0:
+      st.sidebar.success(
+          f"✅ Ottimo! Rilevati {errori_iniziali} conflitti e portati a"
+          " 0 conflitti!"
+      )
+    else:
+      st.sidebar.warning(
+          f"Completato. Da {errori_iniziali} siamo scesi a {conflitti_finali}"
+          " conflitti."
+      )
+    st.rerun()
+
+  if "ultimi_errori" in st.session_state and not st.session_state[
+      "is_loading_conflitti"
+  ]:
+    errs = st.session_state["ultimi_errori"]
+    num_errs = len(errs)
+    with st.sidebar.expander(
+        f"📊 Dettaglio Conflitti ({num_errs})", expanded=(num_errs > 0)
+    ):
+      if num_errs == 0:
+        st.success(
+            "Tutti i vincoli sono perfetti: 0 coppie ripetute e 0 avversari"
+            " ripetuti!"
+        )
+      else:
+        st.error(f"Rilevati {num_errs} conflitti.")
+        for e in errs:
+          st.markdown(f"- {e}")
+
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🕹️ Avanzamento Fasi")
+  if db["stato"] == "gironi":
+    if st.sidebar.button(
+        "🏆 Avvia Quarti di Finale", use_container_width=True, key="sb_quarti"
+    ):
+      avvia_quarti()
+      st.rerun()
+  elif db["stato"] == "eliminatorie":
+    if st.sidebar.button(
+        "⬅️ Indietro ai Gironi", use_container_width=True, key="sb_back_gironi"
+    ):
+      db["stato"] = "gironi"
+      salva_dati(db)
+      st.rerun()
+
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("✏️ Modifica Nome Giocatore")
+  tutti_giocatori_admin = sorted(list(set(db["portieri"] + db["attaccanti"])))
+  if tutti_giocatori_admin:
+    giocatore_da_modificare = st.sidebar.selectbox(
+        "Seleziona giocatore",
+        tutti_giocatori_admin,
+        key="admin_sel_mod_giocatore",
+    )
+    nuovo_nome = st.sidebar.text_input(
+        "Nuovo nome", key="admin_nuovo_nome_giocatore"
+    )
+    if st.sidebar.button("Conferma Modifica Nome", use_container_width=True):
+      nuovo_nome_clean = nuovo_nome.strip()
+      if not nuovo_nome_clean:
+        st.sidebar.error("Inserisci un nome valido.")
+      elif nuovo_nome_clean in tutti_giocatori_admin:
+        st.sidebar.error("Esiste già un giocatore con questo nome.")
+      else:
+        if giocatore_da_modificare in db["portieri"]:
+          idx_p = db["portieri"].index(giocatore_da_modificare)
+          db["portieri"][idx_p] = nuovo_nome_clean
+        if giocatore_da_modificare in db["attaccanti"]:
+          idx_a = db["attaccanti"].index(giocatore_da_modificare)
+          db["attaccanti"][idx_a] = nuovo_nome_clean
+
+        for diz_chiave in ["punti_portieri", "dr_portieri"]:
+          if giocatore_da_modificare in db[diz_chiave]:
+            db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(
+                giocatore_da_modificare
+            )
+        for diz_chiave in ["punti_attaccanti", "dr_attaccanti"]:
+          if giocatore_da_modificare in db[diz_chiave]:
+            db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(
+                giocatore_da_modificare
+            )
+
+        for t_obj in db["turni_partite"]:
+          for m in t_obj["partite"]:
+            for campo in ["p1", "p2", "a1", "a2"]:
+              valore_attuale = str(m.get(campo, ""))
+              if giocatore_da_modificare in valore_attuale:
+                m[campo] = valore_attuale.replace(
+                    giocatore_da_modificare, nuovo_nome_clean
+                )
+
         salva_dati(db)
         if "ultimi_errori" in st.session_state:
           del st.session_state["ultimi_errori"]
-        st.sidebar.success("Calendario rigenerato con successo!")
-        st.rerun()
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🔍 Verifica e Risoluzione Conflitti")
-
-    if "is_loading_conflitti" not in st.session_state:
-      st.session_state["is_loading_conflitti"] = False
-
-    if st.sidebar.button(
-        "🧹 Verifica e Pulisci Conflitti (Auto)", use_container_width=True
-    ):
-      st.session_state["is_loading_conflitti"] = True
-      st.rerun()
-
-    if st.session_state["is_loading_conflitti"]:
-      portieri = db["portieri"]
-      attaccanti = db["attaccanti"]
-      num_tavoli = db["num_tavoli"]
-      num_turni = db["partite_per_giocatore"]
-
-      errori_iniziali = len(analizza_conflitti_calendario())
-
-      with st.sidebar.status(
-          "⏳ Ricerca della combinazione perfetta...", expanded=True
-      ) as status:
-        timer_placeholder = st.empty()
-
-        max_tentativi = 2000
-        successo = False
-        start_time = time.time()
-
-        for tentativo in range(1, max_tentativi + 1):
-          tempo_trascorso = int(time.time() - start_time)
-          timer_placeholder.markdown(
-              f"⏱️ Tempo trascorso: **{tempo_trascorso}s** (Tentativo:"
-              f" {tentativo}/{max_tentativi})"
-          )
-
-          nuovi_turni = genera_calendario_corretto(
-              portieri, attaccanti, num_turni, num_tavoli
-          )
-          db["turni_partite"] = nuovi_turni
-
-          res_errs = analizza_conflitti_calendario()
-          if not res_errs:
-            successo = True
-            tempo_totale = int(time.time() - start_time)
-            status.update(
-                label=(
-                    f"Trovata combinazione pulita al tentativo {tentativo} in"
-                    f" {tempo_totale}s!"
-                ),
-                state="complete",
-                expanded=False,
-            )
-            break
-
-        if not successo:
-          status.update(
-              label=(
-                  "Raggiunti i tentativi massimi senza azzerare tutto. Riprova"
-                  " o riduci i turni."
-              ),
-              state="error",
-              expanded=True,
-          )
-
-      ricalcola_classifiche()
-      salva_dati(db)
-      st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
-      conflitti_finali = len(st.session_state["ultimi_errori"])
-      st.session_state["is_loading_conflitti"] = False
-
-      if conflitti_finali == 0:
         st.sidebar.success(
-            f"✅ Ottimo! Rilevati {errori_iniziali} conflitti e portati a"
-            " 0 conflitti!"
+            f"Nome modificato da '{giocatore_da_modificare}' a"
+            f" '{nuovo_nome_clean}' con successo!"
         )
-      else:
-        st.sidebar.warning(
-            f"Completato. Da {errori_iniziali} siamo scesi a {conflitti_finali}"
-            " conflitti."
-        )
-      st.rerun()
-
-    if "ultimi_errori" in st.session_state and not st.session_state[
-        "is_loading_conflitti"
-    ]:
-      errs = st.session_state["ultimi_errori"]
-      num_errs = len(errs)
-      with st.sidebar.expander(
-          f"📊 Dettaglio Conflitti ({num_errs})", expanded=(num_errs > 0)
-      ):
-        if num_errs == 0:
-          st.success(
-              "Tutti i vincoli sono perfetti: 0 coppie ripetute e 0 avversari"
-              " ripetuti!"
-          )
-        else:
-          st.error(f"Rilevati {num_errs} conflitti.")
-          for e in errs:
-            st.markdown(f"- {e}")
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("🕹️ Avanzamento Fasi")
-    if db["stato"] == "gironi":
-      if st.sidebar.button(
-          "🏆 Avvia Quarti di Finale", use_container_width=True, key="sb_quarti"
-      ):
-        avvia_quarti()
         st.rerun()
-    elif db["stato"] == "eliminatorie":
-      if st.sidebar.button(
-          "⬅️ Indietro ai Gironi", use_container_width=True, key="sb_back_gironi"
-      ):
-        db["stato"] = "gironi"
-        salva_dati(db)
-        st.rerun()
-
-    st.sidebar.markdown("---")
-    st.sidebar.subheader("✏️ Modifica Nome Giocatore")
-    tutti_giocatori_admin = sorted(list(set(db["portieri"] + db["attaccanti"])))
-    if tutti_giocatori_admin:
-      giocatore_da_modificare = st.sidebar.selectbox(
-          "Seleziona giocatore",
-          tutti_giocatori_admin,
-          key="admin_sel_mod_giocatore",
-      )
-      nuovo_nome = st.sidebar.text_input(
-          "Nuovo nome", key="admin_nuovo_nome_giocatore"
-      )
-      if st.sidebar.button("Conferma Modifica Nome", use_container_width=True):
-        nuovo_nome_clean = nuovo_nome.strip()
-        if not nuovo_nome_clean:
-          st.sidebar.error("Inserisci un nome valido.")
-        elif nuovo_nome_clean in tutti_giocatori_admin:
-          st.sidebar.error("Esiste già un giocatore con questo nome.")
-        else:
-          if giocatore_da_modificare in db["portieri"]:
-            idx_p = db["portieri"].index(giocatore_da_modificare)
-            db["portieri"][idx_p] = nuovo_nome_clean
-          if giocatore_da_modificare in db["attaccanti"]:
-            idx_a = db["attaccanti"].index(giocatore_da_modificare)
-            db["attaccanti"][idx_a] = nuovo_nome_clean
-
-          for diz_chiave in ["punti_portieri", "dr_portieri"]:
-            if giocatore_da_modificare in db[diz_chiave]:
-              db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(
-                  giocatore_da_modificare
-              )
-          for diz_chiave in ["punti_attaccanti", "dr_attaccanti"]:
-            if giocatore_da_modificare in db[diz_chiave]:
-              db[diz_chiave][nuovo_nome_clean] = db[diz_chiave].pop(
-                  giocatore_da_modificare
-              )
-
-          for t_obj in db["turni_partite"]:
-            for m in t_obj["partite"]:
-              for campo in ["p1", "p2", "a1", "a2"]:
-                valore_attuale = str(m.get(campo, ""))
-                if giocatore_da_modificare in valore_attuale:
-                  m[campo] = valore_attuale.replace(
-                      giocatore_da_modificare, nuovo_nome_clean
-                  )
-
-          salva_dati(db)
-          if "ultimi_errori" in st.session_state:
-            del st.session_state["ultimi_errori"]
-          st.sidebar.success(
-              f"Nome modificato da '{giocatore_da_modificare}' a"
-              f" '{nuovo_nome_clean}' con successo!"
-          )
-          st.rerun()
-
-    st.sidebar.markdown("---")
-    if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
-      if os.path.exists(DB_FILE):
-        os.remove(DB_FILE)
-      for key in list(st.session_state.keys()):
-        del st.session_state[key]
-      st.query_params.clear()
-      st.rerun()
 
 st.markdown(
     """
@@ -870,6 +873,16 @@ def genera_pdf_calendario():
   return bytes(pdf.output())
 
 
+if is_admin and ruolo_corrente == "admin":
+  st.sidebar.markdown("---")
+  if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
+    if os.path.exists(DB_FILE):
+      os.remove(DB_FILE)
+    for key in list(st.session_state.keys()):
+      del st.session_state[key]
+    st.query_params.clear()
+    st.rerun()
+
 st.markdown(
     """
     <style>
@@ -976,7 +989,7 @@ st.markdown(
 )
 
 # ==========================================
-# GESTIONE SCHERMATA SPETTATORE (?ruolo=spettatore)
+# GESTIONE SCHERMATA SPETTATORE (?role=spettatore)
 # ==========================================
 if ruolo_corrente == "spettatore":
   st.subheader("👀 Modalità Spettatore (Sola Lettura)")
@@ -1060,13 +1073,78 @@ if ruolo_corrente == "spettatore":
 
 
 # ==========================================
-# GESTIONE SCHERMATA GIOCATORE (?ruolo=giocatore)
+# GESTIONE SCHERMATA SETUP / ADMIN / GIOCATORE
 # ==========================================
-if ruolo_corrente == "giocatore":
-  if db["stato"] == "setup":
-    st.warning(
-        "Il torneo non è ancora stato avviato dall'amministratore. Riprova più"
-        " tardi."
+if db["stato"] == "setup":
+  st.subheader("1. Configurazione Iniziale del Torneo")
+  if not is_admin:
+    st.warning("Accedi come Admin dalla barra laterale per configurare.")
+  else:
+    whatsapp_text = st.text_area("Incolla qui la lista da WhatsApp:")
+    col1, col2 = st.columns(2)
+    with col1:
+      db["num_tavoli"] = int(
+          st.text_input(
+              "Numero di biliardini",
+              value=str(db["num_tavoli"]),
+              type="default",
+          )
+      )
+    with col2:
+      db["partite_per_giocatore"] = int(
+          st.text_input(
+              "Turni / Partite garantite",
+              value=str(db["partite_per_giocatore"]),
+              type="default",
+          )
+      )
+    db["admin_pin"] = st.text_input("PIN Admin", value=db["admin_pin"])
+
+    if st.button("🚀 Avvia il Torneo e Genera Calendario"):
+      portieri, attaccanti = [], []
+      for line in whatsapp_text.split("\n"):
+        if "🚪" in line or "🥅" in line:
+          n = pulisci_nome(line)
+          if n:
+            portieri.append(n)
+        elif "⚽" in line:
+          n = pulisci_nome(line)
+          if n:
+            attaccanti.append(n)
+
+      if len(portieri) < 2 or len(attaccanti) < 2:
+        st.error(
+            f"Inserisci almeno 2 portieri e 2 attaccanti. Rilevati:"
+            f" {len(portieri)} portieri e {len(attaccanti)} attaccanti."
+        )
+      else:
+        db["portieri"] = portieri
+        db["attaccanti"] = attaccanti
+        db["punti_portieri"] = {p: 0 for p in portieri}
+        db["dr_portieri"] = {p: 0 for p in portieri}
+        db["punti_attaccanti"] = {a: 0 for a in attaccanti}
+        db["dr_attaccanti"] = {a: 0 for a in attaccanti}
+        db["stato"] = "gironi"
+        db["turni_partite"] = genera_calendario_corretto(
+            portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
+        )
+        if "ultimi_errori" in st.session_state:
+          del st.session_state["ultimi_errori"]
+        salva_dati(db)
+        st.success("Torneo avviato con successo!")
+        st.rerun()
+
+if db["stato"] == "gironi":
+  if st.session_state.get("is_loading_conflitti", False):
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 80px 20px;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">⏳</div>
+            <h2 style="color: #fbbf24; margin-bottom: 10px;">Ottimizzazione del calendario in corso...</h2>
+            <p style="color: #94a3b8; font-size: 1.1rem;">Sto analizzando tutte le combinazioni per azzerare i conflitti tra coppie e avversari. Lo schema delle partite tornerà visibile non appena completato.</p>
+        </div>
+    """,
+        unsafe_allow_html=True,
     )
     st.stop()
 
@@ -1074,12 +1152,12 @@ if ruolo_corrente == "giocatore":
   num_tavoli = db.get("num_tavoli", 3)
 
   params = st.query_params
-  giocatore_salvato = params.get("nome", "-- Seleziona --")
+  giocatore_salvato = params.get("giocatore", "-- Seleziona --")
 
   if giocatore_salvato not in ["-- Seleziona --"] + tutti_i_giocatori:
     giocatore_salvato = "-- Seleziona --"
 
-  if giocatore_salvato == "-- Seleziona --":
+  if giocatore_salvato == "-- Seleziona --" and not is_admin:
     st.markdown(
         """
         <div style="text-align: center; padding: 40px 20px; background: linear-gradient(135deg, #0b0f19, #111827); border-radius: 24px; border: 2px solid #fbbf24; box-shadow: 0 0 30px rgba(251, 191, 36, 0.25); max-width: 600px; margin: 40px auto;">
@@ -1103,7 +1181,7 @@ if ruolo_corrente == "giocatore":
     )
 
     if scelta_iniziale != "-- Seleziona --":
-      st.query_params["nome"] = scelta_iniziale
+      st.query_params["giocatore"] = scelta_iniziale
       st.rerun()
     st.markdown("</div>", unsafe_allow_html=True)
 
@@ -1121,8 +1199,8 @@ if ruolo_corrente == "giocatore":
           use_container_width=True,
           help="Torna alla schermata di scelta nome",
       ):
-        if "nome" in st.query_params:
-          del st.query_params["nome"]
+        if "giocatore" in st.query_params:
+          del st.query_params["giocatore"]
         st.rerun()
 
   if giocatore_selezionato:
@@ -1614,7 +1692,7 @@ if ruolo_corrente == "giocatore":
               st.markdown("<br>", unsafe_allow_html=True)
               submitted = st.form_submit_button(
                   "Salva Risultato", use_container_width=True
-                )
+              )
               if submitted:
                 try:
                   m["gol1"] = int(str_g1) if str_g1.strip() != "" else 0
@@ -1677,107 +1755,3 @@ if ruolo_corrente == "giocatore":
     """,
         unsafe_allow_html=True,
     )
-  st.stop()
-
-
-# ==========================================
-# GESTIONE SCHERMATA AMMINISTRATORE (DEFAULT)
-# ==========================================
-if db["stato"] == "setup":
-  st.subheader("1. Configurazione Iniziale del Torneo")
-  if not is_admin:
-    st.warning(
-        "Inserisci il PIN di amministratore nella barra laterale per"
-        " configurare il torneo."
-    )
-  else:
-    whatsapp_text = st.text_area("Incolla qui la lista da WhatsApp:")
-    col1, col2 = st.columns(2)
-    with col1:
-      db["num_tavoli"] = int(
-          st.text_input(
-              "Numero di biliardini",
-              value=str(db["num_tavoli"]),
-              type="default",
-          )
-      )
-    with col2:
-      db["partite_per_giocatore"] = int(
-          st.text_input(
-              "Turni / Partite garantite",
-              value=str(db["partite_per_giocatore"]),
-              type="default",
-          )
-      )
-    db["admin_pin"] = st.text_input("PIN Admin", value=db["admin_pin"])
-
-    if st.button("🚀 Avvia il Torneo e Genera Calendario"):
-      portieri, attaccanti = [], []
-      for line in whatsapp_text.split("\n"):
-        if "🚪" in line or "🥅" in line:
-          n = pulisci_nome(line)
-          if n:
-            portieri.append(n)
-        elif "⚽" in line:
-          n = pulisci_nome(line)
-          if n:
-            attaccanti.append(n)
-
-      if len(portieri) < 2 or len(attaccanti) < 2:
-        st.error(
-            f"Inserisci almeno 2 portieri e 2 attaccanti. Rilevati:"
-            f" {len(portieri)} portieri e {len(attaccanti)} attaccanti."
-        )
-      else:
-        db["portieri"] = portieri
-        db["attaccanti"] = attaccanti
-        db["punti_portieri"] = {p: 0 for p in portieri}
-        db["dr_portieri"] = {p: 0 for p in portieri}
-        db["punti_attaccanti"] = {a: 0 for a in attaccanti}
-        db["dr_attaccanti"] = {a: 0 for a in attaccanti}
-        db["stato"] = "gironi"
-        db["turni_partite"] = genera_calendario_corretto(
-            portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
-        )
-        if "ultimi_errori" in st.session_state:
-          del st.session_state["ultimi_errori"]
-        salva_dati(db)
-        st.success("Torneo avviato con successo!")
-        st.rerun()
-
-else:
-  if not is_admin:
-    st.warning(
-        "Inserisci il PIN corretto nella barra laterale per accedere al pannello"
-        " di amministrazione."
-    )
-  else:
-    st.success(
-        "Pannello di controllo Admin attivo. Usa la barra laterale per gestire i"
-        " sorteggi, i conflitti e i link da condividere."
-    )
-    ricalcola_classifiche()
-    num_tavoli = db.get("num_tavoli", 3)
-
-    st.markdown("### 🔥 PANORAMICA GENERALE TORNEO (ADMIN)")
-    for t_obj in db["turni_partite"]:
-      st.markdown(f"#### Turno {t_obj['turno']}")
-      for idx, m in enumerate(t_obj["partite"]):
-        if m.get("è_riposo_attaccante", False):
-          st.markdown(f"⏳ **Riposa ATT:** {m['a1']}")
-        elif m.get("è_riposo_portiere", False):
-          st.markdown(f"⏳ **Riposa POR:** {m['p1']}")
-        elif m.get("a2") == "RIPOSO":
-          st.markdown(f"⏳ **Riposo singolo:** {m['p1']} e {m['a1']}")
-        else:
-          tavolo_num = (idx % num_tavoli) + 1
-          is_giocata = m.get("giocata", False)
-          res_str = (
-              f"**{m['gol1']} - {m['gol2']}**"
-              if is_giocata
-              else "*(Da giocare)*"
-          )
-          st.markdown(
-              f"- 🏟️ **Biliardino {tavolo_num}**: {m['p1']} e {m['a1']} vs"
-              f" {m['p2']} e {m['a2']} ➔ {res_str}"
-          )
