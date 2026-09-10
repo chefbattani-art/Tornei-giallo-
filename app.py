@@ -68,20 +68,30 @@ def genera_singolo_turno(
     coppie_viste_esplicite,
     avversari_portieri_espliciti,
     avversari_attaccanti_espliciti,
+    forzatura_riposo=None,
 ):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
   is_port_eccesso = len(p_list) > len(a_list)
 
-  if is_port_eccesso:
-    idx_rip = (t - 1) % len(p_list)
-    portiere_rip = p_list.pop(idx_rip)
-    ruolo_rip = ("portiere", portiere_rip)
+  if forzatura_riposo is not None:
+    ruolo_rip = forzatura_riposo
+    if ruolo_rip[0] == "portiere":
+      if ruolo_rip[1] in p_list:
+        p_list.remove(ruolo_rip[1])
+    else:
+      if ruolo_rip[1] in a_list:
+        a_list.remove(ruolo_rip[1])
   else:
-    idx_rip = (t - 1) % len(a_list)
-    attaccante_rip = a_list.pop(idx_rip)
-    ruolo_rip = ("attaccante", attaccante_rip)
+    if is_port_eccesso:
+      idx_rip = (t - 1) % len(p_list)
+      portiere_rip = p_list.pop(idx_rip)
+      ruolo_rip = ("portiere", portiere_rip)
+    else:
+      idx_rip = (t - 1) % len(a_list)
+      attaccante_rip = a_list.pop(idx_rip)
+      ruolo_rip = ("attaccante", attaccante_rip)
 
   miglior_config = None
   min_conflitti = 999999
@@ -195,8 +205,15 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   avversari_portieri = set()
   avversari_attaccanti = set()
 
+  is_port_eccesso = len(p_list) > len(a_list)
+  gruppo_da_ruotare = p_list if is_port_eccesso else a_list
+
   for t in range(1, num_turni + 1):
-    partite_turno, ruolo_rip, sets_locali = genera_singolo_turno(
+    idx_rip = (t - 1) % len(gruppo_da_ruotare)
+    nome_rip = gruppo_da_ruotare[idx_rip]
+    ruolo_rip = ("portiere" if is_port_eccesso else "attaccante", nome_rip)
+
+    partite_turno, _, sets_locali = genera_singolo_turno(
         t,
         p_list,
         a_list,
@@ -204,6 +221,7 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         coppie_viste,
         avversari_portieri,
         avversari_attaccanti,
+        forzatura_riposo=ruolo_rip,
     )
     ruoli_riposo_per_turno.append(ruolo_rip)
 
@@ -222,8 +240,7 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
     partite_turno_extra = []
     match_idx = 0
 
-    is_portieri_in_eccesso = len(p_list) > len(a_list)
-    if is_portieri_in_eccesso:
+    if is_port_eccesso:
       attaccanti_jolly = list(attaccanti)
       random.shuffle(attaccanti_jolly)
       a_index = 0
@@ -249,6 +266,24 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
               "is_portieri_jolly": True,
           })
           match_idx += 1
+
+      if len(elementi_da_recuperare) % 2 != 0:
+        p_singolo = elementi_da_recuperare[-1]
+        aj1 = attaccanti_jolly[a_index % len(attaccanti_jolly)]
+        aj2 = attaccanti_jolly[(a_index + 1) % len(attaccanti_jolly)]
+        partite_turno_extra.append({
+            "id": f"t{turno_num}_m{match_idx}",
+            "p1": p_singolo,
+            "a1": f"{aj1} (Jolly)",
+            "p2": "RIPOSO",
+            "a2": f"{aj2} (Jolly)",
+            "giocata": True,
+            "in_corso": False,
+            "gol1": 0,
+            "gol2": 0,
+            "è_extra_recupero": True,
+            "is_portieri_jolly": True,
+        })
     else:
       portieri_jolly = list(portieri)
       random.shuffle(portieri_jolly)
@@ -280,9 +315,8 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         a_singolo = elementi_da_recuperare[-1]
         pj1 = portieri_jolly[p_index % len(portieri_jolly)]
         pj2 = portieri_jolly[(p_index + 1) % len(portieri_jolly)]
-        match_id = f"t{turno_num}_m{match_idx}"
         partite_turno_extra.append({
-            "id": match_id,
+            "id": f"t{turno_num}_m{match_idx}",
             "p1": f"{pj1} (Jolly)",
             "a1": a_singolo,
             "p2": f"{pj2} (Jolly)",
@@ -701,9 +735,6 @@ def ricalcola_classifiche():
         else:
           pt_s1, pt_s2 = 2, 2
 
-        is_extra = m.get("è_extra_recupero", False)
-        is_portieri_jolly = m.get("is_portieri_jolly", False)
-
         a1_pulito = pulisci_nome(m["a1"])
         a2_pulito = pulisci_nome(m["a2"])
 
@@ -712,7 +743,6 @@ def ricalcola_classifiche():
         is_jolly_p1 = "(Jolly)" in str(m["p1"])
         is_jolly_p2 = "(Jolly)" in str(m["p2"])
 
-        # Aggiornamento Attaccanti (esclude i punti se fanno da jolly)
         if a1_pulito in a_punti and not is_jolly_a1:
           a_punti[a1_pulito] += pt_s1
           a_dr[a1_pulito] += g1 - g2
@@ -723,7 +753,6 @@ def ricalcola_classifiche():
         p1_pulito = pulisci_nome(m["p1"])
         p2_pulito = pulisci_nome(m["p2"])
 
-        # Aggiornamento Portieri (esclude i punti se fanno da jolly)
         if p1_pulito in p_punti and not is_jolly_p1:
           p_punti[p1_pulito] += pt_s1
           p_dr[p1_pulito] += g1 - g2
@@ -774,8 +803,6 @@ def calcola_partite_giocate(ruolo, nome):
             is_jolly_match = True
 
       if is_presente:
-        # Se il giocatore ha fatto da jolly in questa partita extra,
-        # non la contiamo né nel totale né nelle giocate ufficiali.
         if is_jolly_match:
           continue
 
