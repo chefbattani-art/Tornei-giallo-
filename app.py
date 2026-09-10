@@ -4,6 +4,7 @@ import json
 import os
 import random
 import re
+import time
 import pandas as pd
 import streamlit as st
 from streamlit_autorefresh import st_autorefresh
@@ -476,10 +477,19 @@ if is_admin and db["stato"] != "setup":
     with st.sidebar.status(
         "⏳ Ricerca della combinazione perfetta...", expanded=True
     ) as status:
+      timer_placeholder = st.empty()
+
       max_tentativi = 1000
       successo = False
+      start_time = time.time()
 
       for tentativo in range(1, max_tentativi + 1):
+        tempo_trascorso = int(time.time() - start_time)
+        timer_placeholder.markdown(
+            f"⏱️ Tempo trascorso: **{tempo_trascorso}s** (Tentativo:"
+            f" {tentativo}/{max_tentativi})"
+        )
+
         nuovi_turni = genera_calendario_corretto(
             portieri, attaccanti, num_turni, num_tavoli
         )
@@ -488,9 +498,11 @@ if is_admin and db["stato"] != "setup":
         res_errs = analizza_conflitti_calendario()
         if not res_errs:
           successo = True
+          tempo_totale = int(time.time() - start_time)
           status.update(
               label=(
-                  f"Trovata combinazione pulita al tentativo {tentativo}!"
+                  f"Trovata combinazione pulita al tentativo {tentativo} in"
+                  f" {tempo_totale}s!"
               ),
               state="complete",
               expanded=False,
