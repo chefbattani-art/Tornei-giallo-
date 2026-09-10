@@ -63,12 +63,15 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
   is_portieri_in_eccesso = len(p_list) > len(a_list)
 
+  # Tracciamento accoppiamenti e sfide per evitare ripetizioni
+  coppie_viste = set()
+  avversari_visti = set()
+
   # 1. Generazione sequenziale dei turni regolari (da 1 a num_turni)
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
     a_curr = list(a_list)
 
-    # Gestione del giocatore che riposa a rotazione in questo turno
     if is_portieri_in_eccesso:
       idx_rip = (t - 1) % len(p_curr)
       portiere_rip = p_curr.pop(idx_rip)
@@ -78,30 +81,65 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
       attaccante_rip = a_curr.pop(idx_rip)
       ruoli_riposo_per_turno.append(("attaccante", attaccante_rip))
 
-    random.shuffle(p_curr)
-    random.shuffle(a_curr)
+    # Tentativi multipli di sorteggio per turno per rispettare i vincoli
+    miglior_config = None
+    min_conflitti = 999999
 
-    partite_turno = []
-    match_idx = 0
-    i = 0
-    while i < len(p_curr) and i + 1 < len(p_curr):
-      p1, a1 = p_curr[i], a_curr[i]
-      p2, a2 = p_curr[i + 1], a_curr[i + 1]
+    for _ in range(300):
+      p_c = list(p_curr)
+      a_c = list(a_curr)
+      random.shuffle(p_c)
+      random.shuffle(a_c)
 
-      match_id = f"t{t}_m{match_idx}"
-      partite_turno.append({
-          "id": match_id,
-          "p1": p1,
-          "a1": a1,
-          "p2": p2,
-          "a2": a2,
-          "giocata": False,
-          "in_corso": False,
-          "gol1": 0,
-          "gol2": 0,
-      })
-      match_idx += 1
-      i += 2
+      partite_provvisorie = []
+      conflitti_turno = 0
+      i = 0
+      ok_turno = True
+      while i < len(p_c) and i + 1 < len(p_c):
+        p1, a1 = p_c[i], a_c[i]
+        p2, a2 = p_c[i + 1], a_c[i + 1]
+
+        c1 = tuple(sorted([p1, a1]))
+        c2 = tuple(sorted([p2, a2]))
+
+        s1 = tuple(sorted([p1, p2]))
+        s2 = tuple(sorted([a1, a2]))
+
+        # Verifica vincoli: stessa coppia o stessi avversari già incontrati
+        if c1 in coppie_viste or c2 in coppie_viste or s1 in avversari_visti or s2 in avversari_visti:
+          conflitti_turno += 1
+
+        match_id = f"t{t}_m{len(partite_provvisorie)}"
+        partite_provvisorie.append({
+            "id": match_id,
+            "p1": p1,
+            "a1": a1,
+            "p2": p2,
+            "a2": a2,
+            "giocata": False,
+            "in_corso": False,
+            "gol1": 0,
+            "gol2": 0,
+        })
+        i += 2
+
+      if conflitti_turno < min_conflitti:
+        min_conflitti = conflitti_turno
+        miglior_config = partite_provvisorie
+        if min_conflitti == 0:
+          break
+
+    # Registra i dati definitivi del turno scelto
+    partite_turno = miglior_config if miglior_config is not None else []
+    for m in partite_turno:
+      c1 = tuple(sorted([m["p1"], m["a1"]]))
+      c2 = tuple(sorted([m["p2"], m["a2"]]))
+      s1 = tuple(sorted([m["p1"], m["p2"]]))
+      s2 = tuple(sorted([m["a1"], m["a2"]]))
+      coppie_viste.add(c1)
+      coppie_viste.add(c2)
+      avversari_visti.add(s1)
+      avversari_visti.add(s2)
 
     # Aggiunta riga informativa del riposo per il turno corrente
     tipo_rip, nome_rip = ruoli_riposo_per_turno[-1]
@@ -220,6 +258,50 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
   return turni_partite
 
 
+def analizza_conflitti_calendario():
+  """Verifica se ci sono coppie o avversari ripetuti nel calendario attuale."""
+  coppie_viste = {}
+  avversari_portieri = {}
+  avversari_attaccanti = {}
+  errori = []
+
+  for turno_obj in db["turni_partite"]:
+    t_num = turno_obj["turno"]
+    for m in turno_obj["partite"]:
+      if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False) or m.get("a2") == "RIPOSO":
+        continue
+      
+      p1, a1 = m["p1"], m["a1"]
+      p2, a2 = m["p2"], m["a2"]
+
+      # Controllo coppia compagni
+      for squadra in [(p1, a1), (p2, a2)]:
+        if "(Jolly)" not in str(squadra[0]) and "(Jolly)" not in str(squadra[1]):
+          coppia = tuple(sorted(squadra))
+          if coppia in coppie_viste:
+            errori.append(f"Turno {t_num}: {squadra[0]} e {squadra[1]} hanno già giocato insieme nel Turno {coppie_viste[coppia]}.")
+          else:
+            coppie_viste[coppia] = t_num
+
+      # Controllo avversari portieri
+      if "(Jolly)" not in str(p1) and "(Jolly)" not in str(p2):
+        sfida_p = tuple(sorted([p1, p2]))
+        if sfida_p in avversari_portieri:
+          errori.append(f"Turno {t_num}: I portieri {p1} e {p2} si sono già affrontati nel Turno {avversari_portieri[sfida_p]}.")
+        else:
+          avversari_portieri[sfida_p] = t_num
+
+      # Controllo avversari attaccanti
+      if "(Jolly)" not in str(a1) and "(Jolly)" not in str(a2):
+        sfida_a = tuple(sorted([a1, a2]))
+        if sfida_a in avversari_attaccanti:
+          errori.append(f"Turno {t_num}: Gli attaccanti {a1} e {a2} si sono già affrontati nel Turno {avversari_attaccanti[sfida_a]}.")
+        else:
+          avversari_attaccanti[sfida_a] = t_num
+
+  return errori
+
+
 def avvia_quarti():
   sorted_p_list = sorted(
       db["punti_portieri"].items(),
@@ -301,6 +383,29 @@ if modalita_admin:
     st.sidebar.error("PIN errato.")
 
 if is_admin and db["stato"] != "setup":
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🎲 Gestione Sorteggi")
+  if st.sidebar.button("🔄 Rigenera/Risorteggia Calendario", use_container_width=True):
+    if db["portieri"] and db["attaccanti"]:
+      db["turni_partite"] = genera_calendario_corretto(
+          db["portieri"], db["attaccanti"], db["partite_per_giocatore"], db["num_tavoli"]
+      )
+      ricalcola_classifiche()
+      salva_dati(db)
+      st.sidebar.success("Calendario rigenerato con successo!")
+      st.rerun()
+
+  st.sidebar.markdown("---")
+  st.sidebar.subheader("🔍 Verifica Congruenza")
+  if st.sidebar.button("Esegui Test Conflitti", use_container_width=True):
+    errs = analizza_conflitti_calendario()
+    if not errs:
+      st.sidebar.success("Nessun conflitto trovato! Tutti i vincoli sono rispettati.")
+    else:
+      st.sidebar.error(f"Trovati {len(errs)} conflitti (ripetizioni).")
+      for e in errs[:5]:
+        st.sidebar.warning(e)
+
   st.sidebar.markdown("---")
   st.sidebar.subheader("🕹️ Avanzamento Fasi")
   if db["stato"] == "gironi":
@@ -407,6 +512,7 @@ def ricalcola_classifiche():
           m.get("giocata", False)
           and not m.get("è_riposo_attaccante", False)
           and not m.get("è_riposo_portiere", False)
+          and m.get("a2") != "RIPOSO"
       ):
         g1 = m["gol1"]
         g2 = m["gol2"]
@@ -473,6 +579,10 @@ def calcola_partite_giocate(ruolo, nome):
           totali += 1
         if ruolo == "portiere" and pulisci_nome(m["p1"]) == nome:
           totali += 1
+        continue
+
+      if m.get("a2") == "RIPOSO" and pulisci_nome(m["a1"]) == nome:
+        totali += 1
         continue
 
       is_presente = False
@@ -564,6 +674,8 @@ def genera_pdf_calendario():
         riga = f"  - Riposa ATT: {m['a1']}"
       elif m.get("è_riposo_portiere", False):
         riga = f"  - Riposa POR: {m['p1']}"
+      elif m.get("a2") == "RIPOSO":
+        riga = f"  - {m['p1']} e {m['a1']} (Turno singolo / Riposo)"
       else:
         tavolo_num = (idx % num_tavoli) + 1
         risultato = (
@@ -881,6 +993,7 @@ if db["stato"] == "gironi":
           not m.get("giocata", False)
           and not m.get("è_riposo_attaccante", False)
           and not m.get("è_riposo_portiere", False)
+          and m.get("a2") != "RIPOSO"
       ):
         tavolo_num = (idx % num_tavoli) + 1
         partite_aperte_totali.append({
@@ -1028,6 +1141,7 @@ if db["stato"] == "gironi":
           not m.get("giocata", False)
           and not m.get("è_riposo_attaccante", False)
           and not m.get("è_riposo_portiere", False)
+          and m.get("a2") != "RIPOSO"
       ):
         tavolo_num = (idx % num_tavoli) + 1
         partite_aperte_totali_aggiornate.append({
@@ -1191,6 +1305,16 @@ if db["stato"] == "gironi":
             <div class="riposo-match-box">
                 <div style="font-weight: 800; color: #e0f2fe; font-size: 1.1rem;">⏳ RIPOSO PORTIERE</div>
                 <div style="font-size: 1.1rem; color: #ffffff; margin-top: 4px;"><b>Riposa POR: {m['p1']}</b></div>
+            </div>
+        """,
+            unsafe_allow_html=True,
+        )
+      elif m.get("a2") == "RIPOSO":
+        st.markdown(
+            f"""
+            <div class="riposo-match-box">
+                <div style="font-weight: 800; color: #e0f2fe; font-size: 1.1rem;">⏳ TURNO SINGOLO / RIPOSO</div>
+                <div style="font-size: 1.1rem; color: #ffffff; margin-top: 4px;"><b>{m['p1']} e {m['a1']}</b></div>
             </div>
         """,
             unsafe_allow_html=True,
