@@ -280,7 +280,7 @@ def analizza_conflitti_calendario_dettagliato():
   for turno_obj in db["turni_partite"]:
     t_num = turno_obj["turno"]
     if t_num > db.get("partite_per_giocatore", 6):
-      continue # Salta il turno extra di recupero dai controlli standard
+      continue
       
     for m in turno_obj["partite"]:
       if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False) or m.get("a2") == "RIPOSO":
@@ -479,7 +479,6 @@ if is_admin and db["stato"] != "setup":
             successo = True
             break
             
-          # Conserva i turni puliti, rigenera solo quelli in conflitto uno alla volta
           portieri = db["portieri"]
           attaccanti = db["attaccanti"]
           num_tavoli = db["num_tavoli"]
@@ -487,26 +486,23 @@ if is_admin and db["stato"] != "setup":
           
           nuovi_turni = []
           coppie_viste_progressive = set()
-          avv_p_ progressive = set()
+          avv_p_progressive = set()
           avv_a_progressive = set()
           
-          # Ordiniamo i turni per ricostruirli progressivamente
-          Turni_ordinati = sorted(db["turni_partite"], key=lambda x: x["turno"])
+          turni_ordinati = sorted(db["turni_partite"], key=lambda x: x["turno"])
           
           for t_obj in turni_ordinati:
             t_num = t_obj["turno"]
             if t_num > num_turni:
-              continue # Gestiamo il turno extra alla fine
+              continue
               
             if t_num in turni_conflittuali:
-              # Rigenera questo singolo turno tenendo conto della cronologia pulita precedente
               partite_t, _, _ = genera_singolo_turno(
                   t_num, portieri, attaccanti, num_tavoli, 
                   coppie_viste_progressive, avv_p_progressive, avv_a_progressive
               )
               nuovi_turni.append({"turno": t_num, "partite": partite_t})
             else:
-              # Mantieni il turno così com'è e aggiorna il set storico delle restrizioni
               nuovi_turni.append(t_obj)
               for m in t_obj["partite"]:
                 if not m.get("è_riposo_attaccante", False) and not m.get("è_riposo_portiere", False):
@@ -522,16 +518,6 @@ if is_admin and db["stato"] != "setup":
 
           db["turni_partite"] = nuovi_turni
           
-          # Ricostruisci eventuale turno extra di recupero finale
-          elementi_da_recuperare = []
-          for t_obj in nuovi_turni:
-            for m in t_obj["partite"]:
-              if m.get("è_riposo_attaccante", False):
-                elementi_da_recuperare.append(("attaccante", m["a1"]))
-              elif m.get("è_riposo_portiere", False):
-                elementi_da_recuperare.append(("portiere", m["p1"]))
-          
-          # Aggiorna il db con la struttura pulita parziale/totale
           res_errs = analizza_conflitti_calendario()
           if not res_errs:
             successo = True
