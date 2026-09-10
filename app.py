@@ -54,7 +54,15 @@ if "db" not in st.session_state:
 db = st.session_state.db
 
 
-def genera_singolo_turno(t, portieri, attaccanti, num_tavoli, coppie_viste_esplicite, avversari_portieri_espliciti, avversari_attaccanti_espliciti):
+def genera_singolo_turno(
+    t,
+    portieri,
+    attaccanti,
+    num_tavoli,
+    coppie_viste_esplicite,
+    avversari_portieri_espliciti,
+    avversari_attaccanti_espliciti,
+):
   p_list = list(portieri)
   a_list = list(attaccanti)
 
@@ -95,10 +103,16 @@ def genera_singolo_turno(t, portieri, attaccanti, num_tavoli, coppie_viste_espli
       s1 = tuple(sorted([p1, p2]))
       s2 = tuple(sorted([a1, a2]))
 
-      if (c1 in coppie_viste_esplicite or c2 in coppie_viste_esplicite or 
-          s1 in avversari_portieri_espliciti or s2 in avversari_attaccanti_espliciti or
-          c1 in coppie_turno_locali or c2 in coppie_turno_locali or
-          s1 in avv_p_turno_locali or s2 in avv_a_turno_locali):
+      if (
+          c1 in coppie_viste_esplicite
+          or c2 in coppie_viste_esplicite
+          or s1 in avversari_portieri_espliciti
+          or s2 in avversari_attaccanti_espliciti
+          or c1 in coppie_turno_locali
+          or c2 in coppie_turno_locali
+          or s1 in avv_p_turno_locali
+          or s2 in avv_a_turno_locali
+      ):
         conflitti_turno += 1
 
       coppie_turno_locali.add(c1)
@@ -123,12 +137,16 @@ def genera_singolo_turno(t, portieri, attaccanti, num_tavoli, coppie_viste_espli
     if conflitti_turno < min_conflitti:
       min_conflitti = conflitti_turno
       miglior_config = partite_provvisorie
-      miglior_set_locali = (coppie_turno_locali, avv_p_turno_locali, avv_a_turno_locali)
+      miglior_set_locali = (
+          coppie_turno_locali,
+          avv_p_turno_locali,
+          avv_a_turno_locali,
+      )
       if min_conflitti == 0:
         break
 
   partite_turno = miglior_config if miglior_config is not None else []
-  
+
   tipo_rip, nome_rip = ruolo_rip
   if tipo_rip == "attaccante":
     partite_turno.append({
@@ -173,10 +191,16 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
   for t in range(1, num_turni + 1):
     partite_turno, ruolo_rip, sets_locali = genera_singolo_turno(
-        t, p_list, a_list, num_tavoli, coppie_viste, avversari_portieri, avversari_attaccanti
+        t,
+        p_list,
+        a_list,
+        num_tavoli,
+        coppie_viste,
+        avversari_portieri,
+        avversari_attaccanti,
     )
     ruoli_riposo_per_turno.append(ruolo_rip)
-    
+
     if sets_locali:
       c_loc, ap_loc, aa_loc = sets_locali
       coppie_viste.update(c_loc)
@@ -281,33 +305,48 @@ def analizza_conflitti_calendario():
     t_num = turno_obj["turno"]
     if t_num > db.get("partite_per_giocatore", 6):
       continue
-      
+
     for m in turno_obj["partite"]:
-      if m.get("è_riposo_attaccante", False) or m.get("è_riposo_portiere", False) or m.get("a2") == "RIPOSO":
+      if (
+          m.get("è_riposo_attaccante", False)
+          or m.get("è_riposo_portiere", False)
+          or m.get("a2") == "RIPOSO"
+      ):
         continue
-      
+
       p1, a1 = m["p1"], m["a1"]
       p2, a2 = m["p2"], m["a2"]
 
       for squadra in [(p1, a1), (p2, a2)]:
-        if "(Jolly)" not in str(squadra[0]) and "(Jolly)" not in str(squadra[1]):
+        if "(Jolly)" not in str(squadra[0]) and "(Jolly)" not in str(
+            squadra[1]
+        ):
           coppia = tuple(sorted(squadra))
           if coppia in coppie_viste:
-            errori.append(f"Turno {t_num}: {squadra[0]} e {squadra[1]} hanno già giocato insieme nel Turno {coppie_viste[coppia]}.")
+            errori.append(
+                f"Turno {t_num}: {squadra[0]} e {squadra[1]} hanno già giocato"
+                f" insieme nel Turno {coppie_viste[coppia]}."
+            )
           else:
             coppie_viste[coppia] = t_num
 
       if "(Jolly)" not in str(p1) and "(Jolly)" not in str(p2):
         sfida_p = tuple(sorted([p1, p2]))
         if sfida_p in avversari_portieri:
-          errori.append(f"Turno {t_num}: I portieri {p1} e {p2} si sono già affrontati nel Turno {avversari_portieri[sfida_p]}.")
+          errori.append(
+              f"Turno {t_num}: I portieri {p1} e {p2} si sono già affrontati"
+              f" nel Turno {avversari_portieri[sfida_p]}."
+          )
         else:
           avversari_portieri[sfida_p] = t_num
 
       if "(Jolly)" not in str(a1) and "(Jolly)" not in str(a2):
         sfida_a = tuple(sorted([a1, a2]))
         if sfida_a in avversari_attaccanti:
-          errori.append(f"Turno {t_num}: Gli attaccanti {a1} e {a2} si sono già affrontati nel Turno {avversari_attaccanti[sfida_a]}.")
+          errori.append(
+              f"Turno {t_num}: Gli attaccanti {a1} e {a2} si sono già"
+              f" affrontati nel Turno {avversari_attaccanti[sfida_a]}."
+          )
         else:
           avversari_attaccanti[sfida_a] = t_num
 
@@ -397,10 +436,15 @@ if modalita_admin:
 if is_admin and db["stato"] != "setup":
   st.sidebar.markdown("---")
   st.sidebar.subheader("🎲 Gestione Sorteggi")
-  if st.sidebar.button("🔄 Rigenera/Risorteggia Calendario", use_container_width=True):
+  if st.sidebar.button(
+      "🔄 Rigenera/Risorteggia Calendario", use_container_width=True
+  ):
     if db["portieri"] and db["attaccanti"]:
       db["turni_partite"] = genera_calendario_corretto(
-          db["portieri"], db["attaccanti"], db["partite_per_giocatore"], db["num_tavoli"]
+          db["portieri"],
+          db["attaccanti"],
+          db["partite_per_giocatore"],
+          db["num_tavoli"],
       )
       ricalcola_classifiche()
       salva_dati(db)
@@ -411,46 +455,76 @@ if is_admin and db["stato"] != "setup":
 
   st.sidebar.markdown("---")
   st.sidebar.subheader("🔍 Verifica e Risoluzione Conflitti")
-  
-  if st.sidebar.button("🧹 Verifica e Pulisci Conflitti (Auto)", use_container_width=True):
+
+  if st.sidebar.button(
+      "🧹 Verifica e Pulisci Conflitti (Auto)", use_container_width=True
+  ):
     max_tentativi = 1000
     successo = False
-    
+
     portieri = db["portieri"]
     attaccanti = db["attaccanti"]
     num_tavoli = db["num_tavoli"]
     num_turni = db["partite_per_giocatore"]
 
-    with st.sidebar.status("Ricerca della combinazione perfetta...", expanded=True) as status:
+    with st.sidebar.status(
+        "Ricerca della combinazione perfetta...", expanded=True
+    ) as status:
       for tentativo in range(1, max_tentativi + 1):
-        nuovi_turni = genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli)
-        db["turni_partite"] = nuevos_turni if 'nuevos_turni' in locals() else nuovi_turni
-        
+        nuovi_turni = genera_calendario_corretto(
+            portieri, attaccanti, num_turni, num_tavoli
+        )
+        db["turni_partite"] = nuovi_turni
+
         res_errs = analizza_conflitti_calendario()
         if not res_errs:
           successo = True
-          status.update(label=f"Trovata combinazione pulita al tentativo {tentativo}!", state="complete", expanded=False)
+          status.update(
+              label=(
+                  f"Trovata combinazione pulita al tentativo {tentativo}!"
+              ),
+              state="complete",
+              expanded=False,
+          )
           break
-      
+
       if not successo:
-        status.update(label="Raggiunti i tentativi massimi, riprova.", state="error", expanded=True)
+        status.update(
+            label="Raggiunti i tentativi massimi, riprova.",
+            state="error",
+            expanded=True,
+        )
 
     ricalcola_classifiche()
     salva_dati(db)
     st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
-    
+
     if not st.session_state["ultimi_errori"]:
-      st.sidebar.success("✅ Tutti i conflitti sono stati azzerati in automatico!")
+      st.sidebar.success(
+          "✅ Tutti i conflitti sono stati azzerati in automatico!"
+      )
     else:
-      st.sidebar.warning(f"Rimangono {len(st.session_state['ultimi_errori'])} conflitti.")
+      st.sidebar.warning(
+          f"Rimangono {len(st.session_state['ultimi_errori'])} conflitti."
+      )
     st.rerun()
 
+  # Menu a tendina per visualizzare i conflitti (aggiornato)
   if "ultimi_errori" in st.session_state:
     errs = st.session_state["ultimi_errori"]
-    if not errs:
-      st.sidebar.success("Nessun conflitto trovato! Tutti i vincoli sono rispettati.")
-    else:
-      st.sidebar.error(f"Trovati {len(errs)} conflitti attuali.")
+    num_errs = len(errs)
+    with st.sidebar.expander(
+        f"📊 Dettaglio Conflitti Trovati ({num_errs})", expanded=(num_errs > 0)
+    ):
+      if num_errs == 0:
+        st.success(
+            "Nessun conflitto trovato! Tutti i vincoli sono rispettati (0"
+            " conflitti)."
+        )
+      else:
+        st.error(f"Attenzione: rilevati {num_errs} conflitti attuali.")
+        for e in errs:
+          st.markdown(f"- {e}")
 
   st.sidebar.markdown("---")
   st.sidebar.subheader("🕹️ Avanzamento Fasi")
@@ -470,16 +544,16 @@ if is_admin and db["stato"] != "setup":
 
   st.sidebar.markdown("---")
   st.sidebar.subheader("✏️ Modifica Nome Giocatore")
-  tutti_giocatori_admin = sorted(
-      list(set(db["portieri"] + db["attaccanti"]))
-  )
+  tutti_giocatori_admin = sorted(list(set(db["portieri"] + db["attaccanti"])))
   if tutti_giocatori_admin:
     giocatore_da_modificare = st.sidebar.selectbox(
         "Seleziona giocatore",
         tutti_giocatori_admin,
         key="admin_sel_mod_giocatore",
     )
-    nuovo_nome = st.sidebar.text_input("Nuovo nome", key="admin_nuovo_nome_giocatore")
+    nuovo_nome = st.sidebar.text_input(
+        "Nuovo nome", key="admin_nuovo_nome_giocatore"
+    )
     if st.sidebar.button("Conferma Modifica Nome", use_container_width=True):
       nuovo_nome_clean = nuovo_nome.strip()
       if not nuovo_nome_clean:
@@ -940,7 +1014,9 @@ if db["stato"] == "gironi":
         unsafe_allow_html=True,
     )
 
-    st.markdown("<div style='max-width: 500px; margin: 0 auto;'>", unsafe_allow_html=True)
+    st.markdown(
+        "<div style='max-width: 500px; margin: 0 auto;'>", unsafe_allow_html=True
+    )
     scelta_iniziale = st.selectbox(
         "Il tuo nome:",
         ["-- Seleziona --"] + tutti_i_giocatori,
