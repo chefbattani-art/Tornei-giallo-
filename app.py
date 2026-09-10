@@ -31,7 +31,7 @@ def carica_dati():
   }
   if os.path.exists(DB_FILE):
     try:
-      with open(DB_FILE, "r") as f:
+      with open(DB_FILE, "r", encoding="utf-8") as f:
         dati_salvati = json.load(f)
         for k, v in dati_default.items():
           if k not in dati_salvati:
@@ -43,8 +43,8 @@ def carica_dati():
 
 
 def salva_dati(data):
-  with open(DB_FILE, "w") as f:
-    json.dump(data, f, indent=4)
+  with open(DB_FILE, "w", encoding="utf-8") as f:
+    json.dump(data, f, indent=4, ensure_ascii=False)
 
 
 if "db" not in st.session_state:
@@ -480,10 +480,10 @@ def avvia_quarti():
   quarti_partite = [
       {
           "id": "ef_t1_m1",
-          "p1": top_p[0],
-          "a1": top_a[0],
-          "p2": top_p[7],
-          "a2": top_a[7],
+          "p1": top_p[0] if len(top_p) > 0 else "",
+          "a1": top_a[0] if len(top_a) > 0 else "",
+          "p2": top_p[7] if len(top_p) > 7 else "",
+          "a2": top_a[7] if len(top_a) > 7 else "",
           "giocata": False,
           "in_corso": False,
           "gol1": 0,
@@ -491,10 +491,10 @@ def avvia_quarti():
       },
       {
           "id": "ef_t1_m2",
-          "p1": top_p[1],
-          "a1": top_a[1],
-          "p2": top_p[6],
-          "a2": top_a[6],
+          "p1": top_p[1] if len(top_p) > 1 else "",
+          "a1": top_a[1] if len(top_a) > 1 else "",
+          "p2": top_p[6] if len(top_p) > 6 else "",
+          "a2": top_a[6] if len(top_a) > 6 else "",
           "giocata": False,
           "in_corso": False,
           "gol1": 0,
@@ -502,10 +502,10 @@ def avvia_quarti():
       },
       {
           "id": "ef_t1_m3",
-          "p1": top_p[2],
-          "a1": top_a[2],
-          "p2": top_p[5],
-          "a2": top_a[5],
+          "p1": top_p[2] if len(top_p) > 2 else "",
+          "a1": top_a[2] if len(top_a) > 2 else "",
+          "p2": top_p[5] if len(top_p) > 5 else "",
+          "a2": top_a[5] if len(top_a) > 5 else "",
           "giocata": False,
           "in_corso": False,
           "gol1": 0,
@@ -513,10 +513,10 @@ def avvia_quarti():
       },
       {
           "id": "ef_t1_m4",
-          "p1": top_p[3],
-          "a1": top_a[3],
-          "p2": top_p[4],
-          "a2": top_a[4],
+          "p1": top_p[3] if len(top_p) > 3 else "",
+          "a1": top_a[3] if len(top_a) > 3 else "",
+          "p2": top_p[4] if len(top_p) > 4 else "",
+          "a2": top_a[4] if len(top_a) > 4 else "",
           "giocata": False,
           "in_corso": False,
           "gol1": 0,
@@ -1102,18 +1102,16 @@ if db["stato"] == "setup":
     col1, col2 = st.columns(2)
     with col1:
       db["num_tavoli"] = int(
-          st.text_input(
-              "Numero di biliardini",
-              value=str(db["num_tavoli"]),
-              type="default",
+          st.number_input(
+              "Numero di biliardini", value=int(db["num_tavoli"]), step=1, min_tavoli=1
+          ) if "min_tavoli" in st.number_input.__code__.co_varnames else st.number_input(
+              "Numero di biliardini", value=int(db["num_tavoli"]), step=1
           )
       )
     with col2:
       db["partite_per_giocatore"] = int(
-          st.text_input(
-              "Turni / Partite garantite",
-              value=str(db["partite_per_giocatore"]),
-              type="default",
+          st.number_input(
+              "Turni / Partite garantite", value=int(db["partite_per_giocatore"]), step=1
           )
       )
     db["admin_pin"] = st.text_input("PIN Admin", value=db["admin_pin"])
