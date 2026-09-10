@@ -60,6 +60,75 @@ query_params = st.query_params
 ruolo_corrente = query_params.get("role", "giocatore")
 
 
+def pulisci_nome(testo):
+  testo = (
+      str(testo)
+      .replace("🥅", "")
+      .replace("🚪", "")
+      .replace("⚽", "")
+      .replace("⏳", "")
+      .replace("[RIPOSO]", "")
+      .replace("(Jolly)", "")
+  )
+  return testo.strip()
+
+
+def ricalcola_classifiche():
+  p_punti = {p: 0 for p in db["portieri"]}
+  p_dr = {p: 0 for p in db["portieri"]}
+  a_punti = {a: 0 for a in db["attaccanti"]}
+  a_dr = {a: 0 for a in db["attaccanti"]}
+
+  for turno_obj in db["turni_partite"]:
+    for m in turno_obj["partite"]:
+      if (
+          m.get("giocata", False)
+          and not m.get("è_riposo_attaccante", False)
+          and not m.get("è_riposo_portiere", False)
+          and m.get("a2") != "RIPOSO"
+      ):
+        g1 = m["gol1"]
+        g2 = m["gol2"]
+        diff = abs(g1 - g2)
+
+        if g1 > g2:
+          pt_s1, pt_s2 = (3, 0) if diff >= 2 else (2, 1)
+        elif g2 > g1:
+          pt_s1, pt_s2 = (0, 3) if diff >= 2 else (1, 2)
+        else:
+          pt_s1, pt_s2 = 2, 2
+
+        a1_pulito = pulisci_nome(m["a1"])
+        a2_pulito = pulisci_nome(m["a2"])
+
+        is_jolly_a1 = "(Jolly)" in str(m["a1"])
+        is_jolly_a2 = "(Jolly)" in str(m["a2"])
+        is_jolly_p1 = "(Jolly)" in str(m["p1"])
+        is_jolly_p2 = "(Jolly)" in str(m["p2"])
+
+        if a1_pulito in a_punti and not is_jolly_a1:
+          a_punti[a1_pulito] += pt_s1
+          a_dr[a1_pulito] += g1 - g2
+        if a2_pulito in a_punti and not is_jolly_a2:
+          a_punti[a2_pulito] += pt_s2
+          a_dr[a2_pulito] += g2 - g1
+
+        p1_pulito = pulisci_nome(m["p1"])
+        p2_pulito = pulisci_nome(m["p2"])
+
+        if p1_pulito in p_punti and not is_jolly_p1:
+          p_punti[p1_pulito] += pt_s1
+          p_dr[p1_pulito] += g1 - g2
+        if p2_pulito in p_punti and not is_jolly_p2:
+          p_punti[p2_pulito] += pt_s2
+          p_dr[p2_pulito] += g2 - g1
+
+  db["punti_portieri"] = p_punti
+  db["dr_portieri"] = p_dr
+  db["punti_attaccanti"] = a_punti
+  db["dr_attaccanti"] = a_dr
+
+
 def genera_singolo_turno(
     t,
     portieri,
@@ -695,75 +764,6 @@ st.markdown(
 )
 
 tutti_i_giocatori = sorted(list(set(db["portieri"] + db["attaccanti"])))
-
-
-def pulisci_nome(testo):
-  testo = (
-      str(testo)
-      .replace("🥅", "")
-      .replace("🚪", "")
-      .replace("⚽", "")
-      .replace("⏳", "")
-      .replace("[RIPOSO]", "")
-      .replace("(Jolly)", "")
-  )
-  return testo.strip()
-
-
-def ricalcola_classifiche():
-  p_punti = {p: 0 for p in db["portieri"]}
-  p_dr = {p: 0 for p in db["portieri"]}
-  a_punti = {a: 0 for a in db["attaccanti"]}
-  a_dr = {a: 0 for a in db["attaccanti"]}
-
-  for turno_obj in db["turni_partite"]:
-    for m in turno_obj["partite"]:
-      if (
-          m.get("giocata", False)
-          and not m.get("è_riposo_attaccante", False)
-          and not m.get("è_riposo_portiere", False)
-          and m.get("a2") != "RIPOSO"
-      ):
-        g1 = m["gol1"]
-        g2 = m["gol2"]
-        diff = abs(g1 - g2)
-
-        if g1 > g2:
-          pt_s1, pt_s2 = (3, 0) if diff >= 2 else (2, 1)
-        elif g2 > g1:
-          pt_s1, pt_s2 = (0, 3) if diff >= 2 else (1, 2)
-        else:
-          pt_s1, pt_s2 = 2, 2
-
-        a1_pulito = pulisci_nome(m["a1"])
-        a2_pulito = pulisci_nome(m["a2"])
-
-        is_jolly_a1 = "(Jolly)" in str(m["a1"])
-        is_jolly_a2 = "(Jolly)" in str(m["a2"])
-        is_jolly_p1 = "(Jolly)" in str(m["p1"])
-        is_jolly_p2 = "(Jolly)" in str(m["p2"])
-
-        if a1_pulito in a_punti and not is_jolly_a1:
-          a_punti[a1_pulito] += pt_s1
-          a_dr[a1_pulito] += g1 - g2
-        if a2_pulito in a_punti and not is_jolly_a2:
-          a_punti[a2_pulito] += pt_s2
-          a_dr[a2_pulito] += g2 - g1
-
-        p1_pulito = pulisci_nome(m["p1"])
-        p2_pulito = pulisci_nome(m["p2"])
-
-        if p1_pulito in p_punti and not is_jolly_p1:
-          p_punti[p1_pulito] += pt_s1
-          p_dr[p1_pulito] += g1 - g2
-        if p2_pulito in p_punti and not is_jolly_p2:
-          p_punti[p2_pulito] += pt_s2
-          p_dr[p2_pulito] += g2 - g1
-
-  db["punti_portieri"] = p_punti
-  db["dr_portieri"] = p_dr
-  db["punti_attaccanti"] = a_punti
-  db["dr_attaccanti"] = a_dr
 
 
 def calcola_partite_giocate(ruolo, nome):
