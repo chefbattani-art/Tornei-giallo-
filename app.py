@@ -456,20 +456,29 @@ if is_admin and db["stato"] != "setup":
   st.sidebar.markdown("---")
   st.sidebar.subheader("🔍 Verifica e Risoluzione Conflitti")
 
+  if "is_loading_conflitti" not in st.session_state:
+    st.session_state["is_loading_conflitti"] = False
+
   if st.sidebar.button(
       "🧹 Verifica e Pulisci Conflitti (Auto)", use_container_width=True
   ):
-    max_tentativi = 1000
-    successo = False
+    st.session_state["is_loading_conflitti"] = True
+    st.rerun()
 
+  if st.session_state["is_loading_conflitti"]:
     portieri = db["portieri"]
     attaccanti = db["attaccanti"]
     num_tavoli = db["num_tavoli"]
     num_turni = db["partite_per_giocatore"]
 
+    errori_iniziali = len(analizza_conflitti_calendario())
+
     with st.sidebar.status(
-        "Ricerca della combinazione perfetta...", expanded=True
+        "⏳ Ricerca della combinazione perfetta...", expanded=True
     ) as status:
+      max_tentativi = 1000
+      successo = False
+
       for tentativo in range(1, max_tentativi + 1):
         nuovi_turni = genera_calendario_corretto(
             portieri, attaccanti, num_turni, num_tavoli
@@ -498,31 +507,36 @@ if is_admin and db["stato"] != "setup":
     ricalcola_classifiche()
     salva_dati(db)
     st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
+    conflitti_finali = len(st.session_state["ultimi_errori"])
+    st.session_state["is_loading_conflitti"] = False
 
-    if not st.session_state["ultimi_errori"]:
+    if conflitti_finali == 0:
       st.sidebar.success(
-          "✅ Tutti i conflitti sono stati azzerati in automatico!"
+          f"✅ Ottimo! Rilevati {errori_iniziali} conflitti e portati a"
+          " 0 conflitti!"
       )
     else:
       st.sidebar.warning(
-          f"Rimangono {len(st.session_state['ultimi_errori'])} conflitti."
+          f"Completato. Da {errori_iniziali} siamo scesi a {conflitti_finali}"
+          " conflitti."
       )
     st.rerun()
 
-  # Menu a tendina per visualizzare i conflitti (aggiornato)
-  if "ultimi_errori" in st.session_state:
+  if "ultimi_errori" in st.session_state and not st.session_state[
+      "is_loading_conflitti"
+  ]:
     errs = st.session_state["ultimi_errori"]
     num_errs = len(errs)
     with st.sidebar.expander(
-        f"📊 Dettaglio Conflitti Trovati ({num_errs})", expanded=(num_errs > 0)
+        f"📊 Dettaglio Conflitti ({num_errs})", expanded=(num_errs > 0)
     ):
       if num_errs == 0:
         st.success(
-            "Nessun conflitto trovato! Tutti i vincoli sono rispettati (0"
-            " conflitti)."
+            "Tutti i vincoli sono perfetti: 0 coppie ripetute e 0 avversari"
+            " ripetuti!"
         )
       else:
-        st.error(f"Attenzione: rilevati {num_errs} conflitti attuali.")
+        st.error(f"Rilevati {num_errs} conflitti.")
         for e in errs:
           st.markdown(f"- {e}")
 
@@ -992,6 +1006,19 @@ if db["stato"] == "setup":
         st.rerun()
 
 if db["stato"] == "gironi":
+  if st.session_state.get("is_loading_conflitti", False):
+    st.markdown(
+        """
+        <div style="text-align: center; padding: 80px 20px;">
+            <div style="font-size: 3rem; margin-bottom: 15px;">⏳</div>
+            <h2 style="color: #fbbf24; margin-bottom: 10px;">Ottimizzazione del calendario in corso...</h2>
+            <p style="color: #94a3b8; font-size: 1.1rem;">Sto analizzando tutte le combinazioni per azzerare i conflitti tra coppie e avversari. Lo schema delle partite tornerà visibile non appena completato.</p>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+    st.stop()
+
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
 
