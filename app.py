@@ -63,11 +63,9 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
   is_portieri_in_eccesso = len(p_list) > len(a_list)
 
-  # Tracciamento accoppiamenti e sfide per evitare ripetizioni
   coppie_viste = set()
   avversari_visti = set()
 
-  # 1. Generazione sequenziale dei turni regolari (da 1 a num_turni)
   for t in range(1, num_turni + 1):
     p_curr = list(p_list)
     a_curr = list(a_list)
@@ -81,11 +79,10 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
       attaccante_rip = a_curr.pop(idx_rip)
       ruoli_riposo_per_turno.append(("attaccante", attaccante_rip))
 
-    # Tentativi multipli di sorteggio per turno per rispettare i vincoli
     miglior_config = None
     min_conflitti = 999999
 
-    for _ in range(300):
+    for _ in range(500):
       p_c = list(p_curr)
       a_c = list(a_curr)
       random.shuffle(p_c)
@@ -94,7 +91,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
       partite_provvisorie = []
       conflitti_turno = 0
       i = 0
-      ok_turno = True
       while i < len(p_c) and i + 1 < len(p_c):
         p1, a1 = p_c[i], a_c[i]
         p2, a2 = p_c[i + 1], a_c[i + 1]
@@ -105,7 +101,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         s1 = tuple(sorted([p1, p2]))
         s2 = tuple(sorted([a1, a2]))
 
-        # Verifica vincoli: stessa coppia o stessi avversari già incontrati
         if c1 in coppie_viste or c2 in coppie_viste or s1 in avversari_visti or s2 in avversari_visti:
           conflitti_turno += 1
 
@@ -129,7 +124,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
         if min_conflitti == 0:
           break
 
-    # Registra i dati definitivi del turno scelto
     partite_turno = miglior_config if miglior_config is not None else []
     for m in partite_turno:
       c1 = tuple(sorted([m["p1"], m["a1"]]))
@@ -141,7 +135,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
       avversari_visti.add(s1)
       avversari_visti.add(s2)
 
-    # Aggiunta riga informativa del riposo per il turno corrente
     tipo_rip, nome_rip = ruoli_riposo_per_turno[-1]
     if tipo_rip == "attaccante":
       partite_turno.append({
@@ -172,7 +165,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
     turni_partite.append({"turno": t, "partite": partite_turno})
 
-  # 2. Turno extra di recupero con i Jolly posizionato tassativamente alla fine
   elementi_da_recuperare = [val[1] for val in ruoli_riposo_per_turno]
   if elementi_da_recuperare:
     turno_num = num_turni + 1
@@ -259,7 +251,6 @@ def genera_calendario_corretto(portieri, attaccanti, num_turni, num_tavoli):
 
 
 def analizza_conflitti_calendario():
-  """Verifica se ci sono coppie o avversari ripetuti nel calendario attuale."""
   coppie_viste = {}
   avversari_portieri = {}
   avversari_attaccanti = {}
@@ -274,7 +265,6 @@ def analizza_conflitti_calendario():
       p1, a1 = m["p1"], m["a1"]
       p2, a2 = m["p2"], m["a2"]
 
-      # Controllo coppia compagni
       for squadra in [(p1, a1), (p2, a2)]:
         if "(Jolly)" not in str(squadra[0]) and "(Jolly)" not in str(squadra[1]):
           coppia = tuple(sorted(squadra))
@@ -283,7 +273,6 @@ def analizza_conflitti_calendario():
           else:
             coppie_viste[coppia] = t_num
 
-      # Controllo avversari portieri
       if "(Jolly)" not in str(p1) and "(Jolly)" not in str(p2):
         sfida_p = tuple(sorted([p1, p2]))
         if sfida_p in avversari_portieri:
@@ -291,7 +280,6 @@ def analizza_conflitti_calendario():
         else:
           avversari_portieri[sfida_p] = t_num
 
-      # Controllo avversari attaccanti
       if "(Jolly)" not in str(a1) and "(Jolly)" not in str(a2):
         sfida_a = tuple(sorted([a1, a2]))
         if sfida_a in avversari_attaccanti:
@@ -392,19 +380,43 @@ if is_admin and db["stato"] != "setup":
       )
       ricalcola_classifiche()
       salva_dati(db)
+      if "ultimi_errori" in st.session_state:
+        del st.session_state["ultimi_errori"]
       st.sidebar.success("Calendario rigenerato con successo!")
       st.rerun()
 
   st.sidebar.markdown("---")
   st.sidebar.subheader("🔍 Verifica Congruenza")
   if st.sidebar.button("Esegui Test Conflitti", use_container_width=True):
-    errs = analizza_conflitti_calendario()
+    st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
+
+  if "ultimi_errori" in st.session_state:
+    errs = st.session_state["ultimi_errori"]
     if not errs:
       st.sidebar.success("Nessun conflitto trovato! Tutti i vincoli sono rispettati.")
     else:
-      st.sidebar.error(f"Trovati {len(errs)} conflitti (ripetizioni).")
-      for e in errs[:5]:
+      st.sidebar.error(f"Trovati {len(errs)} conflitti:")
+      for e in errs:
         st.sidebar.warning(e)
+      
+      if st.sidebar.button("🛠️ Risorteggia per eliminare conflitti", use_container_width=True):
+        successo = False
+        for _ in range(10):
+          db["turni_partite"] = genera_calendario_corretto(
+              db["portieri"], db["attaccanti"], db["partite_per_giocatore"], db["num_tavoli"]
+          )
+          res_errs = analizza_conflitti_calendario()
+          if not res_errs:
+            successo = True
+            break
+        ricalcola_classifiche()
+        salva_dati(db)
+        st.session_state["ultimi_errori"] = analizza_conflitti_calendario()
+        if successo:
+          st.sidebar.success("Tutti i conflitti sono stati risolti con successo!")
+        else:
+          st.sidebar.warning("Tentativo completato, ma permangono alcuni conflitti (prova di nuovo).")
+        st.rerun()
 
   st.sidebar.markdown("---")
   st.sidebar.subheader("🕹️ Avanzamento Fasi")
@@ -469,6 +481,8 @@ if is_admin and db["stato"] != "setup":
                 )
 
         salva_dati(db)
+        if "ultimi_errori" in st.session_state:
+          del st.session_state["ultimi_errori"]
         st.sidebar.success(
             f"Nome modificato da '{giocatore_da_modificare}' a"
             f" '{nuovo_nome_clean}' con successo!"
@@ -810,7 +824,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 1. SETUP
 if db["stato"] == "setup":
   st.subheader("1. Configurazione Iniziale del Torneo")
   if not is_admin:
@@ -864,11 +877,12 @@ if db["stato"] == "setup":
         db["turni_partite"] = genera_calendario_corretto(
             portieri, attaccanti, db["partite_per_giocatore"], db["num_tavoli"]
         )
+        if "ultimi_errori" in st.session_state:
+          del st.session_state["ultimi_errori"]
         salva_dati(db)
         st.success("Torneo avviato con successo!")
         st.rerun()
 
-# 2. GIRONI
 if db["stato"] == "gironi":
   ricalcola_classifiche()
   num_tavoli = db.get("num_tavoli", 3)
@@ -1366,6 +1380,8 @@ if db["stato"] == "gironi":
             t_obj["partite"].insert(len(t_obj["partite"]) - 1, m)
             ricalcola_classifiche()
             salva_dati(db)
+            if "ultimi_errori" in st.session_state:
+              del st.session_state["ultimi_errori"]
             st.success("Partita annullata e rimandata in coda correttamente!")
             st.rerun()
 
