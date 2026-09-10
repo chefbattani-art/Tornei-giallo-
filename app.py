@@ -11,8 +11,6 @@ from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config(page_title="Torneo Biliardino 'Giallo' Live", layout="wide")
 
-st_autorefresh(interval=3000, debounce=True, key="auto_refresh_torneo")
-
 DB_FILE = "torneo_data.json"
 
 
@@ -53,6 +51,9 @@ if "db" not in st.session_state:
   st.session_state.db = carica_dati()
 
 db = st.session_state.db
+
+if not st.session_state.get("is_loading_conflitti", False):
+  st_autorefresh(interval=3000, debounce=True, key="auto_refresh_torneo")
 
 
 def genera_singolo_turno(
