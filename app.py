@@ -479,7 +479,7 @@ if is_admin and db["stato"] != "setup":
     ) as status:
       timer_placeholder = st.empty()
 
-      max_tentativi = 1000
+      max_tentativi = 2000
       successo = False
       start_time = time.time()
 
@@ -511,7 +511,10 @@ if is_admin and db["stato"] != "setup":
 
       if not successo:
         status.update(
-            label="Raggiunti i tentativi massimi, riprova.",
+            label=(
+                "Raggiunti i tentativi massimi senza azzerare tutto. Riprova o"
+                " riduci i turni."
+            ),
             state="error",
             expanded=True,
         )
