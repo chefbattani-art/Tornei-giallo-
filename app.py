@@ -55,6 +55,11 @@ db = st.session_state.db
 if not st.session_state.get("is_loading_conflitti", False):
   st_autorefresh(interval=3000, debounce=True, key="auto_refresh_torneo")
 
+# --- GESTIONE DEI RUOLI TRAMITE URL (QUERY PARAMS) ---
+# ?role=admin, ?role=giocatore, ?role=spettatore
+query_params = st.query_params
+ruolo_corrente = query_params.get("role", "giocatore")
+
 
 def genera_singolo_turno(
     t,
@@ -423,11 +428,34 @@ def avvia_quarti():
   salva_dati(db)
 
 
-st.sidebar.header("⚙️ Pannello Admin")
-modalita_admin = st.sidebar.checkbox("Modalità Amministratore (PIN)")
+# --- BARRA LATERALE UNIFICATA CON GESTIONE RUOLI ---
+st.sidebar.header("⚙️ Navigazione Ruoli")
+st.sidebar.markdown(
+    "Usa questi link o seleziona la vista per accedere alle diverse aree:"
+)
+
+# Rilevamento base URL app (può essere impostato o ricavato)
+base_url_app = "https://tuo-nome-app.streamlit.app"
+st.sidebar.markdown(f"- **[Admin]({base_url_app}/?role=admin)**")
+st.sidebar.markdown(f"- **[Area Giocatore]({base_url_app}/?role=giocatore)**")
+st.sidebar.markdown(f"- **[Spettatore]({base_url_app}/?role=spettatore)**")
+
+st.sidebar.markdown("---")
+scelta_ruolo_manuale = st.sidebar.selectbox(
+    "Cambia vista corrente:",
+    ["giocatore", "admin", "spettatore"],
+    index=(
+        0
+        if ruolo_corrente == "giocatore"
+        else (1 if ruolo_corrente == "admin" else 2)
+    ),
+)
+if scelta_ruolo_manuale != ruolo_corrente:
+  st.query_params["role"] = scelta_ruolo_manuale
+  st.rerun()
 
 is_admin = False
-if modalita_admin:
+if ruolo_corrente == "admin":
   pin_inserito = st.sidebar.text_input("Inserisci PIN Admin", type="password")
   if pin_inserito == db["admin_pin"]:
     is_admin = True
@@ -847,7 +875,7 @@ def genera_pdf_calendario():
   return bytes(pdf.output())
 
 
-if is_admin:
+if is_admin and ruolo_corrente == "admin":
   st.sidebar.markdown("---")
   if st.sidebar.button("⚠️ Azzera e Ricomincia", use_container_width=True):
     if os.path.exists(DB_FILE):
@@ -962,6 +990,101 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# ==========================================
+# GESTIONE SCHERMATA SPETTATORE (?role=spettatore)
+# ==========================================
+if ruolo_corrente == "spettatore":
+  st.subheader(
+      "👀 Modalità Spettatore (Sola Lettura)"
+  )
+  st.info(
+      "Stai visualizzando il torneo in modalità passiva. Non è possibile"
+      " modificare i dati o inserire risultati da questa schermata."
+  )
+
+  ricalcola_classifiche()
+  num_tavoli = db.get("num_tavoli", 3)
+
+  st.markdown("### 🏆 Classifiche in Tempo Reale")
+  col_sp_1, col_sp_2 = st.columns(2)
+
+  with col_sp_1:
+    st.markdown("#### 🥅 Classifica Portieri")
+    sorted_p = sorted(
+        db["punti_portieri"].items(),
+        key=lambda x: (x[1], db["dr_portieri"].get(x[0], 0)),
+        reverse=True,
+    )
+    for idx, (p, pt) in enumerate(sorted_p):
+      gioc, tot = calcola_partite_giocate("portiere", p)
+      dr_p = db["dr_portieri"].get(p, 0)
+      card_class = "rank-card-green" if idx < 8 else "rank-card-red"
+      st.markdown(
+          f"""
+        <div class="{card_class}">
+          <div><b>{idx+1}°</b> &nbsp; 🥅 &nbsp; <b>{p}</b></div>
+          <div style="color: #cbd5e1; font-size: 0.95rem;">Pt: <b>{pt}</b> | DR: <b>{dr_p:+d}</b> | Partite: {gioc}/{tot}</div>
+        </div>
+      """,
+          unsafe_allow_html=True,
+      )
+
+  with col_sp_2:
+    st.markdown("#### ⚽ Classifica Attaccanti")
+    sorted_a = sorted(
+        db["punti_attaccanti"].items(),
+        key=lambda x: (x[1], db["dr_attaccanti"].get(x[0], 0)),
+        reverse=True,
+    )
+    for idx, (a, pt) in enumerate(sorted_a):
+      gioc, tot = calcola_partite_giocate("attaccante", a)
+      dr_a = db["dr_attaccanti"].get(a, 0)
+      card_class = "rank-card-green" if idx < 8 else "rank-card-red"
+      st.markdown(
+          f"""
+        <div class="{card_class}">
+          <div><b>{idx+1}°</b> &nbsp; ⚽ &nbsp; <b>{a}</b></div>
+          <div style="color: #cbd5e1; font-size: 0.95rem;">Pt: <b>{pt}</b> | DR: <b>{dr_a:+d}</b> | Partite: {gioc}/{tot}</div>
+        </div>
+      """,
+          unsafe_allow_html=True,
+      )
+
+  st.markdown("---")
+  st.markdown("### 🔥 Calendario e Risultati")
+  for t_obj in db["turni_partite"]:
+    st.markdown(f"#### Turno {t_obj['turno']}")
+    for idx, m in enumerate(t_obj["partite"]):
+      if m.get("è_riposo_attaccante", False):
+        st.markdown(
+            f"⏳ **Riposa ATT:** {m['a1']}"
+        )
+      elif m.get("è_riposo_portiere", False):
+        st.markdown(
+            f"⏳ **Riposa POR:** {m['p1']}"
+        )
+      elif m.get("a2") == "RIPOSO":
+        st.markdown(
+            f"⏳ **Turno singolo / Riposo:** {m['p1']} e {m['a1']}"
+        )
+      else:
+        tavolo_num = (idx % num_tavoli) + 1
+        is_giocata = m.get("giocata", False)
+        res_str = (
+            f"**{m['gol1']} - {m['gol2']}**"
+            if is_giocata
+            else "*(Da giocare)*"
+        )
+        st.markdown(
+            f"- 🏟️ **Biliardino {tavolo_num}**: {m['p1']} e {m['a1']} vs"
+            f" {m['p2']} e {m['a2']} ➔ {res_str}"
+        )
+  st.stop()
+
+
+# ==========================================
+# GESTIONE SCHERMATA SETUP / ADMIN / GIOCATORE
+# ==========================================
 if db["stato"] == "setup":
   st.subheader("1. Configurazione Iniziale del Torneo")
   if not is_admin:
