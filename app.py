@@ -1102,11 +1102,7 @@ if db["stato"] == "setup":
     col1, col2 = st.columns(2)
     with col1:
       db["num_tavoli"] = int(
-          st.number_input(
-              "Numero di biliardini", value=int(db["num_tavoli"]), step=1, min_tavoli=1
-          ) if "min_tavoli" in st.number_input.__code__.co_varnames else st.number_input(
-              "Numero di biliardini", value=int(db["num_tavoli"]), step=1
-          )
+          st.number_input("Numero di biliardini", value=int(db["num_tavoli"]), step=1)
       )
     with col2:
       db["partite_per_giocatore"] = int(
